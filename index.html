@@ -2013,6 +2013,186 @@ Object.values(INSTRUMENTS).forEach(group => {
 });
 
 // ═══════════════════════════════════════════
+// PRICE SOURCE SYMBOL MAPS
+// ═══════════════════════════════════════════
+
+// Crypto pairs routed to Binance WebSocket (free, unlimited, real-time)
+const BINANCE_SYMBOLS = {
+  'BTCUSD':  'BTCUSDT',
+  'ETHUSD':  'ETHUSDT',
+  'SOLUSD':  'SOLUSDT',
+  'XRPUSD':  'XRPUSDT',
+  'BNBUSD':  'BNBUSDT',
+  'ADAUSD':  'ADAUSDT',
+  'DOTUSD':  'DOTUSDT',
+  'LINKUSD': 'LINKUSDT',
+};
+
+// Yahoo Finance symbols for non-crypto fallback
+const YAHOO_SYMBOLS = {
+  'XAUUSD':  'GC=F',
+  'XAGUSD':  'SI=F',
+  'XPTUSD':  'PL=F',
+  'XCUUSD':  'HG=F',
+  'EURUSD':  'EURUSD=X',
+  'GBPUSD':  'GBPUSD=X',
+  'USDJPY':  'JPY=X',
+  'USDCHF':  'CHF=X',
+  'AUDUSD':  'AUDUSD=X',
+  'USDCAD':  'CAD=X',
+  'NZDUSD':  'NZDUSD=X',
+  'EURGBP':  'EURGBP=X',
+  'EURJPY':  'EURJPY=X',
+  'GBPJPY':  'GBPJPY=X',
+  'AUDJPY':  'AUDJPY=X',
+  'CADJPY':  'CADJPY=X',
+  'EURCHF':  'EURCHF=X',
+  'GBPCHF':  'GBPCHF=X',
+  'EURCAD':  'EURCAD=X',
+  'AUDCAD':  'AUDCAD=X',
+  'AUDNZD':  'AUDNZD=X',
+  'CHFJPY':  'CHFJPY=X',
+  'US30':    'YM=F',
+  'SPX500':  'ES=F',
+  'NAS100':  'NQ=F',
+  'UK100':   '^FTSE',
+  'GER40':   '^GDAXI',
+  'JPN225':  '^N225',
+  'AUS200':  '^AXJO',
+  'HK50':    '^HSI',
+  'USOIL':   'CL=F',
+  'UKOIL':   'BZ=F',
+  'NATGAS':  'NG=F',
+  'COFFEE':  'KC=F',
+  'COCOA':   'CC=F',
+  'SUGAR':   'SB=F',
+  'WHEAT':   'ZW=F',
+  'CORN':    'ZC=F',
+  'SOYBEAN': 'ZS=F',
+};
+
+// Active Binance WebSocket connections — keyed by pair id
+const binanceWsSockets = {};
+// Live prices cache — populated by Binance WS and TD/Yahoo fetches
+const livePriceCache = {};
+// Track which source each price came from for display
+const priceSourceCache = {};
+// Whether TD has been confirmed exhausted this session
+let tdExhausted = false;
+
+// ─── BINANCE WEBSOCKET ───────────────────────────────────────────────────────
+function connectBinancePair(pairId) {
+  const bSym = BINANCE_SYMBOLS[pairId];
+  if (!bSym || binanceWsSockets[pairId]) return;
+  const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${bSym.toLowerCase()}@miniTicker`);
+  ws.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    const price = parseFloat(d.c);
+    if (!isNaN(price)) {
+      livePriceCache[pairId] = price;
+      priceSourceCache[pairId] = 'binance';
+      updatePriceTileFromCache(pairId, price);
+    }
+  };
+  ws.onerror = () => { console.warn('Binance WS error for', pairId); };
+  ws.onclose = () => {
+    delete binanceWsSockets[pairId];
+    // Reconnect after 5s
+    setTimeout(() => connectBinancePair(pairId), 5000);
+  };
+  binanceWsSockets[pairId] = ws;
+}
+
+function disconnectBinancePair(pairId) {
+  if (binanceWsSockets[pairId]) {
+    binanceWsSockets[pairId].close();
+    delete binanceWsSockets[pairId];
+  }
+}
+
+// Sync Binance connections to currently selected pairs
+function syncBinanceConnections() {
+  const selected = getSelectedPairs();
+  const pairs = selected.length ? selected : ['XAUUSD','BTCUSD','EURUSD','GBPUSD'];
+  // Connect new crypto pairs
+  pairs.forEach(p => { if (BINANCE_SYMBOLS[p]) connectBinancePair(p); });
+  // Disconnect pairs no longer selected
+  Object.keys(binanceWsSockets).forEach(p => {
+    if (!pairs.includes(p)) disconnectBinancePair(p);
+  });
+}
+
+// ─── YAHOO FINANCE FALLBACK ──────────────────────────────────────────────────
+async function fetchYahooPrices(pairIds) {
+  const toFetch = pairIds.filter(p => YAHOO_SYMBOLS[p]);
+  if (!toFetch.length) return {};
+  const symbols = toFetch.map(p => YAHOO_SYMBOLS[p]).join(',');
+  const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(
+    `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice`
+  )}`;
+  try {
+    const res = await fetch(proxy);
+    const data = await res.json();
+    const quotes = data?.quoteResponse?.result || [];
+    const out = {};
+    quotes.forEach(q => {
+      // Reverse-map Yahoo symbol back to pair id
+      const pairId = toFetch.find(p => YAHOO_SYMBOLS[p] === q.symbol);
+      if (pairId && q.regularMarketPrice) out[pairId] = q.regularMarketPrice;
+    });
+    return out;
+  } catch(e) {
+    console.warn('Yahoo Finance fetch failed:', e.message);
+    return {};
+  }
+}
+
+// ─── PRICE TILE RENDERER ─────────────────────────────────────────────────────
+function updatePriceTileFromCache(pairId, price) {
+  const lowDpPairs = ['BTCUSD','ETHUSD','SOLUSD','BNBUSD','ADAUSD','DOTUSD','LINKUSD','XRPUSD','US30','SPX500','NAS100','UK100','GER40','JPN225','AUS200','HK50','XAUUSD','XAGUSD','XPTUSD','XCUUSD','USOIL','UKOIL','NATGAS','COFFEE','COCOA','SUGAR','WHEAT','CORN','SOYBEAN','COTTON','LUMBER'];
+  const dp = lowDpPairs.includes(pairId) ? 2 : 5;
+  const prev = prevPrices[pairId];
+  const changed = prev !== undefined && price !== prev;
+  const up = price > prev;
+  const arrow = changed ? (up ? ' ▲' : ' ▼') : '';
+  const changeClass = changed ? (up ? 'price-up' : 'price-down') : '';
+  const flashClass  = changed ? (up ? 'flash-up' : 'flash-down') : '';
+  prevPrices[pairId] = price;
+  const src = priceSourceCache[pairId] || 'td';
+  const srcBadge = src === 'binance' ? '<span style="font-size:7px;color:#F0B90B;margin-left:3px;">B</span>'
+                 : src === 'yahoo'   ? '<span style="font-size:7px;color:#6001D2;margin-left:3px;">Y</span>'
+                 : '';
+  const el = document.getElementById('ptile-' + pairId);
+  if (el) {
+    el.className = `price-tile ${flashClass}`;
+    el.innerHTML = `
+      <div class="price-tile-pair">${pairId}${srcBadge}</div>
+      <div class="price-tile-val ${changeClass}">${price.toFixed(dp)}${arrow}</div>`;
+    setTimeout(() => el.classList.remove('flash-up','flash-down'), 800);
+  }
+}
+
+function rebuildPriceStrip() {
+  const selected = getSelectedPairs();
+  const pairs = selected.length ? selected : ['XAUUSD','BTCUSD','EURUSD','GBPUSD'];
+  const mobile = document.getElementById('mobile-price-tiles');
+  if (!mobile) return;
+  mobile.innerHTML = pairs.map(p => {
+    const price = livePriceCache[p];
+    const lowDpPairs = ['BTCUSD','ETHUSD','SOLUSD','BNBUSD','ADAUSD','DOTUSD','LINKUSD','XRPUSD','US30','SPX500','NAS100','UK100','GER40','JPN225','AUS200','HK50','XAUUSD','XAGUSD','XPTUSD','XCUUSD','USOIL','UKOIL','NATGAS','COFFEE','COCOA','SUGAR','WHEAT','CORN','SOYBEAN','COTTON','LUMBER'];
+    const dp = lowDpPairs.includes(p) ? 2 : 5;
+    const src = priceSourceCache[p] || '';
+    const srcBadge = src === 'binance' ? '<span style="font-size:7px;color:#F0B90B;margin-left:3px;">B</span>'
+                   : src === 'yahoo'   ? '<span style="font-size:7px;color:#6001D2;margin-left:3px;">Y</span>'
+                   : '';
+    return `<div class="price-tile" id="ptile-${p}" style="min-width:100px;">
+      <div class="price-tile-pair">${p}${srcBadge}</div>
+      <div class="price-tile-val">${price ? price.toFixed(dp) : '—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
 window.addEventListener('load', () => {
@@ -2060,6 +2240,7 @@ function launchApp() {
   }
 
   updateRisk();
+  syncBinanceConnections(); // start Binance WS for crypto pairs immediately
   fetchLivePrices();
   updateSidebarStats();
   startClock();
@@ -2365,97 +2546,72 @@ function calcChartPip() {
 }
 
 async function fetchLivePrices() {
-  if (!tdKey) {
-    // No Twelve Data key — always update price strip with a clear message
-    const mobile   = document.getElementById('mobile-price-tiles');
-    const liveDot  = document.getElementById('price-live-dot');
-    const mStamp   = document.getElementById('mobile-price-stamp');
-    if (mobile) mobile.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">Live prices require a <strong style=\'color:var(--gold);\'>Twelve Data</strong> key — add it in Settings</div>';
-    if (liveDot) liveDot.style.display = 'none';
-    if (mStamp)  mStamp.textContent = '';
-    return;
-  }
-
-  // Only fetch selected pairs — respects free tier rate limit (max 8 at once)
   const selected = getSelectedPairs();
-  const toFetch = (selected.length ? selected : ['XAUUSD','BTCUSD','EURUSD','GBPUSD']).slice(0, 8);
-  const symbols = toFetch.map(p => TD_SYMBOLS[p]).filter(Boolean).join(',');
-  if (!symbols) return;
+  const allPairs = (selected.length ? selected : ['XAUUSD','BTCUSD','EURUSD','GBPUSD']).slice(0, 8);
 
-  const showPriceError = (msg) => {
-    const mobile = document.getElementById('mobile-price-tiles');
-    if (mobile) mobile.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:#FF3D5A;">${msg}</div>`;
-    const liveDot = document.getElementById('price-live-dot');
-    if (liveDot) liveDot.style.display = 'none';
-  };
+  // ── Step 1: Crypto → Binance WebSocket (always, free, real-time) ──────────
+  syncBinanceConnections();
+  const cryptoPairs  = allPairs.filter(p => BINANCE_SYMBOLS[p]);
+  const nonCryptoPairs = allPairs.filter(p => !BINANCE_SYMBOLS[p]);
 
-  const makeTile = (pair, priceRaw) => {
-    if (!priceRaw) return '';
-    const price = parseFloat(priceRaw);
-    if (isNaN(price)) return '';
-    const lowDpPairs = ['BTCUSD','ETHUSD','SOLUSD','BNBUSD','ADAUSD','DOTUSD','LINKUSD','XRPUSD','US30','SPX500','NAS100','UK100','GER40','JPN225','AUS200','HK50','XAUUSD','XAGUSD','XPTUSD','XCUUSD','USOIL','UKOIL','NATGAS','COFFEE','COCOA','SUGAR','WHEAT','CORN','SOYBEAN','COTTON','LUMBER'];
-    const dp = lowDpPairs.includes(pair) ? 2 : 5;
-    const prev = prevPrices[pair];
-    const changed = prev !== undefined && price !== prev;
-    const up = price > prev;
-    const arrow = changed ? (up ? ' ▲' : ' ▼') : '';
-    const changeClass = changed ? (up ? 'price-up' : 'price-down') : '';
-    const flashClass = changed ? (up ? 'flash-up' : 'flash-down') : '';
-    prevPrices[pair] = price;
-    return `<div class="price-tile ${flashClass}" id="ptile-${pair}" style="min-width:100px;">
-      <div class="price-tile-pair">${pair}</div>
-      <div class="price-tile-val ${changeClass}">${price.toFixed(dp)}${arrow}</div>
-    </div>`;
-  };
-
-  const tdUrl = `https://api.twelvedata.com/price?symbol=${symbols}&apikey=${tdKey}`;
-
-  try {
-    let data;
+  // ── Step 2: Non-crypto → Twelve Data (if key present and not exhausted) ──
+  let tdFailed = false;
+  if (nonCryptoPairs.length && tdKey && !tdExhausted) {
+    const symbols = nonCryptoPairs.map(p => TD_SYMBOLS[p]).filter(Boolean).join(',');
     try {
-      const res = await fetch(tdUrl);
-      data = await res.json();
-    } catch(corsErr) {
-      // CORS fallback via allorigins proxy
-      console.warn('Direct fetch failed, trying proxy:', corsErr.message);
-      const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(tdUrl)}`;
-      const res2 = await fetch(proxy);
-      data = await res2.json();
+      const res = await fetch(`https://api.twelvedata.com/price?symbol=${symbols}&apikey=${tdKey}`);
+      const data = await res.json();
+      if (data.status === 'error') {
+        console.warn('TwelveData error:', data.message);
+        if (data.message && data.message.toLowerCase().includes('credits')) {
+          tdExhausted = true; // Don't hammer TD again this session
+          console.info('TwelveData credits exhausted — switching to Yahoo Finance');
+        }
+        tdFailed = true;
+      } else {
+        // Success — populate cache
+        nonCryptoPairs.forEach(p => {
+          const sym = TD_SYMBOLS[p];
+          const price = parseFloat(nonCryptoPairs.length === 1 ? data.price : data[sym]?.price);
+          if (!isNaN(price)) {
+            livePriceCache[p] = price;
+            priceSourceCache[p] = 'td';
+            updatePriceTileFromCache(p, price);
+          }
+        });
+      }
+    } catch(e) {
+      console.warn('TwelveData fetch failed:', e.message);
+      tdFailed = true;
     }
-
-    // Surface API-level errors (bad key, invalid symbol, rate limit hit, etc.)
-    if (data.status === 'error') {
-      console.error('TwelveData API error:', data.message);
-      showPriceError(`TD error: ${data.message || 'check API key'}`);
-    } else {
-      const stamp = new Date().toLocaleTimeString();
-      const html = toFetch.map(p => {
-        const sym = TD_SYMBOLS[p];
-        const val = toFetch.length === 1 ? data.price : data[sym]?.price;
-        return makeTile(p, val);
-      }).filter(Boolean).join('');
-
-      const mobile  = document.getElementById('mobile-price-tiles');
-      const mStamp  = document.getElementById('mobile-price-stamp');
-      const liveDot = document.getElementById('price-live-dot');
-
-      if (mobile) mobile.innerHTML = html || mobile.innerHTML;
-      if (mStamp) mStamp.textContent = stamp;
-      if (liveDot) liveDot.style.display = 'block';
-      updateChartLivePrice(currentChartPair);
-
-      toFetch.forEach(p => {
-        const el = document.getElementById('ptile-' + p);
-        if (el) setTimeout(() => { el.classList.remove('flash-up','flash-down'); }, 800);
-      });
-    }
-
-  } catch(e) {
-    console.warn('Price fetch failed:', e.message);
-    showPriceError('Price fetch failed — open DevTools (F12) for details');
+  } else if (nonCryptoPairs.length && !tdKey) {
+    tdFailed = true; // No key, go straight to Yahoo
   }
 
-  // 15s refresh — stays within TwelveData free tier (8 req/min)
+  // ── Step 3: Yahoo Finance fallback for non-crypto if TD failed/exhausted ──
+  if (nonCryptoPairs.length && (tdFailed || tdExhausted)) {
+    const yahooResults = await fetchYahooPrices(nonCryptoPairs);
+    nonCryptoPairs.forEach(p => {
+      if (yahooResults[p]) {
+        livePriceCache[p] = yahooResults[p];
+        priceSourceCache[p] = 'yahoo';
+        updatePriceTileFromCache(p, yahooResults[p]);
+      }
+    });
+    if (Object.keys(yahooResults).length === 0) {
+      console.warn('Yahoo Finance also returned no data');
+    }
+  }
+
+  // ── Update UI chrome ──────────────────────────────────────────────────────
+  rebuildPriceStrip();
+  const mStamp  = document.getElementById('mobile-price-stamp');
+  const liveDot = document.getElementById('price-live-dot');
+  if (mStamp)  mStamp.textContent = new Date().toLocaleTimeString();
+  if (liveDot) liveDot.style.display = 'block';
+  updateChartLivePrice(currentChartPair);
+
+  // ── Schedule next poll (Binance WS handles crypto continuously) ───────────
   clearTimeout(priceRefreshTimer);
   priceRefreshTimer = setTimeout(fetchLivePrices, 15000);
 }
