@@ -2616,17 +2616,105 @@ async function fetchLivePrices() {
   priceRefreshTimer = setTimeout(fetchLivePrices, 15000);
 }
 
-async function fetchCandles(symbol, interval, outputsize) {
-  const sym = TD_SYMBOLS[symbol] || symbol;
-  // Twelve Data interval format: 1min,5min,15min,30min,45min,1h,2h,4h,8h,1day,1week,1month
-  const intervalMap = { '1day':'1day', '4h':'4h', '1h':'1h', '15min':'15min', '4H':'4h', '1H':'1h', 'D':'1day' };
-  const iv = intervalMap[interval] || interval;
-  const url = `https://api.twelvedata.com/time_series?symbol=${sym}&interval=${iv}&outputsize=${outputsize}&apikey=${tdKey}`;
+// ─── YAHOO CANDLE FETCH ──────────────────────────────────────────────────────
+// Maps internal interval names to Yahoo Finance interval/range params
+const YAHOO_INTERVAL_MAP = {
+  '1day':  { interval: '1d',  range: '3mo'  },
+  '4h':    { interval: '60m', range: '20d'  }, // Yahoo max 60m is 60 days
+  '1h':    { interval: '60m', range: '7d'   },
+  '15min': { interval: '15m', range: '5d'   },
+};
+
+async function fetchCandlesYahoo(symbol, interval, outputsize) {
+  const ySym = YAHOO_SYMBOLS[symbol];
+  if (!ySym) throw new Error('No Yahoo symbol for ' + symbol);
+  const yiv = YAHOO_INTERVAL_MAP[interval];
+  if (!yiv) throw new Error('No Yahoo interval for ' + interval);
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySym)}?interval=${yiv.interval}&range=${yiv.range}`;
+  const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxy);
+  const data = await res.json();
+  const result = data?.chart?.result?.[0];
+  if (!result) throw new Error('Yahoo returned no chart data for ' + symbol);
+  const ts        = result.timestamp || [];
+  const ohlcv     = result.indicators?.quote?.[0] || {};
+  const opens     = ohlcv.open  || [];
+  const highs     = ohlcv.high  || [];
+  const lows      = ohlcv.low   || [];
+  const closes    = ohlcv.close || [];
+  // Convert to same shape as TD: [{datetime, open, high, low, close}] newest first
+  const candles = ts.map((t, i) => ({
+    datetime: new Date(t * 1000).toISOString().slice(0, 16).replace('T', ' '),
+    open:  (opens[i]  ?? closes[i] ?? 0).toFixed(5),
+    high:  (highs[i]  ?? closes[i] ?? 0).toFixed(5),
+    low:   (lows[i]   ?? closes[i] ?? 0).toFixed(5),
+    close: (closes[i] ?? 0).toFixed(5),
+  })).filter(c => parseFloat(c.close) > 0).reverse().slice(0, outputsize);
+  if (!candles.length) throw new Error('Yahoo returned empty candles for ' + symbol);
+  return candles;
+}
+
+// ─── BINANCE CANDLE FETCH ─────────────────────────────────────────────────────
+const BINANCE_INTERVAL_MAP = {
+  '1day':  '1d',
+  '4h':    '4h',
+  '1h':    '1h',
+  '15min': '15m',
+};
+
+async function fetchCandlesBinance(symbol, interval, outputsize) {
+  const bSym = BINANCE_SYMBOLS[symbol];
+  if (!bSym) throw new Error('No Binance symbol for ' + symbol);
+  const biv = BINANCE_INTERVAL_MAP[interval];
+  if (!biv) throw new Error('No Binance interval for ' + interval);
+  const url = `https://api.binance.com/api/v3/klines?symbol=${bSym}&interval=${biv}&limit=${outputsize}`;
   const res = await fetch(url);
   const data = await res.json();
-  if (data.status === 'error') throw new Error(data.message || 'Twelve Data error for ' + sym);
-  if (!data.values) throw new Error('No values returned for ' + sym + ' ' + iv);
-  return data.values;
+  if (!Array.isArray(data) || !data.length) throw new Error('Binance returned no candles for ' + symbol);
+  // Binance kline: [openTime, open, high, low, close, ...]
+  return data.reverse().map(k => ({
+    datetime: new Date(k[0]).toISOString().slice(0,16).replace('T',' '),
+    open:  parseFloat(k[1]).toFixed(5),
+    high:  parseFloat(k[2]).toFixed(5),
+    low:   parseFloat(k[3]).toFixed(5),
+    close: parseFloat(k[4]).toFixed(5),
+  }));
+}
+
+// ─── MAIN CANDLE FETCH (TD → Binance for crypto → Yahoo fallback) ────────────
+async function fetchCandles(symbol, interval, outputsize) {
+  const intervalMap = { '1day':'1day', '4h':'4h', '1h':'1h', '15min':'15min', '4H':'4h', '1H':'1h', 'D':'1day' };
+  const iv = intervalMap[interval] || interval;
+
+  // 1. Crypto: try Binance first (free, always open, weekend-safe)
+  if (BINANCE_SYMBOLS[symbol]) {
+    try {
+      return await fetchCandlesBinance(symbol, iv, outputsize);
+    } catch(e) {
+      console.warn('Binance candles failed for', symbol, '—', e.message, '— trying TD');
+    }
+  }
+
+  // 2. Try Twelve Data (if key present and not exhausted)
+  if (tdKey && !tdExhausted) {
+    try {
+      const sym = TD_SYMBOLS[symbol] || symbol;
+      const url = `https://api.twelvedata.com/time_series?symbol=${sym}&interval=${iv}&outputsize=${outputsize}&apikey=${tdKey}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status === 'error') {
+        if (data.message?.toLowerCase().includes('credits')) tdExhausted = true;
+        throw new Error(data.message || 'TD error');
+      }
+      if (!data.values) throw new Error('TD returned no values');
+      return data.values;
+    } catch(e) {
+      console.warn('TD candles failed for', symbol, '—', e.message, '— trying Yahoo');
+    }
+  }
+
+  // 3. Yahoo Finance fallback (historical OHLC, works on weekends)
+  return await fetchCandlesYahoo(symbol, iv, outputsize);
 }
 
 function summariseCandles(candles, label) {
@@ -3509,32 +3597,50 @@ async function runScan() {
   let marketData = '';
   let livePrice = {};
 
-  if (tdKey) {
-    btn.innerHTML = '<div class="spinner" style="color:#000;"></div> Fetching candles...';
-    for (const pair of pairs) {
-      btn.innerHTML = `<div class="spinner" style="color:#000;"></div> Loading ${pair}...`;
-      try {
-        const [d1, h4, h1, m15] = await Promise.all([
-          fetchCandles(pair,'1day',30).catch(()=>[]),
-          fetchCandles(pair,'4h',30).catch(()=>[]),
-          fetchCandles(pair,'1h',30).catch(()=>[]),
-          fetchCandles(pair,'15min',50).catch(()=>[]),
-        ]);
-        const cp = m15[0] ? parseFloat(m15[0].close) : null;
-        if (cp) livePrice[pair] = cp;
-        marketData += `\n\n=== ${pair} REAL MARKET DATA ===\n`;
-        marketData += `Current price: ${cp || 'unavailable'}\n`;
-        marketData += summariseCandles(d1, 'DAILY (30 candles)') + '\n';
-        marketData += summariseCandles(h4, 'H4 (30 candles)') + '\n';
-        marketData += summariseCandles(h1, 'H1 (30 candles)') + '\n';
-        marketData += summariseCandles(m15, '15M (50 candles)') + '\n';
-        if (m15.length >= 10) {
-          marketData += `Last 10 x 15M OHLC: ${m15.slice(0,10).map(c=>`[O:${c.open} H:${c.high} L:${c.low} C:${c.close}]`).join(' ')}\n`;
-        }
-      } catch(e) { marketData += `\n${pair}: candle fetch error — ${e.message}\n`; }
+  // Detect weekend / non-trading day
+  const now = new Date();
+  const dayOfWeek = now.getUTCDay(); // 0=Sun, 6=Sat
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  if (isWeekend) {
+    marketData += '⚠️ NOTE: Today is a weekend. Forex and commodity markets are closed. Candle data reflects last trading session. 15M/1H data may be sparse or absent. Base analysis on Daily and 4H structure.\n';
+  }
+
+  btn.innerHTML = '<div class="spinner" style="color:#000;"></div> Fetching candles...';
+  for (const pair of pairs) {
+    btn.innerHTML = `<div class="spinner" style="color:#000;"></div> Loading ${pair}...`;
+    try {
+      const [d1, h4, h1, m15] = await Promise.all([
+        fetchCandles(pair,'1day',30).catch(()=>[]),
+        fetchCandles(pair,'4h',30).catch(()=>[]),
+        fetchCandles(pair,'1h',30).catch(()=>[]),
+        fetchCandles(pair,'15min',50).catch(()=>[]),
+      ]);
+      // Use live price from cache (Binance WS for crypto, last known for others)
+      // Fall back to last candle close if nothing in cache
+      const cachedPrice = livePriceCache[pair];
+      const lastClose = m15[0] ? parseFloat(m15[0].close) : (d1[0] ? parseFloat(d1[0].close) : null);
+      const cp = cachedPrice || lastClose;
+      if (cp) livePrice[pair] = cp;
+      const priceSource = cachedPrice ? (priceSourceCache[pair] || 'live') : 'last close';
+      marketData += `\n\n=== ${pair} REAL MARKET DATA ===\n`;
+      marketData += `Current price: ${cp ? cp.toFixed ? cp.toFixed(2) : cp : 'unavailable'} (source: ${priceSource})\n`;
+      if (isWeekend) marketData += `Market status: CLOSED (weekend) — using last session candles\n`;
+      marketData += summariseCandles(d1, 'DAILY (30 candles)') + '\n';
+      marketData += summariseCandles(h4, 'H4 (30 candles)') + '\n';
+      marketData += summariseCandles(h1, 'H1 (30 candles)') + '\n';
+      marketData += summariseCandles(m15, '15M (50 candles)') + '\n';
+      if (m15.length >= 10) {
+        marketData += `Last 10 x 15M OHLC: ${m15.slice(0,10).map(c=>`[O:${c.open} H:${c.high} L:${c.low} C:${c.close}]`).join(' ')}\n`;
+      } else if (d1.length) {
+        marketData += `Note: Intraday candles unavailable (weekend/closed). Daily structure:\n`;
+        marketData += `Last 5 Daily OHLC: ${d1.slice(0,5).map(c=>`[${c.datetime} O:${c.open} H:${c.high} L:${c.low} C:${c.close}]`).join(' ')}\n`;
+      }
+    } catch(e) {
+      marketData += `\n${pair}: all candle sources failed — ${e.message}\n`;
     }
-  } else {
-    marketData = 'Live candle data not available (no Twelve Data key). Provide best analysis from your knowledge but flag that prices are approximate.';
+  }
+  if (!pairs.length || marketData.trim() === '' || (isWeekend && marketData.includes('all candle sources failed'))) {
+    marketData += '\nAll live data sources unavailable. Provide analysis based on known market structure and flag data limitations.';
   }
 
   btn.innerHTML = '<div class="spinner" style="color:#000;"></div> AI analysing...';
