@@ -2016,7 +2016,7 @@ Object.values(INSTRUMENTS).forEach(group => {
 // INIT
 // ═══════════════════════════════════════════
 window.addEventListener('load', () => {
-  if (apiKey) {
+  if (apiKey || tdKey) {
     launchApp();
   } else {
     // Still start clock on setup screen
@@ -2098,10 +2098,10 @@ function saveKeys() {
   const tk = document.getElementById('td-key-input').value.trim();
   const gk = document.getElementById('grok-key-input')?.value.trim()    || '';
   const fk = document.getElementById('finnhub-key-input')?.value.trim() || '';
-  if (!ck.startsWith('sk-ant')) { toast('❌ Claude key looks invalid'); return; }
-  apiKey = ck; tdKey = tk;
-  localStorage.setItem('wm_claude', ck);
-  if (tk) localStorage.setItem('wm_td', tk);
+  if (!ck && !tk) { toast('❌ Enter at least a Twelve Data or Claude API key'); return; }
+  if (ck && !ck.startsWith('sk-ant')) { toast('❌ Claude key looks invalid'); return; }
+  if (ck) { apiKey = ck; localStorage.setItem('wm_claude', ck); }
+  if (tk) { tdKey  = tk; localStorage.setItem('wm_td',     tk); }
   if (gk) { grokKey    = gk; localStorage.setItem('wm_grok',    gk); }
   if (fk) { finnhubKey = fk; localStorage.setItem('wm_finnhub', fk); }
   launchApp();
@@ -2119,6 +2119,8 @@ function saveSettings() {
   if (gk && !gk.includes('...')) { grokKey    = gk; localStorage.setItem('wm_grok',    gk); }
   if (mk && !mk.includes('...')) { geminiKey  = mk; localStorage.setItem('wm_gemini',  mk); }
   if (fk && !fk.includes('...')) { finnhubKey = fk; localStorage.setItem('wm_finnhub', fk); }
+  clearTimeout(priceRefreshTimer);
+  fetchLivePrices();
   toast('✅ Keys saved');
 }
 
@@ -2381,7 +2383,7 @@ async function fetchLivePrices() {
   if (!symbols) return;
 
   try {
-    const res = await fetch(`https://api.twelvedata.com/price?symbol=${encodeURIComponent(symbols)}&apikey=${tdKey}`);
+    const res = await fetch(`https://api.twelvedata.com/price?symbol=${symbols}&apikey=${tdKey}`);
     const data = await res.json();
     const stamp = new Date().toLocaleTimeString();
 
@@ -2430,6 +2432,8 @@ async function fetchLivePrices() {
 
   } catch(e) {
     console.warn('Price fetch failed:', e);
+    const mobile = document.getElementById('mobile-price-tiles');
+    if (mobile) mobile.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:#FF3D5A;">Price fetch error — check console</div>`;
   }
 
   // Schedule next refresh in 5 seconds
@@ -2442,7 +2446,7 @@ async function fetchCandles(symbol, interval, outputsize) {
   // Twelve Data interval format: 1min,5min,15min,30min,45min,1h,2h,4h,8h,1day,1week,1month
   const intervalMap = { '1day':'1day', '4h':'4h', '1h':'1h', '15min':'15min', '4H':'4h', '1H':'1h', 'D':'1day' };
   const iv = intervalMap[interval] || interval;
-  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(sym)}&interval=${iv}&outputsize=${outputsize}&apikey=${tdKey}`;
+  const url = `https://api.twelvedata.com/time_series?symbol=${sym}&interval=${iv}&outputsize=${outputsize}&apikey=${tdKey}`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.status === 'error') throw new Error(data.message || 'Twelve Data error for ' + sym);
