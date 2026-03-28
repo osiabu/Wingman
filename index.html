@@ -90,6 +90,9 @@
     background: #060608;
   }
   .scroll-area::-webkit-scrollbar { display: none; }
+  .scroll-area { -webkit-overflow-scrolling: touch; scrollbar-width: none; overflow: -moz-scrollbars-none; }
+  * { -ms-overflow-style: none; }
+  body { overflow: hidden; -webkit-overflow-scrolling: touch; }
 
   /* ── TOP NAV ── */
   .topbar {
