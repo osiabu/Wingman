@@ -1018,26 +1018,6 @@ select.input option { background:#111116; color:#E8E8F0; }
       <div style="font-size:10px;color:var(--text3);margin-top:6px;">Skip this now — you can add it later in Settings. Wingman works without it.</div>
     </div>
 
-    <div class="card" style="border-color:#00C8FF33;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div class="card-label" style="color:var(--blue);margin:0;">Step 4 — Finnhub Key <span style="background:var(--blue-dim);border:1px solid #00C8FF44;border-radius:4px;padding:1px 7px;font-size:8px;color:var(--blue);margin-left:6px;">OPTIONAL</span></div>
-        <span style="font-family:var(--font-mono);font-size:8px;color:var(--green);">FREE FOREVER</span>
-      </div>
-      <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px;">
-        Finnhub aggregates real headlines from <strong style="color:var(--text);">Bloomberg, Reuters, CNBC, MarketWatch</strong> and 50+ other sources.
-        With this key, Wingman's calendar shows <strong style="color:var(--blue);">live news headlines</strong>, earnings dates, and
-        automatically tracks when <strong style="color:var(--text);">Powell, Lagarde, Trump, OPEC</strong> and other market movers speak or post.<br><br>
-        <strong style="color:var(--text);">Free tier:</strong> 60 API calls/minute, unlimited daily — more than enough.
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">
-        Get your free key in 2 mins at <a href="https://finnhub.io" target="_blank" style="color:var(--blue);">finnhub.io</a> → Register → API Keys
-      </div>
-      <div class="key-wrap">
-        <input type="password" class="input" id="finnhub-key-input" placeholder="ct..." autocomplete="off" style="border-color:#00C8FF33;">
-        <button class="key-eye" onclick="toggleVis('finnhub-key-input',this)">👁</button>
-      </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:6px;">Skip for now — add it later in Settings. Calendar works without it using economic data only.</div>
-    </div>
 
     <button class="btn btn-primary" onclick="saveKeys()" style="margin-bottom:12px;">
       ⚡ Enter Wingman
@@ -1263,10 +1243,6 @@ select.input option { background:#111116; color:#E8E8F0; }
           <div class="stat-box"><div class="stat-box-val" id="calc-pipval" style="color:var(--blue);font-size:20px;">—</div><div class="stat-box-label">PIP VALUE</div></div>
         </div>
 
-        <div class="card">
-          <div class="card-label">Quick Reference — XAUUSD (1% risk, 20pt SL)</div>
-          <div id="lot-ref-table"></div>
-        </div>
 
         <div class="card" id="trade-behaviour-card">
           <div class="card-label">📊 Trade Behaviour Review</div>
@@ -1508,17 +1484,6 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
             <div style="font-size:10px;color:var(--text3);margin-top:4px;">Google Gemini Flash — alternative sentiment engine. Free 1,500 requests/day at <a href="https://aistudio.google.com" target="_blank" style="color:var(--blue);">aistudio.google.com</a></div>
           </div>
-          <div style="margin-bottom:12px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-              <label class="input-label" style="margin:0;color:var(--blue);">FINNHUB KEY</label>
-              <span style="font-family:var(--font-mono);font-size:7px;background:var(--blue-dim);border:1px solid #00C8FF44;border-radius:3px;padding:1px 6px;color:var(--blue);">OPTIONAL · FREE</span>
-            </div>
-            <div class="key-wrap">
-              <input type="password" class="input" id="s-finnhub-key" placeholder="ct..." autocomplete="off" style="border-color:#00C8FF33;">
-              <button class="key-eye" onclick="toggleVis('s-finnhub-key',this)">👁</button>
-            </div>
-            <div style="font-size:10px;color:var(--text3);margin-top:4px;">Bloomberg/Reuters headlines + speaker tracker. Free at <a href="https://finnhub.io" target="_blank" style="color:var(--blue);">finnhub.io</a></div>
-          </div>
           <button class="btn btn-ghost" onclick="saveSettings()" style="width:100%;padding:10px;">Save Keys</button>
         </div>
         <div class="card">
@@ -1758,19 +1723,13 @@ select.input option { background:#111116; color:#E8E8F0; }
       <!-- MAIN BODY: Chart left, Order panel right -->
       <div id="sim-body" style="display:flex;flex:1;min-height:0;overflow:hidden;">
 
-        <!-- CHART + BUY/SELL overlay -->
+        <!-- CHART + positions strip -->
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;position:relative;">
           <iframe id="sim-chart-frame" src="" style="flex:1;border:none;display:block;background:#060608;" allowtransparency="true" frameborder="0"></iframe>
 
-          <!-- Floating BUY/SELL buttons -->
-          <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10;">
-            <button onclick="simQuickBuy()" style="padding:11px 32px;border:none;border-radius:9px;background:linear-gradient(135deg,#00E87A,#00A855);color:#000;font-family:var(--font-display);font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 24px #00E87A50;letter-spacing:1px;transition:transform 0.1s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">▲ BUY</button>
-            <button onclick="simQuickSell()" style="padding:11px 32px;border:none;border-radius:9px;background:linear-gradient(135deg,#FF3D5A,#CC0022);color:#fff;font-family:var(--font-display);font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 24px #FF3D5A50;letter-spacing:1px;transition:transform 0.1s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform=''">▼ SELL</button>
-          </div>
-
-          <!-- Open positions strip at bottom of chart (desktop) -->
-          <div id="sim-positions-strip" style="background:var(--bg1);border-top:1px solid var(--border);padding:6px 12px;flex-shrink:0;overflow-x:auto;white-space:nowrap;display:none;">
-            <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1px;margin-right:10px;">POSITIONS</span>
+          <!-- Open positions strip at bottom of chart -->
+          <div id="sim-positions-strip" style="background:var(--bg1);border-top:1px solid var(--border);padding:5px 12px;flex-shrink:0;overflow-x:auto;white-space:nowrap;display:none;">
+            <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1px;margin-right:8px;">POSITIONS</span>
             <span id="sim-strip-content" style="font-family:var(--font-mono);font-size:10px;color:var(--text3);">No open positions</span>
           </div>
         </div>
@@ -1788,10 +1747,19 @@ select.input option { background:#111116; color:#E8E8F0; }
           <!-- ORDER FORM -->
           <div id="sim-panel-order" style="flex:1;overflow-y:auto;padding:10px 12px;">
 
-            <!-- BUY / SELL toggle -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;border-radius:7px;overflow:hidden;border:1px solid var(--border2);margin-bottom:10px;">
-              <button id="sim-buy-btn" onclick="simSetDir('BUY')" style="padding:10px;background:var(--green-dim);border:none;color:var(--green);font-family:var(--font-display);font-size:13px;font-weight:800;cursor:pointer;border-right:1px solid var(--border2);letter-spacing:1px;">▲ BUY</button>
-              <button id="sim-sell-btn" onclick="simSetDir('SELL')" style="padding:10px;background:none;border:none;color:var(--text3);font-family:var(--font-display);font-size:13px;font-weight:800;cursor:pointer;letter-spacing:1px;">▼ SELL</button>
+            <!-- Prominent BUY / SELL action buttons -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+              <button onclick="simSetDir('BUY');simConfirmOrder()" id="sim-buy-btn"
+                style="padding:14px 8px;border:none;border-radius:9px;background:linear-gradient(135deg,#00E87A,#00A855);color:#000;font-family:var(--font-display);font-size:15px;font-weight:800;cursor:pointer;letter-spacing:1px;box-shadow:0 4px 16px #00E87A30;transition:transform 0.1s;"
+                onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform=''">▲ BUY</button>
+              <button onclick="simSetDir('SELL');simConfirmOrder()" id="sim-sell-btn"
+                style="padding:14px 8px;border:none;border-radius:9px;background:linear-gradient(135deg,#FF3D5A,#CC0022);color:#fff;font-family:var(--font-display);font-size:15px;font-weight:800;cursor:pointer;letter-spacing:1px;box-shadow:0 4px 16px #FF3D5A30;transition:transform 0.1s;"
+                onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform=''">▼ SELL</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <div style="flex:1;height:1px;background:var(--border);"></div>
+              <span style="font-family:var(--font-mono);font-size:8px;color:var(--text4);letter-spacing:1px;">CONFIGURE ORDER</span>
+              <div style="flex:1;height:1px;background:var(--border);"></div>
             </div>
 
             <!-- Order type -->
@@ -1855,14 +1823,12 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
 
             <!-- Risk summary box -->
-            <div style="background:var(--bg2);border-radius:7px;padding:8px 10px;margin-bottom:10px;font-family:var(--font-mono);font-size:9px;border:1px solid var(--border);">
+            <div style="background:var(--bg2);border-radius:7px;padding:8px 10px;margin-bottom:8px;font-family:var(--font-mono);font-size:9px;border:1px solid var(--border);">
               <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:var(--text3);">Margin req.</span><span id="sim-margin" style="color:var(--gold);">—</span></div>
               <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:var(--text3);">Max loss if SL</span><span id="sim-max-risk" style="color:var(--red);">—</span></div>
               <div style="display:flex;justify-content:space-between;"><span style="color:var(--text3);">R:R ratio</span><span id="sim-rr-display" style="color:var(--blue);">—</span></div>
             </div>
-
-            <!-- PLACE ORDER button -->
-            <button onclick="simConfirmOrder()" id="sim-place-btn" style="width:100%;padding:12px;border-radius:8px;border:none;font-family:var(--font-display);font-size:13px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#00E87A,#00A855);color:#000;letter-spacing:0.5px;transition:all 0.15s;">▲ PLACE BUY</button>
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text4);text-align:center;">Set SL/TP above, then click BUY or SELL to place</div>
           </div>
 
           <!-- POSITIONS PANEL -->
@@ -1871,6 +1837,7 @@ select.input option { background:#111116; color:#E8E8F0; }
               <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1.5px;">OPEN POSITIONS</span>
               <button onclick="simCloseAll()" style="background:none;border:1px solid var(--red-dim);border-radius:5px;color:var(--red);font-family:var(--font-mono);font-size:8px;padding:2px 8px;cursor:pointer;">Close All</button>
             </div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--text4);margin-bottom:8px;">Tap "Partial" to close a portion of any position.</div>
             <div id="sim-open-positions">
               <div class="empty" style="padding:20px 0;"><div class="empty-icon" style="font-size:26px;">📊</div><div class="empty-text" style="font-size:11px;">No open positions</div></div>
             </div>
@@ -2010,16 +1977,13 @@ select.input option { background:#111116; color:#E8E8F0; }
         </div>
       </div>
 
-      <!-- Finnhub news headlines section -->
       <div class="card" style="margin-top:12px;" id="cal-news-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div class="card-label">📰 Market News Headlines</div>
-          <div id="cal-news-source" style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">FINNHUB · BLOOMBERG · REUTERS</div>
+          <div id="cal-news-source" style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">BLOOMBERG · REUTERS · CNBC</div>
         </div>
         <div id="cal-news-body">
-          <div style="font-size:11px;color:var(--text3);" id="cal-news-placeholder">
-            Add a Finnhub key in Settings to load live Bloomberg/Reuters headlines here.
-          </div>
+          <div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Loading headlines...</div>
         </div>
       </div>
 
@@ -2268,52 +2232,50 @@ const BINANCE_SYMBOLS = {
   'LINKUSD': 'LINKUSDT',
 };
 
-// Yahoo Finance symbols for non-crypto fallback
-const YAHOO_SYMBOLS = {
-  'XAUUSD':  'GC=F',
-  'XAGUSD':  'SI=F',
-  'XPTUSD':  'PL=F',
-  'XCUUSD':  'HG=F',
-  'EURUSD':  'EURUSD=X',
-  'GBPUSD':  'GBPUSD=X',
-  'USDJPY':  'JPY=X',
-  'USDCHF':  'CHF=X',
-  'AUDUSD':  'AUDUSD=X',
-  'USDCAD':  'CAD=X',
-  'NZDUSD':  'NZDUSD=X',
-  'EURGBP':  'EURGBP=X',
-  'EURJPY':  'EURJPY=X',
-  'GBPJPY':  'GBPJPY=X',
-  'AUDJPY':  'AUDJPY=X',
-  'CADJPY':  'CADJPY=X',
-  'EURCHF':  'EURCHF=X',
-  'GBPCHF':  'GBPCHF=X',
-  'EURCAD':  'EURCAD=X',
-  'AUDCAD':  'AUDCAD=X',
-  'AUDNZD':  'AUDNZD=X',
-  'CHFJPY':  'CHFJPY=X',
-  'US30':    'YM=F',
-  'SPX500':  'ES=F',
-  'NAS100':  'NQ=F',
-  'UK100':   '^FTSE',
-  'GER40':   '^GDAXI',
-  'JPN225':  '^N225',
-  'AUS200':  '^AXJO',
-  'HK50':    '^HSI',
-  'USOIL':   'CL=F',
-  'UKOIL':   'BZ=F',
-  'NATGAS':  'NG=F',
-  'COFFEE':  'KC=F',
-  'COCOA':   'CC=F',
-  'SUGAR':   'SB=F',
-  'WHEAT':   'ZW=F',
-  'CORN':    'ZC=F',
-  'SOYBEAN': 'ZS=F',
-};
+// ─── HARDCODED FINNHUB KEY (news fallback — no user key required) ────────────
+// Free tier, commercial use permitted per Finnhub ToS
+const FINNHUB_KEY_BUILTIN = 'cva0arhr01qoivt1im7gcva0arhr01qoivt1im80';
+
+// ─── PRICE FALLBACK: exchangerate.host (free, commercial OK) ─────────────────
+// Covers forex pairs when Twelve Data is unavailable/exhausted
+async function fetchExchangeRatePrices(pairIds) {
+  // exchangerate.host supports forex via /latest?base=USD
+  const forexPairs = pairIds.filter(p => {
+    // Only vanilla forex pairs — metals and indices need TD
+    return ['EURUSD','GBPUSD','USDJPY','USDCHF','AUDUSD','USDCAD','NZDUSD',
+            'EURGBP','EURJPY','GBPJPY','AUDJPY','CADJPY','EURCHF','GBPCHF',
+            'EURCAD','AUDCAD','AUDNZD','CHFJPY'].includes(p);
+  });
+  if (!forexPairs.length) return {};
+  try {
+    // Get rates vs USD for all needed currencies
+    const currencies = [...new Set(forexPairs.flatMap(p => [p.slice(0,3), p.slice(3,6)]))].join(',');
+    const res  = await fetch(`https://api.exchangerate.host/latest?base=USD&symbols=${currencies}`, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) throw new Error('exchangerate.host ' + res.status);
+    const data = await res.json();
+    const rates = data.rates || {};
+    const out = {};
+    forexPairs.forEach(p => {
+      const base  = p.slice(0,3); // e.g. EUR
+      const quote = p.slice(3,6); // e.g. USD
+      if (base === 'USD' && rates[quote]) {
+        out[p] = 1 / rates[quote];
+      } else if (quote === 'USD' && rates[base]) {
+        out[p] = rates[base];
+      } else if (rates[base] && rates[quote]) {
+        out[p] = rates[base] / rates[quote];
+      }
+    });
+    return out;
+  } catch(e) {
+    console.warn('exchangerate.host failed:', e.message);
+    return {};
+  }
+}
 
 // Active Binance WebSocket connections — keyed by pair id
 const binanceWsSockets = {};
-// Live prices cache — populated by Binance WS and TD/Yahoo fetches
+// Live prices cache — populated by Binance WS and TD fetches
 const livePriceCache = {};
 // Track which source each price came from for display
 const priceSourceCache = {};
@@ -2363,31 +2325,6 @@ function syncBinanceConnections() {
   });
 }
 
-// ─── YAHOO FINANCE FALLBACK ──────────────────────────────────────────────────
-async function fetchYahooPrices(pairIds) {
-  const toFetch = pairIds.filter(p => YAHOO_SYMBOLS[p]);
-  if (!toFetch.length) return {};
-  const symbols = toFetch.map(p => YAHOO_SYMBOLS[p]).join(',');
-  const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(
-    `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice`
-  )}`;
-  try {
-    const res = await fetch(proxy);
-    const data = await res.json();
-    const quotes = data?.quoteResponse?.result || [];
-    const out = {};
-    quotes.forEach(q => {
-      // Reverse-map Yahoo symbol back to pair id
-      const pairId = toFetch.find(p => YAHOO_SYMBOLS[p] === q.symbol);
-      if (pairId && q.regularMarketPrice) out[pairId] = q.regularMarketPrice;
-    });
-    return out;
-  } catch(e) {
-    console.warn('Yahoo Finance fetch failed:', e.message);
-    return {};
-  }
-}
-
 // ─── PRICE TILE RENDERER ─────────────────────────────────────────────────────
 function updatePriceTileFromCache(pairId, price) {
   const lowDpPairs = ['BTCUSD','ETHUSD','SOLUSD','BNBUSD','ADAUSD','DOTUSD','LINKUSD','XRPUSD','US30','SPX500','NAS100','UK100','GER40','JPN225','AUS200','HK50','XAUUSD','XAGUSD','XPTUSD','XCUUSD','USOIL','UKOIL','NATGAS','COFFEE','COCOA','SUGAR','WHEAT','CORN','SOYBEAN','COTTON','LUMBER'];
@@ -2401,7 +2338,7 @@ function updatePriceTileFromCache(pairId, price) {
   prevPrices[pairId] = price;
   const src = priceSourceCache[pairId] || 'td';
   const srcBadge = src === 'binance' ? '<span style="font-size:7px;color:#F0B90B;margin-left:3px;">B</span>'
-                 : src === 'yahoo'   ? '<span style="font-size:7px;color:#6001D2;margin-left:3px;">Y</span>'
+                 : src === 'er'      ? '<span style="font-size:7px;color:#00C8FF;margin-left:3px;">ER</span>'
                  : '';
   const el = document.getElementById('ptile-' + pairId);
   if (el) {
@@ -2427,7 +2364,7 @@ function rebuildPriceStrip() {
     const dp = lowDpPairs.includes(p) ? 2 : 5;
     const src = priceSourceCache[p] || '';
     const srcBadge = src === 'binance' ? '<span style="font-size:7px;color:#F0B90B;margin-left:3px;">B</span>'
-                   : src === 'yahoo'   ? '<span style="font-size:7px;color:#6001D2;margin-left:3px;">Y</span>'
+                   : src === 'er'      ? '<span style="font-size:7px;color:#00C8FF;margin-left:3px;">ER</span>'
                    : '';
     return `<div class="price-tile" id="ptile-${p}" style="min-width:100px;">
       <div class="price-tile-pair">${p}${srcBadge}</div>
@@ -2448,7 +2385,6 @@ window.addEventListener('load', () => {
   }
   buildChecklist();
   buildRules();
-  buildLotRefTable();
   renderTrades();
   updateRisk();
   startClock();
@@ -2458,7 +2394,9 @@ window.addEventListener('load', () => {
   if (tdKey)    document.getElementById('s-td-key').value    = tdKey.slice(0,10)+'...';
   if (grokKey)   { const gel = document.getElementById('s-grok-key');   if(gel) gel.value = grokKey.slice(0,10)+'...'; }
   if (geminiKey)  { const mel = document.getElementById('s-gemini-key');  if(mel) mel.value = geminiKey.slice(0,10)+'...'; }
-  if (finnhubKey) { const fel = document.getElementById('s-finnhub-key'); if(fel) fel.value = finnhubKey.slice(0,10)+'...'; }
+  if (finnhubKey && finnhubKey !== FINNHUB_KEY_BUILTIN) {
+    // User has their own Finnhub key stored — no field to prefill (field removed from settings)
+  }
   renderAlerts();
   if (priceAlerts.filter(a=>!a.triggered).length) startAlertChecking();
 });
@@ -2521,14 +2459,12 @@ function toggleVis(id, btn) {
 function saveKeys() {
   const ck = document.getElementById('claude-key-input').value.trim();
   const tk = document.getElementById('td-key-input').value.trim();
-  const gk = document.getElementById('grok-key-input')?.value.trim()    || '';
-  const fk = document.getElementById('finnhub-key-input')?.value.trim() || '';
+  const gk = document.getElementById('grok-key-input')?.value.trim() || '';
   if (!ck && !tk) { toast('❌ Enter at least a Twelve Data or Claude API key'); return; }
   if (ck && !ck.startsWith('sk-ant')) { toast('❌ Claude key looks invalid'); return; }
   if (ck) { apiKey = ck; localStorage.setItem('wm_claude', ck); }
   if (tk) { tdKey  = tk; localStorage.setItem('wm_td',     tk); }
-  if (gk) { grokKey    = gk; localStorage.setItem('wm_grok',    gk); }
-  if (fk) { finnhubKey = fk; localStorage.setItem('wm_finnhub', fk); }
+  if (gk) { grokKey = gk; localStorage.setItem('wm_grok',  gk); }
   launchApp();
   toast('✅ Welcome to Wingman!');
 }
@@ -2536,14 +2472,12 @@ function saveKeys() {
 function saveSettings() {
   const ck = document.getElementById('s-claude-key').value.trim();
   const tk = document.getElementById('s-td-key').value.trim();
-  const gk = document.getElementById('s-grok-key')?.value.trim()    || '';
-  const mk = document.getElementById('s-gemini-key')?.value.trim()  || '';
-  const fk = document.getElementById('s-finnhub-key')?.value.trim() || '';
-  if (ck && !ck.includes('...')) { apiKey     = ck; localStorage.setItem('wm_claude',  ck); }
-  if (tk && !tk.includes('...')) { tdKey      = tk; localStorage.setItem('wm_td',      tk); }
-  if (gk && !gk.includes('...')) { grokKey    = gk; localStorage.setItem('wm_grok',    gk); }
-  if (mk && !mk.includes('...')) { geminiKey  = mk; localStorage.setItem('wm_gemini',  mk); }
-  if (fk && !fk.includes('...')) { finnhubKey = fk; localStorage.setItem('wm_finnhub', fk); }
+  const gk = document.getElementById('s-grok-key')?.value.trim()   || '';
+  const mk = document.getElementById('s-gemini-key')?.value.trim() || '';
+  if (ck && !ck.includes('...')) { apiKey    = ck; localStorage.setItem('wm_claude',  ck); }
+  if (tk && !tk.includes('...')) { tdKey     = tk; localStorage.setItem('wm_td',      tk); }
+  if (gk && !gk.includes('...')) { grokKey   = gk; localStorage.setItem('wm_grok',    gk); }
+  if (mk && !mk.includes('...')) { geminiKey = mk; localStorage.setItem('wm_gemini',  mk); }
   clearTimeout(priceRefreshTimer);
   fetchLivePrices();
   toast('✅ Keys saved');
@@ -2815,7 +2749,7 @@ async function fetchLivePrices() {
         console.warn('TwelveData error:', data.message);
         if (data.message && data.message.toLowerCase().includes('credits')) {
           tdExhausted = true; // Don't hammer TD again this session
-          console.info('TwelveData credits exhausted — switching to Yahoo Finance');
+          console.info('TwelveData credits exhausted — switching to forex rate fallback');
         }
         tdFailed = true;
       } else {
@@ -2835,21 +2769,29 @@ async function fetchLivePrices() {
       tdFailed = true;
     }
   } else if (nonCryptoPairs.length && !tdKey) {
-    tdFailed = true; // No key, go straight to Yahoo
+    tdFailed = true; // No key — try exchangerate.host for forex
   }
 
-  // ── Step 3: Yahoo Finance fallback for non-crypto if TD failed/exhausted ──
+  // ── Step 3: exchangerate.host fallback for forex pairs (commercial OK) ──
   if (nonCryptoPairs.length && (tdFailed || tdExhausted)) {
-    const yahooResults = await fetchYahooPrices(nonCryptoPairs);
-    nonCryptoPairs.forEach(p => {
-      if (yahooResults[p]) {
-        livePriceCache[p] = yahooResults[p];
-        priceSourceCache[p] = 'yahoo';
-        updatePriceTileFromCache(p, yahooResults[p]);
+    try {
+      const erResults = await fetchExchangeRatePrices(nonCryptoPairs);
+      nonCryptoPairs.forEach(p => {
+        if (erResults[p]) {
+          livePriceCache[p] = erResults[p];
+          priceSourceCache[p] = 'er';
+          updatePriceTileFromCache(p, erResults[p]);
+        }
+      });
+      // Pairs not covered by exchangerate.host (metals, indices, energy) — show dashes
+      // with a note to add Twelve Data key
+      const uncovered = nonCryptoPairs.filter(p => !erResults[p]);
+      if (uncovered.length && !tdKey) {
+        const mStamp = document.getElementById('mobile-price-stamp');
+        if (mStamp) mStamp.textContent = 'Add Twelve Data key for full prices';
       }
-    });
-    if (Object.keys(yahooResults).length === 0) {
-      console.warn('Yahoo Finance also returned no data');
+    } catch(e) {
+      console.warn('Price fallback failed:', e.message);
     }
   }
 
@@ -2864,44 +2806,6 @@ async function fetchLivePrices() {
   // ── Schedule next poll (Binance WS handles crypto continuously) ───────────
   clearTimeout(priceRefreshTimer);
   priceRefreshTimer = setTimeout(fetchLivePrices, 15000);
-}
-
-// ─── YAHOO CANDLE FETCH ──────────────────────────────────────────────────────
-// Maps internal interval names to Yahoo Finance interval/range params
-const YAHOO_INTERVAL_MAP = {
-  '1day':  { interval: '1d',  range: '3mo'  },
-  '4h':    { interval: '60m', range: '20d'  }, // Yahoo max 60m is 60 days
-  '1h':    { interval: '60m', range: '7d'   },
-  '15min': { interval: '15m', range: '5d'   },
-};
-
-async function fetchCandlesYahoo(symbol, interval, outputsize) {
-  const ySym = YAHOO_SYMBOLS[symbol];
-  if (!ySym) throw new Error('No Yahoo symbol for ' + symbol);
-  const yiv = YAHOO_INTERVAL_MAP[interval];
-  if (!yiv) throw new Error('No Yahoo interval for ' + interval);
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySym)}?interval=${yiv.interval}&range=${yiv.range}`;
-  const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxy);
-  const data = await res.json();
-  const result = data?.chart?.result?.[0];
-  if (!result) throw new Error('Yahoo returned no chart data for ' + symbol);
-  const ts        = result.timestamp || [];
-  const ohlcv     = result.indicators?.quote?.[0] || {};
-  const opens     = ohlcv.open  || [];
-  const highs     = ohlcv.high  || [];
-  const lows      = ohlcv.low   || [];
-  const closes    = ohlcv.close || [];
-  // Convert to same shape as TD: [{datetime, open, high, low, close}] newest first
-  const candles = ts.map((t, i) => ({
-    datetime: new Date(t * 1000).toISOString().slice(0, 16).replace('T', ' '),
-    open:  (opens[i]  ?? closes[i] ?? 0).toFixed(5),
-    high:  (highs[i]  ?? closes[i] ?? 0).toFixed(5),
-    low:   (lows[i]   ?? closes[i] ?? 0).toFixed(5),
-    close: (closes[i] ?? 0).toFixed(5),
-  })).filter(c => parseFloat(c.close) > 0).reverse().slice(0, outputsize);
-  if (!candles.length) throw new Error('Yahoo returned empty candles for ' + symbol);
-  return candles;
 }
 
 // ─── BINANCE CANDLE FETCH ─────────────────────────────────────────────────────
@@ -2931,12 +2835,12 @@ async function fetchCandlesBinance(symbol, interval, outputsize) {
   }));
 }
 
-// ─── MAIN CANDLE FETCH (TD → Binance for crypto → Yahoo fallback) ────────────
+// ─── MAIN CANDLE FETCH (TD primary → Binance for crypto) ─────────────────────
 async function fetchCandles(symbol, interval, outputsize) {
   const intervalMap = { '1day':'1day', '4h':'4h', '1h':'1h', '15min':'15min', '4H':'4h', '1H':'1h', 'D':'1day' };
   const iv = intervalMap[interval] || interval;
 
-  // 1. Crypto: try Binance first (free, always open, weekend-safe)
+  // 1. Crypto: Binance first (free, always open, weekend-safe)
   if (BINANCE_SYMBOLS[symbol]) {
     try {
       return await fetchCandlesBinance(symbol, iv, outputsize);
@@ -2945,7 +2849,7 @@ async function fetchCandles(symbol, interval, outputsize) {
     }
   }
 
-  // 2. Try Twelve Data (if key present and not exhausted)
+  // 2. Twelve Data (if key present and not exhausted)
   if (tdKey && !tdExhausted) {
     try {
       const sym = TD_SYMBOLS[symbol] || symbol;
@@ -2959,12 +2863,12 @@ async function fetchCandles(symbol, interval, outputsize) {
       if (!data.values) throw new Error('TD returned no values');
       return data.values;
     } catch(e) {
-      console.warn('TD candles failed for', symbol, '—', e.message, '— trying Yahoo');
+      console.warn('TD candles failed for', symbol, '—', e.message);
     }
   }
 
-  // 3. Yahoo Finance fallback (historical OHLC, works on weekends)
-  return await fetchCandlesYahoo(symbol, iv, outputsize);
+  // No candle data available — scan will run on Claude's knowledge only
+  throw new Error(`No candle data source available for ${symbol}. Add a Twelve Data key in Settings for live candle data.`);
 }
 
 function summariseCandles(candles, label) {
@@ -3588,17 +3492,6 @@ function calcLot() {
   document.getElementById('calc-pipval').textContent = pvLabel;
 }
 
-function buildLotRefTable() {
-  const bals = [50,100,200,500,1000,5000];
-  document.getElementById('lot-ref-table').innerHTML = bals.map(b => {
-    const lot = Math.max(0.01, Math.floor((b*0.01/20)*100)/100);
-    return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-family:var(--font-mono);">
-      <span style="font-size:11px;color:var(--text2);">$${b} balance</span>
-      <span style="font-size:12px;color:var(--gold);font-weight:700;">${lot.toFixed(2)} lots</span>
-    </div>`;
-  }).join('') + `<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:8px;">Based on 1% risk with 20pt stop loss</div>`;
-}
-
 // ═══════════════════════════════════════════
 // TRADE JOURNAL
 // ═══════════════════════════════════════════
@@ -3812,8 +3705,8 @@ window.addEventListener('resize', () => {
 // GROK STATE
 // ═══════════════════════════════════════════
 let grokKey    = localStorage.getItem('wm_grok')    || '';
-let finnhubKey = localStorage.getItem('wm_finnhub') || '';
-let geminiKey = localStorage.getItem('wm_gemini') || '';
+let finnhubKey = localStorage.getItem('wm_finnhub') || FINNHUB_KEY_BUILTIN;
+let geminiKey  = localStorage.getItem('wm_gemini')  || '';
 
 // ═══════════════════════════════════════════
 // GEMINI FLASH SENTIMENT (free alternative to Grok)
@@ -5208,130 +5101,105 @@ async function loadEventsForDate(date) {
     label.textContent = isTdy ? "Today's Events" :
       date.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'long' });
   }
-  if (body) body.innerHTML = `<div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:12px 0;">Fetching events from ForexFactory...</div>`;
+  if (body) body.innerHTML = `<div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:12px 0;">Loading economic calendar...</div>`;
 
   const events = [];
 
-  // ── Source 1: ForexFactory (via proxy) ───────────────────────────────────
-  let ffLoaded = false;
+  // ── Source 1: TradingView Economic Calendar (primary — legal, reliable) ──
+  let tvLoaded = false;
   try {
-    const ffDate = new Date(date);
-    const dow = ffDate.getDay() === 0 ? 6 : ffDate.getDay() - 1;
-    ffDate.setDate(ffDate.getDate() - dow);
-    const ffY = ffDate.getFullYear();
-    const ffM = String(ffDate.getMonth() + 1).padStart(2,'0');
-    const ffD = String(ffDate.getDate()).padStart(2,'0');
-    const ffUrl    = `https://www.forexfactory.com/calendar.php?week=${ffY}.${ffM}.${ffD}`;
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(ffUrl)}`;
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+    const from = ds + 'T00:00:00.000Z';
+    const to   = ds + 'T23:59:59.000Z';
+    const url  = `https://economic-calendar.tradingview.com/events?from=${from}&to=${to}&countries=US,GB,EU,JP,AU,CA,CH,CN,NZ,DE,FR,IT,ES,KR,NO,SE,CH&minImportance=-1`;
+    const res  = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (res.ok) {
-      const html   = await res.text();
-      const parser = new DOMParser();
-      const doc    = parser.parseFromString(html, 'text/html');
-      const rows   = doc.querySelectorAll('tr.calendar__row');
-      let lastTime  = '';
-      let lastDayEl = null;
-
-      rows.forEach(row => {
-        if (row.classList.contains('calendar__row--no-border')) return;
-        // Track current date via date cell
-        const dateCell = row.querySelector('td.calendar__date');
-        if (dateCell && dateCell.textContent.trim()) {
-          lastDayEl = dateCell.textContent.trim(); // e.g. "Tue Mar 31"
-        }
-        // Only include rows matching our target date
-        if (lastDayEl) {
-          // Parse the FF date string against the selected date
-          const targetMonthDay = date.toLocaleDateString('en-US', { month:'short', day:'numeric' }); // "Mar 31"
-          const ffMonthDay     = lastDayEl.replace(/^[A-Za-z]+\s+/, ''); // strip weekday
-          if (!lastDayEl.toLowerCase().includes(
-            date.toLocaleDateString('en-US', { month:'short' }).toLowerCase()
-          ) || !lastDayEl.includes(String(date.getDate()))) {
-            return; // skip rows not matching our date
-          }
-        }
-
-        const timeCell  = row.querySelector('td.calendar__time');
-        const currCell  = row.querySelector('td.calendar__currency');
-        const titleCell = row.querySelector('.calendar__event');
-        const impCell   = row.querySelector('td.calendar__impact span');
-
-        if (!titleCell) return;
-        const title = (titleCell.textContent || '').trim();
-        if (!title) return;
-
-        if (timeCell && timeCell.textContent.trim() && timeCell.textContent.trim() !== 'All Day') {
-          lastTime = timeCell.textContent.trim();
-        }
-
-        const impClass = impCell ? (impCell.className + ' ' + (impCell.getAttribute('title')||'')) : '';
-        const imp = impClass.toLowerCase().includes('high') ? 'high'
-                  : impClass.toLowerCase().includes('medium') ? 'medium'
-                  : 'low';
-
-        const currency = currCell ? currCell.textContent.trim() : '';
-        const currencyToCountry = {
-          USD:'US', EUR:'EU', GBP:'GB', JPY:'JP', AUD:'AU',
-          CAD:'CA', CHF:'CH', CNY:'CN', NZD:'NZ'
-        };
-        const country  = currencyToCountry[currency] || currency;
+      const data = await res.json();
+      (data.result || []).forEach(ev => {
+        const title    = ev.title || ev.indicator || 'Economic Event';
+        // TradingView importance: 0=low, 1=medium, 2=high
+        const imp      = ev.importance >= 2 ? 'high' : ev.importance === 1 ? 'medium' : 'low';
         const isSpeech = SPEAKER_KEYWORDS.some(k => title.toLowerCase().includes(k));
-
-        // Convert ET time to user's timezone
-        let displayTime = (lastTime || 'All Day');
-        if (lastTime && lastTime !== 'All Day') {
-          try {
-            // ET = UTC-5 (EST) or UTC-4 (EDT) — use UTC-5 as base
-            const [timePart, ampm] = lastTime.split(/(?=[ap]m)/i);
-            let [h, min] = timePart.split(':').map(Number);
-            if (!min) min = 0;
-            if (ampm?.toLowerCase() === 'pm' && h !== 12) h += 12;
-            if (ampm?.toLowerCase() === 'am' && h === 12) h = 0;
-            // Convert ET (UTC-5) → user tz
-            const etOffset = -5;
-            const utcH  = h - etOffset; // to UTC
-            const localH = ((utcH + calTimezoneOffset) % 24 + 24) % 24;
-            const localM = min;
-            displayTime  = `${String(localH).padStart(2,'0')}:${String(localM).padStart(2,'0')}`;
-          } catch(_) {}
-        }
-
-        events.push({ time: displayTime, title, country, impact: isSpeech ? 'speech' : imp, source: 'ForexFactory' });
+        // Convert UTC event time to user's chosen timezone
+        const evDate   = new Date(ev.date);
+        const utcH     = evDate.getUTCHours();
+        const utcM     = evDate.getUTCMinutes();
+        const localH   = ((utcH + calTimezoneOffset) % 24 + 24) % 24;
+        const timeStr  = `${String(localH).padStart(2,'0')}:${String(utcM).padStart(2,'0')}`;
+        events.push({
+          time:     timeStr,
+          title,
+          country:  ev.country || 'ALL',
+          impact:   isSpeech ? 'speech' : imp,
+          actual:   ev.actual   != null ? String(ev.actual)   : undefined,
+          forecast: ev.forecast != null ? String(ev.forecast) : undefined,
+          previous: ev.previous != null ? String(ev.previous) : undefined,
+          source:   'TradingView'
+        });
       });
-
-      if (events.length > 0) ffLoaded = true;
+      if (events.length > 0) tvLoaded = true;
     }
-  } catch(e) { console.warn('ForexFactory:', e.message); }
+  } catch(e) { console.warn('TradingView calendar:', e.message); }
 
-  // ── Source 2: TradingView fallback ───────────────────────────────────────
-  if (!ffLoaded) {
-    try {
-      const from = ds + 'T00:00:00.000Z';
-      const to   = ds + 'T23:59:59.000Z';
-      const url  = `https://economic-calendar.tradingview.com/events?from=${from}&to=${to}&countries=US,GB,EU,JP,AU,CA,CH,CN,NZ,DE,FR&minImportance=-1`;
-      const res  = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (res.ok) {
-        const data = await res.json();
-        (data.result || []).forEach(ev => {
-          const title    = ev.title || ev.indicator || 'Economic Event';
-          const imp      = ev.importance >= 2 ? 'high' : ev.importance === 1 ? 'medium' : 'low';
-          const isSpeech = SPEAKER_KEYWORDS.some(k => title.toLowerCase().includes(k));
-          // Convert UTC time to user timezone
-          const evDate   = new Date(ev.date);
-          const utcH     = evDate.getUTCHours();
-          const utcM     = evDate.getUTCMinutes();
-          const localH   = ((utcH + calTimezoneOffset) % 24 + 24) % 24;
-          const timeStr  = `${String(localH).padStart(2,'0')}:${String(utcM).padStart(2,'0')}`;
-          events.push({
-            time: timeStr, title, country: ev.country || 'ALL',
-            impact: isSpeech ? 'speech' : imp,
-            actual: ev.actual, forecast: ev.forecast, previous: ev.previous,
-            source: 'TradingView'
-          });
+  // ── Source 2: Finnhub market news — enhances events with colour scoring ──
+  // Finnhub news is used to BOOST impact colour of matching calendar events
+  // (e.g. a "CPI" event on TradingView gets upgraded to HIGH if Finnhub
+  // has breaking headlines mentioning the same topic today)
+  try {
+    const key = finnhubKey || FINNHUB_KEY_BUILTIN;
+    const newsRes = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${key}`, { signal: AbortSignal.timeout(6000) });
+    if (newsRes.ok) {
+      const articles = await newsRes.json();
+      // Build a set of hot keywords from today's Finnhub headlines
+      const todayArticles = articles.filter(a => {
+        const age = (Date.now() - a.datetime * 1000) / 3600000; // hours ago
+        return age < 24;
+      });
+      const hotTopics = new Set();
+      todayArticles.forEach(a => {
+        const text = (a.headline + ' ' + (a.summary || '')).toLowerCase();
+        SPEAKER_KEYWORDS.forEach(k => { if (text.includes(k)) hotTopics.add(k); });
+        // Also detect specific event types
+        ['cpi','inflation','nfp','payroll','gdp','fomc','rate decision','interest rate',
+         'earnings','opec','recession','default','crisis'].forEach(k => {
+          if (text.includes(k)) hotTopics.add(k);
+        });
+      });
+      // Boost matching TradingView events to high/speech
+      if (hotTopics.size > 0) {
+        events.forEach(ev => {
+          const titleLow = ev.title.toLowerCase();
+          const isHot = [...hotTopics].some(k => titleLow.includes(k));
+          if (isHot && ev.impact === 'medium') ev.impact = 'high';
+          if (isHot && SPEAKER_KEYWORDS.some(k => titleLow.includes(k))) ev.impact = 'speech';
         });
       }
-    } catch(e) { console.warn('TradingView calendar:', e.message); }
-  }
+      // Also add standalone Finnhub breaking news items as calendar entries
+      // (only high-impact ones not already represented by TV events)
+      const highNews = todayArticles
+        .filter(a => SPEAKER_KEYWORDS.some(k => (a.headline + ' ' + (a.summary||'')).toLowerCase().includes(k)))
+        .slice(0, 5);
+      highNews.forEach(a => {
+        const alreadyCovered = events.some(ev =>
+          ev.title.toLowerCase().split(' ').filter(w=>w.length>4)
+            .some(w => a.headline.toLowerCase().includes(w))
+        );
+        if (!alreadyCovered) {
+          const age   = Math.round((Date.now() - a.datetime * 1000) / 60000);
+          const timeH = new Date(a.datetime * 1000);
+          const localH = ((timeH.getUTCHours() + calTimezoneOffset) % 24 + 24) % 24;
+          const timeStr = `${String(localH).padStart(2,'0')}:${String(timeH.getUTCMinutes()).padStart(2,'0')}`;
+          events.push({
+            time:    timeStr,
+            title:   a.headline,
+            country: 'ALL',
+            impact:  'speech',
+            source:  'Finnhub News',
+            url:     a.url
+          });
+        }
+      });
+    }
+  } catch(e) { console.warn('Finnhub calendar boost:', e.message); }
 
   // Add curated recurring events (central bank schedule, known political events)
   const curatedEvents = getCuratedEvents(ds);
@@ -5486,11 +5354,11 @@ function renderScanNewsStrip(events) {
 // ═══════════════════════════════════════════
 async function fetchSpeakerAlerts() {
   const strip = document.getElementById('cal-speaker-strip');
-  if (!strip || !finnhubKey) return;
-
+  if (!strip) return;
+  const key = finnhubKey || FINNHUB_KEY_BUILTIN;
   const keywords = ['powell','lagarde','trump','fed','ecb','boe','opec','g7','fomc'];
   try {
-    const res = await fetch('https://finnhub.io/api/v1/news?category=general&token=' + finnhubKey);
+    const res = await fetch('https://finnhub.io/api/v1/news?category=general&token=' + key);
     if (!res.ok) return;
     const articles = await res.json();
 
@@ -5522,17 +5390,13 @@ async function fetchFinnhubNews(category) {
   const body = document.getElementById('cal-news-body');
   const placeholder = document.getElementById('cal-news-placeholder');
   if (!body) return;
-
-  if (!finnhubKey) {
-    if (placeholder) placeholder.style.display = 'block';
-    return;
-  }
+  // Always use effective Finnhub key (built-in or user-supplied)
+  const key = finnhubKey || FINNHUB_KEY_BUILTIN;
   if (placeholder) placeholder.style.display = 'none';
   body.innerHTML = '<div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Fetching headlines...</div>';
 
   try {
-    // Fetch general market news
-    const res = await fetch('https://finnhub.io/api/v1/news?category=general&minId=0&token=' + finnhubKey);
+    const res = await fetch('https://finnhub.io/api/v1/news?category=general&minId=0&token=' + key);
     if (!res.ok) throw new Error('Finnhub ' + res.status);
     const articles = await res.json();
 
@@ -5599,20 +5463,13 @@ function simUpdatePrice() {
 
 function simSetDir(dir) {
   simDir = dir;
-  const buyBtn  = document.getElementById('sim-buy-btn');
-  const sellBtn = document.getElementById('sim-sell-btn');
-  const placeBtn= document.getElementById('sim-place-btn');
-  if (buyBtn) {
-    buyBtn.style.background  = dir === 'BUY'  ? 'var(--green-dim)'  : 'none';
-    buyBtn.style.color       = dir === 'BUY'  ? 'var(--green)'      : 'var(--text3)';
-    sellBtn.style.background = dir === 'SELL' ? 'var(--red-dim)'    : 'none';
-    sellBtn.style.color      = dir === 'SELL' ? 'var(--red)'        : 'var(--text3)';
-  }
-  if (placeBtn) {
-    placeBtn.style.background = dir === 'BUY'
-      ? 'linear-gradient(135deg,#00E87A,#00C860)'
-      : 'linear-gradient(135deg,#FF3D5A,#E0002B)';
-    placeBtn.textContent = dir === 'BUY' ? '▲ PLACE BUY' : '▼ PLACE SELL';
+  // Update confirm modal exec button colour if already open
+  const execBtn = document.getElementById('sim-confirm-exec');
+  if (execBtn) {
+    execBtn.style.background = dir === 'BUY'
+      ? 'linear-gradient(135deg,#00E87A,#00A855)'
+      : 'linear-gradient(135deg,#FF3D5A,#CC0022)';
+    execBtn.style.color = dir === 'BUY' ? '#000' : '#fff';
   }
 }
 
@@ -5800,20 +5657,53 @@ function renderSimPositions() {
           <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;">${p.inst}</span>
           <span style="font-family:var(--font-mono);font-size:9px;color:var(--text3);">${p.lots}L</span>
         </div>
-        <div style="display:flex;align-items:center;gap:7px;">
-          <span style="font-family:var(--font-display);font-size:15px;font-weight:800;color:${pnlColor};">${pnl>=0?'+':''}$${pnl.toFixed(2)}</span>
-          <button onclick="simClosePosition(${p.id})" style="background:var(--red-dim);border:1px solid var(--red);border-radius:5px;color:var(--red);font-family:var(--font-mono);font-size:8px;padding:2px 7px;cursor:pointer;">Close</button>
-        </div>
+        <span style="font-family:var(--font-display);font-size:15px;font-weight:800;color:${pnlColor};">${pnl>=0?'+':''}$${pnl.toFixed(2)}</span>
       </div>
-      <div style="display:flex;gap:10px;font-family:var(--font-mono);font-size:8px;color:var(--text3);">
+      <div style="display:flex;gap:8px;font-family:var(--font-mono);font-size:8px;color:var(--text3);margin-bottom:7px;">
         <span>In: <strong style="color:var(--text2);">${p.entryPrice.toFixed(dp)}</strong></span>
         <span>Now: <strong style="color:var(--text2);">${price.toFixed(dp)}</strong></span>
         ${p.sl ? `<span style="color:var(--red);">SL:${p.sl.toFixed(dp)}</span>` : ''}
         ${p.tp ? `<span style="color:var(--green);">TP:${p.tp.toFixed(dp)}</span>` : ''}
       </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="simClosePosition(${p.id})" style="flex:1;background:var(--red-dim);border:1px solid var(--red);border-radius:5px;color:var(--red);font-family:var(--font-mono);font-size:8px;padding:4px;cursor:pointer;font-weight:700;">✕ Close</button>
+        <button onclick="simPartialClose(${p.id})" style="flex:1;background:var(--blue-dim);border:1px solid var(--blue);border-radius:5px;color:var(--blue);font-family:var(--font-mono);font-size:8px;padding:4px;cursor:pointer;">½ Partial</button>
+      </div>
     </div>`;
   }).join('');
   renderSimPositionsStrip();
+}
+
+function simPartialClose(id) {
+  const pos = simPositions.find(p => p.id === id);
+  if (!pos) return;
+  const maxLots = pos.lots;
+  const input   = prompt(`Partial close — enter lots to close (max ${maxLots}):`);
+  const closeLots = parseFloat(input);
+  if (!closeLots || closeLots <= 0 || closeLots > maxLots) {
+    toast('⚠️ Invalid lot size for partial close');
+    return;
+  }
+  const price    = simGetPrice(pos.inst) || pos.entryPrice;
+  const priceDiff= pos.dir === 'BUY' ? price - pos.entryPrice : pos.entryPrice - price;
+  const pnl      = priceDiff * (pos.pipVal || 10) * closeLots;
+
+  // Record partial close in history
+  simHistory.unshift({ ...pos, lots: closeLots, closePrice: price, pnl, closeTime: new Date().toLocaleString(), status: 'closed', partial: true });
+
+  // Reduce remaining position or remove if fully closed
+  pos.lots = Math.round((pos.lots - closeLots) * 100) / 100;
+  simAccount.balance += pnl;
+  if (pos.lots <= 0) {
+    simPositions = simPositions.filter(p => p.id !== id);
+  }
+  if (simAccount.balance <= 0) { simAccount.balance = 0; toast('⚠️ Account exhausted. Add funds to continue.'); }
+  simSave();
+  renderSimPositions();
+  renderSimHistory();
+  simUpdateAccount();
+  buildHeatmap();
+  toast(`${pnl >= 0 ? '✅' : '❌'} Partial close ${closeLots}L ${pos.inst}: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`);
 }
 
 function renderSimHistory() {
