@@ -96,23 +96,6 @@ a { color:var(--gold); text-decoration:none; }
 ::-webkit-scrollbar-track { background:var(--bg1); }
 ::-webkit-scrollbar-thumb { background:var(--border3); border-radius:2px; }
 
-/* ═══════════════════════════════════════════
-   SETUP / ONBOARDING SCREEN
-═══════════════════════════════════════════ */
-#setup-screen {
-  min-height:100vh; display:flex; align-items:center; justify-content:center;
-  padding:24px; background:#060608;
-}
-.setup-wrap { width:100%; max-width:480px; }
-.setup-hero { text-align:center; margin-bottom:28px; }
-.setup-icon {
-  width:72px; height:72px; border-radius:20px; margin:0 auto 16px;
-  background:linear-gradient(135deg,#F0B429,#FF6B00);
-  display:flex; align-items:center; justify-content:center;
-  font-size:34px; box-shadow:0 8px 32px #F0B42930;
-}
-.setup-title { font-family:var(--font-display); font-size:32px; font-weight:800; letter-spacing:-1px; margin-bottom:6px; }
-.setup-sub { color:var(--text2); font-size:14px; line-height:1.6; }
 
 /* ═══════════════════════════════════════════
    CARDS & LAYOUT PRIMITIVES
@@ -1012,58 +995,6 @@ select.input option { background:#111116; color:#E8E8F0; }
 <!-- ═══════════════════════════════════════════
      SETUP / ONBOARDING
 ═══════════════════════════════════════════ -->
-<div id="setup-screen">
-  <div class="setup-wrap" style="max-width:520px;">
-    <div class="setup-hero">
-      <img src="wingmanlogo.png" alt="Wingman" style="width:100px;height:auto;margin:0 auto 16px;display:block;">
-      <div class="setup-sub">Your intelligent trader training platform, practice trading concepts in a safe, simulated environment with AI feedback</div>
-    </div>
-
-    <!-- Free trial CTA -->
-    <div style="background:linear-gradient(135deg,#F0B42912,#FF6B0008);border:1px solid var(--gold);border-radius:16px;padding:20px;margin-bottom:14px;text-align:center;">
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--gold);letter-spacing:2px;margin-bottom:6px;">START FREE · NO CARD NEEDED</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px;">Practice trading concepts in a fully simulated environment. AI feedback, market scanning, and performance tools, all free. No account required to start.</div>
-      <button class="btn btn-primary" onclick="enterFree()" style="margin-bottom:0;font-size:15px;padding:15px 24px;">
-        ⚡ Enter Wingman, Free
-      </button>
-    </div>
-
-    <!-- Divider -->
-    <div style="display:flex;align-items:center;gap:10px;margin:4px 0 14px;">
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text4);letter-spacing:1px;">OR SET UP YOUR OWN KEYS</div>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-label">Claude API Key: unlimited AI analysis</div>
-      <div class="key-wrap" style="margin-bottom:6px;">
-        <input type="password" class="input" id="claude-key-input" placeholder="sk-ant-api03-..." autocomplete="off">
-        <button class="key-eye" onclick="toggleVis('claude-key-input',this)">👁</button>
-      </div>
-      <div style="font-size:11px;color:var(--text3);">Get yours at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> ($5 credit lasts months)</div>
-    </div>
-
-    <!-- Twelve Data removed, metals.live used for gold/silver/platinum (no key needed) -->
-
-    <div class="card" style="border-color:var(--purple-dim);margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div class="card-label" style="color:#A78BFA;margin:0;">Grok API Key: live sentiment</div>
-        <span style="font-family:var(--font-mono);font-size:8px;color:var(--green);">OPTIONAL · FREE TIER</span>
-      </div>
-      <div class="key-wrap">
-        <input type="password" class="input" id="grok-key-input" placeholder="xai-..." autocomplete="off" style="border-color:var(--purple-dim);">
-        <button class="key-eye" onclick="toggleVis('grok-key-input',this)">👁</button>
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:6px;">Get at <a href="https://console.x.ai" target="_blank" style="color:#A78BFA;">console.x.ai</a> (25 free req/day)</div>
-    </div>
-
-    <button class="btn btn-primary" onclick="saveKeys()" style="margin-bottom:10px;">
-      ⚡ Enter Wingman with My Keys
-    </button>
-    <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.5;">Keys saved on this device only. Never transmitted to any server except their own APIs.</div>
-  </div>
-</div>
 
 <!-- ═══════════════════════════════════════════
      MAIN APP
@@ -2462,8 +2393,8 @@ select.input option { background:#111116; color:#E8E8F0; }
 // ═══════════════════════════════════════════
 let trades = JSON.parse(localStorage.getItem('wm_trades') || '[]');
 
-// ── WORKER CONFIG ────────────────────────────────────────────────────────────
-const WORKER_URL = 'https://wingman-worker.abuj07.workers.dev';
+// ── API CONFIG ───────────────────────────────────────────────────────────────
+const WORKER_URL = '/api';
 function workerHeaders() {
   return { 'Content-Type': 'application/json' };
 }
@@ -2627,42 +2558,7 @@ const BINANCE_SYMBOLS = {
 // Free tier, commercial use permitted per Finnhub ToS
 const FINNHUB_KEY_BUILTIN = 'cva0arhr01qoivt1im7gcva0arhr01qoivt1im80';
 
-// ─── PRICE FALLBACK: exchangerate.host (free, commercial OK) ─────────────────
-// Covers forex pairs when Twelve Data is unavailable/exhausted
-async function fetchExchangeRatePrices(pairIds) {
-  // exchangerate.host supports forex via /latest?base=USD
-  const forexPairs = pairIds.filter(p => {
-    // Only vanilla forex pairs — metals and indices need TD
-    return ['EURUSD','GBPUSD','USDJPY','USDCHF','AUDUSD','USDCAD','NZDUSD',
-            'EURGBP','EURJPY','GBPJPY','AUDJPY','CADJPY','EURCHF','GBPCHF',
-            'EURCAD','AUDCAD','AUDNZD','CHFJPY'].includes(p);
-  });
-  if (!forexPairs.length) return {};
-  try {
-    // Get rates vs USD for all needed currencies
-    const currencies = [...new Set(forexPairs.flatMap(p => [p.slice(0,3), p.slice(3,6)]))].join(',');
-    const res  = await fetch(`https://api.exchangerate.host/latest?base=USD&symbols=${currencies}`, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) throw new Error('exchangerate.host ' + res.status);
-    const data = await res.json();
-    const rates = data.rates || {};
-    const out = {};
-    forexPairs.forEach(p => {
-      const base  = p.slice(0,3); // e.g. EUR
-      const quote = p.slice(3,6); // e.g. USD
-      if (base === 'USD' && rates[quote]) {
-        out[p] = 1 / rates[quote];
-      } else if (quote === 'USD' && rates[base]) {
-        out[p] = rates[base];
-      } else if (rates[base] && rates[quote]) {
-        out[p] = rates[base] / rates[quote];
-      }
-    });
-    return out;
-  } catch(e) {
-    console.warn('exchangerate.host failed:', e.message);
-    return {};
-  }
-}
+// Price fallback is now handled server-side in /api/prices (open.er-api.com via Upstash Redis)
 
 // Active Binance WebSocket connections — keyed by pair id
 const binanceWsSockets = {};
@@ -2670,8 +2566,6 @@ const binanceWsSockets = {};
 const livePriceCache = {};
 // Track which source each price came from for display
 const priceSourceCache = {};
-// Whether TD has been confirmed exhausted this session
-let tdExhausted = false;
 
 // ─── BINANCE WEBSOCKET ───────────────────────────────────────────────────────
 function connectBinancePair(pairId) {
@@ -3541,8 +3435,6 @@ window.addEventListener('load', () => {
 });
 
 function launchApp() {
-  document.getElementById('setup-screen').style.display = 'none';
-
   // Remove display:none but let CSS media queries control the layout value (grid/flex)
   const appEl = document.getElementById('app');
   appEl.style.removeProperty('display');
@@ -3591,20 +3483,6 @@ function launchApp() {
 // ═══════════════════════════════════════════
 // KEYS
 // ═══════════════════════════════════════════
-function toggleVis(id, btn) {
-  const el = document.getElementById(id);
-  el.type = el.type === 'password' ? 'text' : 'password';
-}
-
-function enterFree() {
-  launchApp();
-  toast('Welcome to Wingman — your trader training platform.');
-}
-
-function saveKeys() {
-  launchApp();
-  toast('✅ Welcome to Wingman!');
-}
 
 function saveSettings() {
   clearTimeout(priceRefreshTimer);
@@ -3875,55 +3753,27 @@ async function fetchLivePrices() {
   const cryptoPairs  = allPairs.filter(p => BINANCE_SYMBOLS[p]);
   const nonCryptoPairs = allPairs.filter(p => !BINANCE_SYMBOLS[p]);
 
-  // ── Step 2: Non-crypto → Twelve Data (if key present and not exhausted) ──
-  let tdFailed = false;
-  if (nonCryptoPairs.length && !tdExhausted) {
-    const symbols = nonCryptoPairs.map(p => TD_SYMBOLS[p]).filter(Boolean).join(',');
-    try {
-      const res = await fetch(`${WORKER_URL}/v1/candles?symbol=${symbols}&interval=1day&outputsize=1`);
-      const data = await res.json();
-      if (data.status === 'error') {
-        console.warn('TwelveData error:', data.message);
-        if (data.message && data.message.toLowerCase().includes('credits')) {
-          tdExhausted = true; // Don't hammer TD again this session
-          console.info('TwelveData credits exhausted — switching to forex rate fallback');
+  // ── Step 2: Non-crypto → /api/prices (TwelveData + open.er-api.com, Redis cached) ──
+  if (nonCryptoPairs.length) {
+    const symbols = nonCryptoPairs.map(p => TD_SYMBOLS[p]).filter(Boolean);
+    if (symbols.length) {
+      try {
+        const res = await fetch(`/api/prices?symbols=${encodeURIComponent(symbols.join(','))}`);
+        if (res.ok) {
+          const priceMap = await res.json();
+          nonCryptoPairs.forEach(p => {
+            const tdSym = TD_SYMBOLS[p];
+            const price = tdSym ? priceMap[tdSym] : undefined;
+            if (price && !isNaN(price)) {
+              livePriceCache[p] = price;
+              priceSourceCache[p] = priceMap._source || 'td';
+              updatePriceTileFromCache(p, price);
+            }
+          });
         }
-        tdFailed = true;
-      } else {
-        // Success — populate cache
-        nonCryptoPairs.forEach(p => {
-          const sym = TD_SYMBOLS[p];
-          const price = parseFloat(nonCryptoPairs.length === 1 ? data.price : data[sym]?.price);
-          if (!isNaN(price)) {
-            livePriceCache[p] = price;
-            priceSourceCache[p] = 'td';
-            updatePriceTileFromCache(p, price);
-          }
-        });
+      } catch(e) {
+        console.warn('Price API failed:', e.message);
       }
-    } catch(e) {
-      console.warn('TwelveData fetch failed:', e.message);
-      tdFailed = true;
-    }
-  }
-
-  // ── Step 3: exchangerate.host fallback for forex pairs (commercial OK) ──
-  if (nonCryptoPairs.length && (tdFailed || tdExhausted)) {
-    try {
-      const erResults = await fetchExchangeRatePrices(nonCryptoPairs);
-      nonCryptoPairs.forEach(p => {
-        if (erResults[p]) {
-          livePriceCache[p] = erResults[p];
-          priceSourceCache[p] = 'er';
-          updatePriceTileFromCache(p, erResults[p]);
-        }
-      });
-      // Pairs not covered by exchangerate.host (metals, indices, energy) — show dashes
-      // with a note to add Twelve Data key
-      const uncovered = nonCryptoPairs.filter(p => !erResults[p]);
-
-    } catch(e) {
-      console.warn('Price fallback failed:', e.message);
     }
   }
 
@@ -3981,22 +3831,17 @@ async function fetchCandles(symbol, interval, outputsize) {
     }
   }
 
-  // 2. Twelve Data (if key present and not exhausted)
-  if (!tdExhausted) {
-    try {
-      const sym = TD_SYMBOLS[symbol] || symbol;
-      const url = `${WORKER_URL}/v1/candles?symbol=${sym}&interval=${iv}&outputsize=${outputsize}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.status === 'error') {
-        if (data.message?.toLowerCase().includes('credits')) tdExhausted = true;
-        throw new Error(data.message || 'TD error');
-      }
-      if (!data.values) throw new Error('TD returned no values');
-      return data.values;
-    } catch(e) {
-      console.warn('TD candles failed for', symbol, '—', e.message);
-    }
+  // 2. Twelve Data via /api/candles (Upstash Redis cached)
+  try {
+    const sym = TD_SYMBOLS[symbol] || symbol;
+    const url = `${WORKER_URL}/candles?symbol=${sym}&interval=${iv}&outputsize=${outputsize}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === 'error') throw new Error(data.message || 'TD error');
+    if (!data.values) throw new Error('TD returned no values');
+    return data.values;
+  } catch(e) {
+    console.warn('TD candles failed for', symbol, '—', e.message);
   }
 
   // No candle data available — scan will run on Claude's knowledge only
@@ -4598,7 +4443,7 @@ Respond ONLY with raw JSON:
 {"summary":"2-3 sentence overview of their trading behaviour","riskPattern":"What their risk/sizing behaviour shows","psychologyPattern":"Emotional or psychological tendencies detected","lotScaling":"Analysis of how they scale positions — any martingale or escalation?","topStrength":"What they do well","topRisk":"The single biggest risk in their current approach","recommendation":"Most important thing to change or maintain"}`;
 
   try {
-    const res = await fetch(WORKER_URL + '/v1/behaviour', {
+    const res = await fetch(WORKER_URL + '/behaviour', {
       method:'POST',
       headers: workerHeaders(),
       body:JSON.stringify({ prompt })
@@ -4862,7 +4707,7 @@ Respond ONLY with this JSON structure:
 }`;
 
   try {
-    const res = await fetch(WORKER_URL + '/v1/behaviour', {
+    const res = await fetch(WORKER_URL + '/behaviour', {
       method: 'POST', headers: workerHeaders(),
       body: JSON.stringify({ prompt })
     });
@@ -5144,10 +4989,8 @@ function updateDailyLimit() {
 // ═══════════════════════════════════════════
 function clearAll() {
   if (confirm('Delete all trades and reset everything?')) {
-    localStorage.clear(); trades=[];
-    document.getElementById('app').style.display='none';
-    document.getElementById('setup-screen').style.display='flex';
-    toast('All data cleared');
+    localStorage.clear();
+    location.reload();
   }
 }
 
@@ -5482,12 +5325,12 @@ Provide full multi-timeframe analysis with 15M scalp setups, plain English expla
 
     // ── Market Scan + Sentiment in parallel ──────────────────────
     const [claudeRes, sentRes] = await Promise.allSettled([
-      fetch(WORKER_URL + '/v1/scan', {
+      fetch(WORKER_URL + '/scan', {
         method:'POST',
         headers: workerHeaders(),
         body:JSON.stringify({ system:SCAN_SYSTEM, messages:[{role:'user',content:prompt}] })
       }),
-      fetch(WORKER_URL + '/v1/sentiment', { method:'POST', headers:workerHeaders(), body:JSON.stringify({ prompt: sentimentPromptFor(pairs) }) }).then(r=>r.json()).catch(()=>null)
+      fetch(WORKER_URL + '/sentiment', { method:'POST', headers:workerHeaders(), body:JSON.stringify({ prompt: sentimentPromptFor(pairs) }) }).then(r=>r.json()).catch(()=>null)
     ]);
 
     if (claudeRes.status === 'rejected') throw new Error('Scan error: ' + claudeRes.reason);
@@ -5682,7 +5525,7 @@ Respond ONLY with raw JSON:
 {"score":75,"grade":"B","technicalAssessment":"2-3 sentences on the technical quality of this trade","psychologyAssessment":"2-3 sentences on the psychology/behaviour shown","patterns":"Any concerning patterns you see across recent trades","improvement":"The single most important thing this trader should focus on","strengths":"What they did well"}`;
 
   try {
-    const res = await fetch(WORKER_URL + '/v1/review', {
+    const res = await fetch(WORKER_URL + '/review', {
       method:'POST',
       headers: workerHeaders(),
       body:JSON.stringify({ prompt: reviewPrompt })
@@ -5966,7 +5809,7 @@ async function analyseScreenshot() {
   resultEl.innerHTML = '';
 
   try {
-    const res = await fetch(WORKER_URL + '/v1/analyse', {
+    const res = await fetch(WORKER_URL + '/analyse', {
       method:'POST',
       headers: workerHeaders(),
       body:JSON.stringify({
@@ -6741,7 +6584,7 @@ async function loadEventsForDate(date) {
   // (e.g. a "CPI" event on TradingView gets upgraded to HIGH if Finnhub
   // has breaking headlines mentioning the same topic today)
   try {
-    const newsRes = await fetch(`${WORKER_URL}/v1/news?category=general`, { signal: AbortSignal.timeout(6000) });
+    const newsRes = await fetch(`${WORKER_URL}/news?category=general`, { signal: AbortSignal.timeout(6000) });
     if (newsRes.ok) {
       const articles = await newsRes.json();
       // Build a set of hot keywords from today's Finnhub headlines
@@ -6952,7 +6795,7 @@ async function fetchSpeakerAlerts() {
   if (!strip) return;
   const keywords = ['powell','lagarde','trump','fed','ecb','boe','opec','g7','fomc'];
   try {
-    const res = await fetch(`${WORKER_URL}/v1/news?category=general`);
+    const res = await fetch(`${WORKER_URL}/news?category=general`);
     if (!res.ok) return;
     const articles = await res.json();
 
@@ -6988,7 +6831,7 @@ async function fetchFinnhubNews(category) {
   body.innerHTML = '<div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Fetching headlines...</div>';
 
   try {
-    const res = await fetch(`${WORKER_URL}/v1/news?category=general&minId=0`);
+    const res = await fetch(`${WORKER_URL}/news?category=general&minId=0`);
     if (!res.ok) throw new Error('Finnhub ' + res.status);
     const articles = await res.json();
 
