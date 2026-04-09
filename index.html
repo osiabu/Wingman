@@ -32,11 +32,22 @@
   .academy-stage.completed .academy-stage-num { background:var(--green);color:#000; }
   .academy-progress-bar { height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-bottom:20px; }
   .academy-progress-fill { height:100%;background:linear-gradient(90deg,var(--gold),var(--green));border-radius:3px;transition:width 0.5s ease; }
+  /* Stage detail overlay */
+  #academy-overlay { position:fixed;inset:0;z-index:500;background:rgba(6,6,8,0.95);overflow-y:auto;display:none;padding:24px 16px; }
+  #academy-overlay.open { display:block; }
+  .academy-tab-btn { padding:8px 16px;background:none;border:1px solid var(--border2);border-radius:20px;color:var(--text3);font-family:var(--font-mono);font-size:9px;letter-spacing:1px;cursor:pointer;transition:all 0.2s; }
+  .academy-tab-btn.active { background:var(--gold-dim);border-color:var(--gold);color:var(--gold); }
+  .academy-content-tab { display:none; }
+  .academy-content-tab.active { display:block; }
+  .academy-quiz-opt { display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:13px;cursor:pointer;transition:all 0.15s;font-family:inherit; }
+  .academy-quiz-opt:hover { border-color:var(--gold); }
+  .academy-quiz-opt.correct { border-color:var(--green);background:var(--green-dim);color:var(--green); }
+  .academy-quiz-opt.wrong { border-color:var(--red);background:var(--red-dim);color:var(--red); }
 
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   html { font-synthesis:none; text-rendering:optimizeLegibility; -webkit-text-size-adjust:100%; }
 </style>
@@ -53,8 +64,8 @@
   --bg: #060608; --bg1: #0C0C10; --bg2: #111116; --bg3: #17171E; --bg4: #1C1C25;
   --border: #1E1E28; --border2: #252530; --border3: #2E2E3C;
   --text: #FFFFFF; --text2: #CFCFE8; --text3: #A0A0B8; --text4: #6B6B85;
-  --font-display: 'Syne', sans-serif;
-  --font-body: 'Instrument Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --r: 14px; --r-sm: 8px; --r-lg: 20px;
   --shadow: 0 4px 24px rgba(0,0,0,0.4);
@@ -68,12 +79,18 @@
 html { background:#060608; height:100%; }
 body {
   background:#060608; color:var(--text);
-  font-family:'Instrument Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size:14px; font-weight:400;
   -webkit-font-smoothing:antialiased; min-height:100vh;
   overflow-x:hidden;
 }
 input, select, button { font-family:inherit; }
+
+/* ─── INTER HEADING STYLE (matches aperintel.com) ─── */
+h1,h2,h3,h4,h5,h6 { font-family:'Inter',sans-serif; letter-spacing:-0.03em; font-weight:700; }
+.display-heading { font-family:'Inter',sans-serif; letter-spacing:-0.04em; font-weight:800; }
+/* All elements using font-display get Inter-style tight tracking */
+[style*="font-display"] { -webkit-font-smoothing:antialiased; }
 a { color:var(--gold); text-decoration:none; }
 ::-webkit-scrollbar { width:4px; height:4px; }
 ::-webkit-scrollbar-track { background:var(--bg1); }
@@ -282,7 +299,7 @@ select.input option { background:#111116; color:#E8E8F0; }
   display:flex; align-items:center; justify-content:center;
   font-size:17px; box-shadow:0 4px 12px #F0B42930;
 }
-.sidebar-brand-name { font-family:var(--font-display); font-size:17px; font-weight:800; letter-spacing:-0.3px; }
+.sidebar-brand-name { font-family:var(--font-display); font-size:17px; font-weight:800; letter-spacing:-0.04em; }
 .sidebar-brand-sub { font-family:var(--font-mono); font-size:7px; color:var(--text3); letter-spacing:2px; }
 
 .nav-item {
@@ -1059,7 +1076,7 @@ select.input option { background:#111116; color:#E8E8F0; }
   <!-- MOBILE TOP BAR -->
   <div class="mobile-topbar">
     <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="navigate('scan',null)">
-      <img src="wingmanlogo.png" alt="Wingman" style="height:34px;width:auto;display:block;">
+      <img src="wingmanlogo.png" alt="Wingman" style="height:42px;width:auto;display:block;">
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
       <div id="mobile-clock" style="font-family:var(--font-mono);font-size:10px;color:var(--text3);text-align:right;"></div>
@@ -1070,7 +1087,7 @@ select.input option { background:#111116; color:#E8E8F0; }
   <!-- SIDEBAR (tablet + desktop) -->
   <div class="sidebar">
     <div class="sidebar-brand" style="cursor:pointer;" onclick="navigate('scan',null)">
-      <img src="wingmanlogo.png" alt="Wingman" style="width:80px;height:auto;display:block;">
+      <img src="wingmanlogo.png" alt="Wingman" style="width:110px;height:auto;display:block;margin-bottom:2px;">
     </div>
 
     <!-- Session badge -->
@@ -1243,6 +1260,7 @@ select.input option { background:#111116; color:#E8E8F0; }
                 <option value="1000">1:1000</option>
                 <option value="2000">1:2000</option>
                 <option value="5000">1:5000 (Ultra high risk)</option>
+                <option value="999999">Unlimited (No margin limit)</option>
               </select>
             </div>
             <div>
@@ -2132,7 +2150,7 @@ select.input option { background:#111116; color:#E8E8F0; }
         <!-- 7 Stages -->
         <div id="academy-stages">
 
-          <div class="academy-stage active" onclick="academySelectStage(1)">
+          <div class="academy-stage active" onclick="openAcademyStage(1)">
             <div class="academy-stage-num">1</div>
             <div style="flex:1;">
               <div style="font-family:var(--font-display);font-size:14px;font-weight:800;margin-bottom:2px;">Foundation</div>
@@ -2145,7 +2163,7 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
           </div>
 
-          <div class="academy-stage locked" onclick="academySelectStage(2)">
+          <div class="academy-stage locked" onclick="openAcademyStage(2)">
             <div class="academy-stage-num">🔒</div>
             <div style="flex:1;">
               <div style="font-family:var(--font-display);font-size:14px;font-weight:800;margin-bottom:2px;">Risk First</div>
@@ -2155,7 +2173,7 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
           </div>
 
-          <div class="academy-stage locked" onclick="academySelectStage(3)">
+          <div class="academy-stage locked" onclick="openAcademyStage(3)">
             <div class="academy-stage-num">🔒</div>
             <div style="flex:1;">
               <div style="font-family:var(--font-display);font-size:14px;font-weight:800;margin-bottom:2px;">Reading the Market</div>
@@ -2165,7 +2183,7 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
           </div>
 
-          <div class="academy-stage locked" onclick="academySelectStage(4)">
+          <div class="academy-stage locked" onclick="openAcademyStage(4)">
             <div class="academy-stage-num">🔒</div>
             <div style="flex:1;">
               <div style="font-family:var(--font-display);font-size:14px;font-weight:800;margin-bottom:2px;">The Setup</div>
@@ -2175,7 +2193,7 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
           </div>
 
-          <div class="academy-stage locked" onclick="academySelectStage(5)">
+          <div class="academy-stage locked" onclick="openAcademyStage(5)">
             <div class="academy-stage-num">🔒</div>
             <div style="flex:1;">
               <div style="font-family:var(--font-display);font-size:14px;font-weight:800;margin-bottom:2px;">Managing the Trade</div>
@@ -2185,7 +2203,7 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
           </div>
 
-          <div class="academy-stage locked" onclick="academySelectStage(6)">
+          <div class="academy-stage locked" onclick="openAcademyStage(6)">
             <div class="academy-stage-num">🔒</div>
             <div style="flex:1;">
               <div style="font-family:var(--font-display);font-size:14px;font-weight:800;margin-bottom:2px;">Consistency</div>
@@ -2195,7 +2213,7 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
           </div>
 
-          <div class="academy-stage locked" onclick="academySelectStage(7)">
+          <div class="academy-stage locked" onclick="openAcademyStage(7)">
             <div class="academy-stage-num">🔒</div>
             <div style="flex:1;">
               <div style="font-family:var(--font-display);font-size:14px;font-weight:800;margin-bottom:2px;">Graduation</div>
@@ -2229,7 +2247,7 @@ select.input option { background:#111116; color:#E8E8F0; }
               <span style="font-family:var(--font-mono);font-size:9px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:3px 8px;color:var(--text2);">Risk Management</span>
             </div>
           </div>
-          <button class="btn btn-primary" onclick="startAcademyStage1()" style="width:100%;padding:13px;">
+          <button class="btn btn-primary" onclick="openAcademyStage(1)" style="width:100%;padding:13px;">
             Start Stage 1: Foundation Check
           </button>
           <div style="margin-top:10px;font-family:var(--font-mono);font-size:8px;color:var(--text4);text-align:center;">A glossary panel is available throughout all stages.</div>
@@ -2340,61 +2358,72 @@ select.input option { background:#111116; color:#E8E8F0; }
   <!-- RIGHT PANEL (desktop only) -->
   <div class="right-panel" id="right-panel" style="display:none;">
 
-    <!-- Account Summary -->
+    <!-- Account Summary — pulled from Sim Trader -->
     <div class="rp-section">
-      <div class="rp-title">Account</div>
-      <div style="margin-bottom:8px;">
-        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-bottom:2px;">BALANCE</div>
-        <div id="sidebar-balance" style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--green);line-height:1;">—</div>
+      <div class="rp-title">Sim Account</div>
+      <div style="margin-bottom:10px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-bottom:4px;">BALANCE</div>
+        <div id="sidebar-balance" style="font-family:'Inter',sans-serif;font-size:26px;font-weight:800;letter-spacing:-0.04em;color:var(--green);line-height:1;">—</div>
+        <div id="rp-sim-equity-row" style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:3px;">Equity: <span id="rp-sim-equity">—</span></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
         <div style="background:var(--bg2);border-radius:7px;padding:8px;text-align:center;">
-          <div id="sidebar-winrate" style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--green);">0%</div>
+          <div id="sidebar-winrate" style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.03em;color:var(--green);">0%</div>
           <div style="font-family:var(--font-mono);font-size:7px;color:var(--text3);margin-top:2px;">WIN RATE</div>
         </div>
         <div style="background:var(--bg2);border-radius:7px;padding:8px;text-align:center;">
-          <div id="sidebar-trades" style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--text);">0</div>
+          <div id="sidebar-trades" style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.03em;color:var(--text);">0</div>
           <div style="font-family:var(--font-mono);font-size:7px;color:var(--text3);margin-top:2px;">TRADES</div>
+        </div>
+      </div>
+      <div style="background:var(--bg2);border-radius:7px;padding:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">OPEN P&L</span>
+          <span id="rp-sim-open-pnl" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:-0.02em;color:var(--text);">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+          <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">TOTAL P&L</span>
+          <span id="rp-sim-total-pnl" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:-0.02em;color:var(--text);">—</span>
         </div>
       </div>
     </div>
 
     <div class="divider"></div>
 
-    <!-- Risk Snapshot -->
+    <!-- Risk Snapshot — from sim account -->
     <div class="rp-section">
       <div class="rp-title">Risk Snapshot</div>
       <div class="rp-stat-grid">
         <div class="rp-stat">
-          <div class="rp-stat-label">BALANCE</div>
-          <div id="rp-balance" class="rp-stat-val" style="color:var(--green);">—</div>
+          <div class="rp-stat-label">SIM BALANCE</div>
+          <div id="rp-balance" class="rp-stat-val" style="color:var(--green);font-family:'Inter',sans-serif;letter-spacing:-0.03em;">—</div>
         </div>
         <div class="rp-stat">
-          <div class="rp-stat-label">MAX RISK/TRADE</div>
-          <div id="rp-risk-amt" class="rp-stat-val" style="color:var(--gold);">—</div>
+          <div class="rp-stat-label">MAX RISK / TRADE (2%)</div>
+          <div id="rp-risk-amt" class="rp-stat-val" style="color:var(--gold);font-family:'Inter',sans-serif;letter-spacing:-0.03em;">—</div>
         </div>
         <div class="rp-stat">
           <div class="rp-stat-label">DAILY LIMIT (5%)</div>
-          <div id="rp-daily-limit" class="rp-stat-val" style="color:var(--text);">—</div>
+          <div id="rp-daily-limit" class="rp-stat-val" style="color:var(--text);font-family:'Inter',sans-serif;letter-spacing:-0.03em;">—</div>
         </div>
         <div class="rp-stat">
-          <div class="rp-stat-label">REC. LOT SIZE</div>
-          <div id="rp-lot-size" class="rp-stat-val" style="color:var(--blue);">—</div>
+          <div class="rp-stat-label">OPEN POSITIONS</div>
+          <div id="rp-lot-size" class="rp-stat-val" style="color:var(--blue);font-family:'Inter',sans-serif;letter-spacing:-0.03em;">0</div>
         </div>
       </div>
       <div style="height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:6px;">
         <div id="rp-limit-bar" style="height:100%;width:0%;background:var(--green);border-radius:3px;transition:width 0.3s,background 0.3s;"></div>
       </div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:4px;">Daily loss used: <span id="rp-limit-pct">0%</span></div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:4px;">Daily drawdown used: <span id="rp-limit-pct">0%</span></div>
     </div>
 
     <div class="divider"></div>
 
-    <!-- Recent trades -->
+    <!-- Recent Sim Trades -->
     <div class="rp-section">
-      <div class="rp-title">Recent Trades</div>
+      <div class="rp-title">Recent Sim Trades</div>
       <div id="right-panel-trades">
-        <div style="font-size:11px;color:var(--text3);">No trades yet</div>
+        <div style="font-size:11px;color:var(--text3);">No sim trades yet</div>
       </div>
     </div>
 
@@ -2421,6 +2450,32 @@ select.input option { background:#111116; color:#E8E8F0; }
     <button class="mobile-nav-item" onclick="navigate('journal',this)"><span class="mobile-nav-icon">📓</span>JOURNAL</button>
   </div>
 
+
+<!-- ═══════════════════════════════════════════
+     ACADEMY STAGE OVERLAY
+═══════════════════════════════════════════ -->
+<div id="academy-overlay">
+  <div style="max-width:760px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+      <button onclick="closeAcademyOverlay()" style="background:none;border:1px solid var(--border2);border-radius:8px;color:var(--text3);padding:8px 14px;cursor:pointer;font-family:var(--font-mono);font-size:9px;letter-spacing:1px;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border2)'">← BACK</button>
+      <div>
+        <div id="overlay-stage-title" style="font-family:'Inter',sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.04em;"></div>
+        <div id="overlay-stage-sub" style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1.5px;margin-top:2px;"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+      <button class="academy-tab-btn active" onclick="switchAcademyTab(this,'learn')">📖 LEARN</button>
+      <button class="academy-tab-btn" onclick="switchAcademyTab(this,'activity')">🎯 ACTIVITY</button>
+      <button class="academy-tab-btn" onclick="switchAcademyTab(this,'quiz')">✅ QUIZ</button>
+    </div>
+    <div id="academy-content-learn" class="academy-content-tab active"><div id="overlay-learn-content"></div></div>
+    <div id="academy-content-activity" class="academy-content-tab"><div id="overlay-activity-content"></div></div>
+    <div id="academy-content-quiz" class="academy-content-tab">
+      <div id="overlay-quiz-content"></div>
+      <div id="quiz-result" style="display:none;margin-top:16px;"></div>
+    </div>
+  </div>
+</div>
 </div><!-- /app -->
 
 <div id="toast"></div>
@@ -2764,40 +2819,762 @@ function rebuildPriceStrip() {
 // ═══════════════════════════════════════════
 // ACADEMY
 // ═══════════════════════════════════════════
-let academyStage = parseInt(localStorage.getItem('wm_academy_stage') || '1', 10);
+let academyStage  = parseInt(localStorage.getItem('wm_academy_stage')  || '1', 10);
 let academyStreak = parseInt(localStorage.getItem('wm_academy_streak') || '0', 10);
 
-function academySelectStage(stageNum) {
-  if (stageNum > academyStage) {
-    toast('Complete Stage ' + (stageNum - 1) + ' first to unlock this stage.');
+const ACADEMY_CONTENT = {
+  1: {
+    title: 'Stage 1: Foundation',
+    sub: 'KNOWLEDGE CHECK',
+    learn: `
+      <div class="card" style="margin-bottom:12px;">
+        <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.04em;margin-bottom:4px;">The Language of Trading</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--gold);letter-spacing:1.5px;">PIPS · LOTS · LEVERAGE · SPREAD · MARGIN</div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">What is a Pip?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          A <strong style="color:var(--text);">pip</strong> (percentage in point) is the smallest standard price move in a currency pair. For most pairs like EUR/USD, one pip equals a move of <strong style="color:var(--gold);">0.0001</strong> in the price.
+          <br><br>
+          Example: EUR/USD moves from 1.1050 to 1.1055 — that is a 5 pip move upward.
+          <br><br>
+          For JPY pairs (like USD/JPY), one pip equals <strong style="color:var(--gold);">0.01</strong> because JPY is quoted to 2 decimal places.
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:12px 14px;margin-top:10px;">
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:6px;">QUICK REFERENCE</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.9;">
+            EUR/USD 1.10<strong style="color:var(--gold);">50</strong> → 1.10<strong style="color:var(--gold);">51</strong> = 1 pip<br>
+            USD/JPY 143.<strong style="color:var(--gold);">50</strong> → 143.<strong style="color:var(--gold);">51</strong> = 1 pip<br>
+            Gold (XAUUSD) 1920.<strong style="color:var(--gold);">0</strong> → 1920.<strong style="color:var(--gold);">1</strong> = 1 pip (often called a tick)
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">What is a Lot?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          A <strong style="color:var(--text);">lot</strong> is the standardised unit of trade size. It determines how much money you make or lose per pip.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;">
+            <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;letter-spacing:-0.03em;color:var(--gold);">Standard</div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:2px;">1.0 lot</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px;">100,000 units. ~$10 per pip (EUR/USD).</div>
+          </div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;">
+            <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;letter-spacing:-0.03em;color:var(--text);">Mini</div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:2px;">0.1 lot</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px;">10,000 units. ~$1 per pip.</div>
+          </div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;">
+            <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;letter-spacing:-0.03em;color:var(--text);">Micro</div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:2px;">0.01 lot</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px;">1,000 units. ~$0.10 per pip.</div>
+          </div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;">
+            <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:700;letter-spacing:-0.03em;color:var(--text3);">Nano</div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:2px;">0.001 lot</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px;">100 units. Minimal risk. Practice sizing.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Leverage and Margin</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          <strong style="color:var(--text);">Leverage</strong> lets you control a large position with a smaller deposit. With 1:100 leverage, £1,000 controls a £100,000 position.
+          <br><br>
+          <strong style="color:var(--text);">Margin</strong> is the deposit your broker requires to open that leveraged position. It is not a fee — it is collateral held while the trade is open.
+          <br><br>
+          <strong style="color:var(--red);">The risk:</strong> leverage amplifies both gains AND losses equally. A 1% adverse move on a 1:100 leveraged position wipes your entire margin.
+        </div>
+        <div style="background:rgba(255,61,90,0.08);border:1px solid var(--red-dim);border-radius:8px;padding:12px;margin-top:10px;">
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--red);letter-spacing:1px;margin-bottom:4px;">KEY RULE</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6;">Never risk more than 1 to 2% of your account on a single trade, regardless of how high your leverage is.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Spread</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          The <strong style="color:var(--text);">spread</strong> is the difference between the bid price (what you sell at) and the ask price (what you buy at). It is the broker's built-in cost per trade.
+          <br><br>
+          Example: EUR/USD Bid 1.1050 / Ask 1.1052 — the spread is 2 pips. You are immediately 2 pips in the red the moment you open a trade. Your trade must move at least 2 pips in your favour just to break even.
+          <br><br>
+          Major pairs like EUR/USD and GBP/USD typically have the tightest spreads (0.5 to 2 pips). Exotic pairs and indices carry much wider spreads.
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Reading Candlestick Charts</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:10px;">
+          Each candle on a chart represents price action over a specific time period. It shows four values: Open, High, Low, and Close.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:rgba(0,232,122,0.08);border:1px solid var(--green-dim);border-radius:8px;padding:12px;">
+            <div style="font-family:'Inter',sans-serif;font-weight:700;color:var(--green);margin-bottom:4px;">Bullish candle</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.7;">Close is higher than Open. Price moved up during this period. Body is filled green (or hollow). Wicks show the high and low of the period.</div>
+          </div>
+          <div style="background:rgba(255,61,90,0.08);border:1px solid var(--red-dim);border-radius:8px;padding:12px;">
+            <div style="font-family:'Inter',sans-serif;font-weight:700;color:var(--red);margin-bottom:4px;">Bearish candle</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.7;">Close is lower than Open. Price moved down during this period. Body is filled red (or solid). The top wick is the high, bottom wick is the low.</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--text2);line-height:1.7;">
+          <strong style="color:var(--text);">Key patterns to know:</strong> Doji (indecision — open and close nearly equal), Hammer (potential reversal after a downtrend — long lower wick), Shooting Star (potential reversal after an uptrend — long upper wick), Engulfing (strong reversal signal — one candle completely engulfs the previous).
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Summary</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.9;">
+          Before you place a single trade you must be able to answer: How many pips is my stop loss? What lot size gives me exactly 1% account risk at that stop? What is the spread cost on this pair? Which direction does the daily chart suggest? If you cannot answer these immediately, reread this section before moving to the Activity.
+        </div>
+      </div>
+    `,
+    activity: `
+      <div class="card" style="margin-bottom:12px;border-color:var(--gold);">
+        <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.03em;color:var(--gold);margin-bottom:4px;">Stage 1 Activity</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1.5px;">OBSERVATION EXERCISE — NO TRADES YET</div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-label">What to do</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.9;">
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;color:var(--gold);flex-shrink:0;">1</div>
+            <div>Open the <strong style="color:var(--text);">Risk Calculator</strong> from the sidebar. Enter a balance of $10,000 and a risk of 1%. Choose EUR/USD as your instrument. Notice how the lot size and max loss change as you adjust the stop loss distance. This is position sizing in action.</div>
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;color:var(--gold);flex-shrink:0;">2</div>
+            <div>Open the <strong style="color:var(--text);">Sim Trader</strong>. Look at the current chart. Identify: one bullish candle, one bearish candle, and the most recent candle. Note its open, high, low, and close by hovering over it.</div>
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;color:var(--gold);flex-shrink:0;">3</div>
+            <div>Switch the chart to the Daily timeframe. Look at the last 10 candles. Is the overall direction: bullish (higher highs and higher lows), bearish (lower highs and lower lows), or ranging (sideways)?</div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;color:var(--gold);flex-shrink:0;">4</div>
+            <div>Calculate manually: if EUR/USD is at 1.1050 and your stop loss is 20 pips below entry, what is the stop price? What lot size would risk exactly $100 on a $10,000 account?</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="background:rgba(212,175,55,0.04);">
+        <div class="card-label">Answer Key</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8;">
+          Stop price = 1.1050 minus 0.0020 = <strong style="color:var(--green);">1.1030</strong><br>
+          1% of $10,000 = $100 risk<br>
+          20 pip stop × $10 per pip (standard lot) = $200 per standard lot<br>
+          So lot size = $100 / $200 = <strong style="color:var(--green);">0.5 lots</strong><br><br>
+          Use the Risk Calculator to verify your answer. When it matches, you are ready for the quiz.
+        </div>
+      </div>
+    `,
+    quiz: [
+      { q: 'EUR/USD moves from 1.10500 to 1.10530. How many pips did it move?', opts: ['2 pips','3 pips','0.3 pips','30 pips'], ans: 1, exp: 'The move is 0.00030, which equals 3 pips (each pip is 0.00010 for EUR/USD).' },
+      { q: 'You have a $5,000 account and want to risk 1% per trade. Your stop loss is 25 pips away. Approximately what lot size should you trade on EUR/USD?', opts: ['0.02 lots','0.5 lots','1.0 lots','0.2 lots'], ans: 3, exp: '1% of $5,000 = $50 risk. Each pip on 0.1 lot = $1, so 25 pips = $2.50 per 0.01 lot, or $25 per 0.1 lot. $50 / $25 = 2 × 0.1 = 0.2 lots.' },
+      { q: 'What does margin represent in a leveraged trade?', opts: ['The broker fee for opening a trade','The profit target of the trade','Collateral deposited to hold the leveraged position open','The maximum loss you can take'], ans: 2, exp: 'Margin is collateral — not a cost. It is held by the broker while the position is open and returned when the trade closes (minus any P&L).' },
+      { q: 'A bearish engulfing candle appears after a 3-day uptrend. What does this typically signal?', opts: ['Continuation of the uptrend','Indecision in the market','A potential reversal to the downside','A breakout higher'], ans: 2, exp: 'A bearish engulfing pattern after an uptrend signals that sellers have overwhelmed buyers — the second candle completely engulfs the first, suggesting momentum is shifting downward.' },
+      { q: 'EUR/USD has a spread of 1.5 pips. You go long. How many pips must price move in your favour before you are at break-even?', opts: ['0 pips — you are at breakeven immediately','1.5 pips','3 pips','0.5 pips'], ans: 1, exp: 'The spread is the immediate cost. You buy at the Ask price but the market is quoted at Bid. Price must move 1.5 pips in your favour just to reach your entry price on a closing basis.' }
+    ]
+  },
+
+  2: {
+    title: 'Stage 2: Risk First',
+    sub: '10 GRADED SIM TRADES',
+    learn: `
+      <div class="card" style="margin-bottom:12px;">
+        <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.04em;margin-bottom:4px;">Risk Management is the Edge</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--gold);letter-spacing:1.5px;">POSITION SIZING · THE 2% RULE · RISK:REWARD</div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Why Risk Management Comes Before Everything Else</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          Most traders fail not because they cannot read charts — they fail because they cannot manage risk. A trader with a 40% win rate and consistent 1:3 risk:reward is more profitable than a trader with a 70% win rate who blows up their account on one oversized trade.
+          <br><br>
+          Risk management is the only edge that guarantees your survival long enough to let your skills compound.
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">The 2% Rule</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          Risk no more than <strong style="color:var(--gold);">2% of your account on any single trade</strong>. This is not arbitrary — it is mathematical survival.
+          <br><br>
+          With a 2% max risk per trade, you would need to lose 50 consecutive trades to go broke. With 10% per trade, just 10 losses in a row is enough. Professional fund managers often cap at 0.5 to 1% per trade.
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:12px;margin-top:10px;">
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;">DRAWDOWN TABLE</div>
+          <div style="font-size:11px;color:var(--text2);line-height:2;">
+            5 losses at 2% each = 9.4% drawdown — easily recoverable<br>
+            5 losses at 5% each = 22.6% drawdown — needs 29% gain to recover<br>
+            5 losses at 10% each = 40.9% drawdown — needs 69% gain to recover<br>
+            <strong style="color:var(--red);">5 losses at 20% each = 67.2% drawdown — needs 205% gain to recover</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Calculating Correct Position Size</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:10px;">
+          Use this formula every single time:
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:14px;font-family:var(--font-mono);font-size:11px;line-height:2;color:var(--text2);">
+          Risk Amount ($) = Account Balance × Risk %<br>
+          Pip Value = (Lot Size × Pip Size) × Exchange Rate<br>
+          <strong style="color:var(--gold);">Lot Size = Risk Amount / (Stop Loss in Pips × Pip Value per lot)</strong>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--text2);line-height:1.8;">
+          <strong style="color:var(--text);">Worked example:</strong> Account $10,000, risk 1% = $100. EUR/USD stop loss 20 pips. Pip value on 1 standard lot = $10. So lot size = $100 / (20 × $10) = $100 / $200 = 0.5 lots.<br><br>
+          The Wingman Risk Calculator does this automatically. But you must understand why the number is what it is.
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Risk:Reward Ratio</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          Risk:reward (R:R) compares how much you stand to lose versus how much you stand to gain. A 1:2 R:R means your potential gain is twice your potential loss.
+          <br><br>
+          At 1:2 R:R, you can be wrong 50% of the time and still be profitable. At 1:3 R:R, you can be wrong 65% of the time and still profit. <strong style="color:var(--gold);">Never take a trade with less than 1:1.5 R:R.</strong>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;">
+          <div style="background:rgba(255,61,90,0.08);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:var(--red);">1:1</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:3px;">Need 50%+ win rate to profit</div>
+          </div>
+          <div style="background:rgba(212,175,55,0.08);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:var(--gold);">1:2</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:3px;">Profitable above 34% win rate</div>
+          </div>
+          <div style="background:rgba(0,232,122,0.08);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:var(--green);">1:3</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:3px;">Profitable above 25% win rate</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Stop Loss Placement</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          A stop loss must be placed at a price level where the original trade idea is invalidated — not at a distance that fits your preferred lot size. Place your stop first, then calculate your lot size from that distance.
+          <br><br>
+          Common stop placement: just below the most recent swing low (for BUY trades) or just above the most recent swing high (for SELL trades). Give the market breathing room — do not place stops so tight that normal price fluctuation triggers them.
+        </div>
+      </div>
+    `,
+    activity: `
+      <div class="card" style="margin-bottom:12px;border-color:var(--gold);">
+        <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.03em;color:var(--gold);margin-bottom:4px;">Stage 2 Activity</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1.5px;">PLACE 10 SIM TRADES WITH CORRECT SIZING</div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-label">Rules for this stage</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.9;">
+          <div style="display:flex;gap:10px;margin-bottom:10px;"><div style="color:var(--gold);font-weight:700;flex-shrink:0;">Rule 1</div><div>Every trade must risk exactly 1 to 2% of your sim account. Use the Risk Calculator to find the correct lot size before entering.</div></div>
+          <div style="display:flex;gap:10px;margin-bottom:10px;"><div style="color:var(--gold);font-weight:700;flex-shrink:0;">Rule 2</div><div>Every trade must have a stop loss set at a logical price level — not arbitrary. Place it below a swing low (BUY) or above a swing high (SELL).</div></div>
+          <div style="display:flex;gap:10px;margin-bottom:10px;"><div style="color:var(--gold);font-weight:700;flex-shrink:0;">Rule 3</div><div>Every trade must have a minimum 1:1.5 risk:reward ratio. If the nearest logical take profit is less than 1.5x your stop distance, do not take the trade.</div></div>
+          <div style="display:flex;gap:10px;"><div style="color:var(--gold);font-weight:700;flex-shrink:0;">Rule 4</div><div>No single trade may exceed 3% account risk. Breaching this resets the stage immediately.</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">How to complete this stage</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8;">
+          Open the Sim Trader and place 10 trades following the four rules above. You do not need to win — you need to size correctly. When you have 10 trades in your sim history, return here to take the quiz and confirm your understanding. AI will review your sizing on each trade.
+        </div>
+      </div>
+    `,
+    quiz: [
+      { q: 'Your account is $8,000. You want to risk 1.5% on a trade. What is your maximum dollar risk on this trade?', opts: ['$80','$120','$150','$160'], ans: 1, exp: '$8,000 × 0.015 = $120. This is the maximum you should lose if stopped out.' },
+      { q: 'Your stop loss is 40 pips away on GBP/USD. Each pip on 0.1 lot = $1. You want to risk $80. What lot size should you trade?', opts: ['0.1 lots','0.5 lots','0.2 lots','1.0 lots'], ans: 2, exp: '$80 risk / (40 pips × $1 per pip per 0.1 lot) = $80 / $40 = 2 × 0.1 lot = 0.2 lots.' },
+      { q: 'You risk $100 on a trade with a 30-pip stop. Your take profit is 45 pips away. What is the risk:reward ratio?', opts: ['1:1','1:1.5','1:2','1:3'], ans: 1, exp: 'TP distance / SL distance = 45 / 30 = 1.5. So the R:R is 1:1.5.' },
+      { q: 'Where is the most logical place to put a stop loss on a BUY trade?', opts: ['10 pips below your entry','Just below the most recent swing low','At a round number below entry','At the daily open price'], ans: 1, exp: 'A stop below the most recent swing low is logical — if price breaks that level, the uptrend structure is broken and your trade idea is invalidated.' },
+      { q: 'You have a 40% win rate and a consistent 1:2 risk:reward. Over 100 trades risking $100 each, what is your approximate net profit?', opts: ['-$2,000','$0','+$2,000','+$4,000'], ans: 2, exp: '40 wins × $200 = $8,000 gained. 60 losses × $100 = $6,000 lost. Net = +$2,000. A 40% win rate is perfectly profitable at 1:2 R:R.' }
+    ]
+  },
+
+  3: {
+    title: 'Stage 3: Reading the Market',
+    sub: '15 TRADES WITH HTF BIAS',
+    learn: `
+      <div class="card" style="margin-bottom:12px;">
+        <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.04em;margin-bottom:4px;">Trade in the Direction of the River</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--gold);letter-spacing:1.5px;">MARKET STRUCTURE · HTF BIAS · MULTI-TIMEFRAME ANALYSIS</div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Higher Timeframe Bias</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          Every timeframe tells a story — but the higher timeframe tells the bigger story. A 5-minute chart showing a bullish move means nothing if the daily chart is in a strong downtrend. Trading against the higher timeframe is like swimming upstream against a current.
+          <br><br>
+          <strong style="color:var(--gold);">HTF bias</strong> is your directional read on the market from the Daily or 4-Hour chart. Establish it before you open a lower timeframe chart for entries.
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Market Structure</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          Markets move in three structural states:
+        </div>
+        <div style="display:grid;gap:8px;margin-top:10px;">
+          <div style="background:rgba(0,232,122,0.08);border:1px solid var(--green-dim);border-radius:8px;padding:12px;">
+            <div style="font-family:'Inter',sans-serif;font-weight:700;color:var(--green);margin-bottom:4px;">Bullish structure</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.7;">Higher highs (HH) and higher lows (HL). Each rally breaks the previous high. Each pullback holds above the previous low. Only look for BUY opportunities.</div>
+          </div>
+          <div style="background:rgba(255,61,90,0.08);border:1px solid var(--red-dim);border-radius:8px;padding:12px;">
+            <div style="font-family:'Inter',sans-serif;font-weight:700;color:var(--red);margin-bottom:4px;">Bearish structure</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.7;">Lower highs (LH) and lower lows (LL). Each sell-off breaks the previous low. Each bounce fails below the previous high. Only look for SELL opportunities.</div>
+          </div>
+          <div style="background:var(--bg2);border-radius:8px;padding:12px;">
+            <div style="font-family:'Inter',sans-serif;font-weight:700;color:var(--text3);margin-bottom:4px;">Ranging (Neutral)</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.7;">Price oscillates between a clear support and resistance zone. No directional bias. Either avoid trading or trade range boundaries only.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">The Multi-Timeframe Approach</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:10px;">
+          Professional traders use a minimum of two timeframes: one for direction, one for entry.
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:12px;">
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;">TIMEFRAME PAIRING</div>
+          <div style="font-size:12px;color:var(--text2);line-height:2;">
+            Daily → 4H: Swing trading (holds days to weeks)<br>
+            4H → 1H: Intraday momentum trading<br>
+            1H → 15M: Short-term scalp entries
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--text2);line-height:1.8;">
+          <strong style="color:var(--text);">Process:</strong> Check Daily for overall bias. Drop to 4H to see where price is within that bias. Drop to 1H or 15M for a precise entry trigger. Only enter on the lower timeframe when it aligns with the higher timeframe direction.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Structure Break vs Pullback</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          In a bullish trend, price pulls back before making the next higher high. The key skill is distinguishing between a pullback (healthy — still buy the dip) and a structure break (trend is potentially reversing — caution).
+          <br><br>
+          A <strong style="color:var(--red);">break of structure</strong> occurs when price closes below the most recent higher low in an uptrend, or above the most recent lower high in a downtrend. This signals the trend may be ending. Do not enter in the old direction after a structure break — wait for confirmation of a new trend direction.
+        </div>
+      </div>
+    `,
+    activity: `
+      <div class="card" style="margin-bottom:12px;border-color:var(--gold);">
+        <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.03em;color:var(--gold);margin-bottom:4px;">Stage 3 Activity</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1.5px;">15 TRADES WITH DECLARED HTF BIAS</div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-label">The Bias Declaration Rule</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.9;">
+          Before every trade in this stage, you must record your HTF bias in the trade notes field:
+          <br><br>
+          <strong style="color:var(--text);">D1 bias: Bullish / Bearish / Neutral. Entry timeframe: 1H. Reason: [one sentence].</strong>
+          <br><br>
+          Then only trade in the direction of your declared bias. A SELL trade with a Bullish D1 bias declaration is an automatic fail for that trade — even if it profits.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Target</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8;">
+          Complete 15 sim trades with a bias declaration in each. At least 12 of the 15 must have the correct HTF bias alignment (entry direction matching declared bias, and declared bias being correct based on structure). All trades must still follow Stage 2 sizing rules.
+        </div>
+      </div>
+    `,
+    quiz: [
+      { q: 'EUR/USD Daily chart shows: Jan high 1.1200, Jan low 1.0800, Feb high 1.1350, Feb low 1.0950, Mar currently at 1.1100. What is the HTF bias?', opts: ['Bearish — lower lows forming','Neutral — ranging between levels','Bullish — higher highs and higher lows','Unclear — not enough data'], ans: 2, exp: 'Feb high (1.1350) broke Jan high (1.1200) — a higher high. Feb low (1.0950) held above Jan low (1.0800) — a higher low. This is a clear bullish structure.' },
+      { q: 'You identify a Bullish Daily bias on GBP/USD. On the 1H chart, price is near a recent support level and forms a bullish hammer. What should you do?', opts: ['Look for a BUY entry — aligns with HTF bias','Look for a SELL entry — fading the move','Avoid the trade — conflicting signals','Wait for the Daily close before deciding'], ans: 0, exp: 'The 1H trigger aligns with the Daily bullish bias. A bullish hammer at support on the lower timeframe, confirmed by the higher timeframe direction, is a high-probability long setup.' },
+      { q: 'In a strong downtrend on the 4H chart, the 15M chart shows a sharp bullish bounce and you see a BUY setup forming. What is the risk?', opts: ['None — short-term moves are always tradeable','The 15M buy is counter-trend to the 4H — higher probability of failure','The bounce will definitely continue to the upside','This is the perfect entry for a trend reversal'], ans: 1, exp: 'Counter-trend trades on lower timeframes have a lower probability of success. The dominant 4H selling pressure can resume at any moment, trapping buyers.' },
+      { q: 'What defines a "Break of Structure" in a bullish trend?', opts: ['Price failing to make a new high','Price closing below the most recent higher low','A bearish candle forming on the daily chart','Price touching a round number level'], ans: 1, exp: 'In a bullish trend, higher lows are the structural foundation. When price closes below the most recent higher low, the pattern of higher lows is broken — signalling a potential trend change.' },
+      { q: 'You want to day-trade EUR/USD on the 15M chart. Which timeframe should you use to establish your directional bias first?', opts: ['1M chart for the fastest signals','15M chart — same as entry','1H or 4H chart','Weekly chart only'], ans: 2, exp: 'For 15M entries, check the 1H or 4H for bias. The 1M is noise. The Weekly is too slow for day trading. You need a timeframe 4 to 16 times higher than your entry for meaningful context.' }
+    ]
+  },
+
+  4: {
+    title: 'Stage 4: The Setup',
+    sub: '15 TRADES — CONFLUENCE SCORING',
+    learn: `
+      <div class="card" style="margin-bottom:12px;">
+        <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.04em;margin-bottom:4px;">Stack the Odds in Your Favour</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--gold);letter-spacing:1.5px;">CONFLUENCE · ENTRY QUALITY · INDICATORS</div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">What is Confluence?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">Confluence means multiple independent factors pointing in the same direction at the same time. A single signal is unreliable. Two signals are better. Three or more create a high-probability setup.<br><br>Think of it as evidence stacking — the more evidence supporting a trade, the stronger the case for entering it.</div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Key Confluence Factors</div>
+        <div style="display:grid;gap:8px;margin-top:4px;">
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;"><div style="font-weight:700;color:var(--gold);margin-bottom:3px;">1. HTF Bias alignment</div><div style="font-size:11px;color:var(--text2);">Entry direction matches the Daily or 4H trend structure.</div></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;"><div style="font-weight:700;color:var(--gold);margin-bottom:3px;">2. Key level (support / resistance)</div><div style="font-size:11px;color:var(--text2);">Price is at or near a significant structural level — previous highs, lows, round numbers, or consolidation zones.</div></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;"><div style="font-weight:700;color:var(--gold);margin-bottom:3px;">3. Candlestick pattern confirmation</div><div style="font-size:11px;color:var(--text2);">A reversal candle (hammer, engulfing, pin bar) forms at the level, confirming rejection.</div></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;"><div style="font-weight:700;color:var(--gold);margin-bottom:3px;">4. Indicator alignment (RSI, EMA)</div><div style="font-size:11px;color:var(--text2);">RSI oversold for BUY setups / overbought for SELLs. Price above or below key EMAs (20, 50, 200).</div></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;"><div style="font-weight:700;color:var(--gold);margin-bottom:3px;">5. Volume or momentum confirmation</div><div style="font-size:11px;color:var(--text2);">Increased volume on the reversal candle confirms genuine interest. Momentum divergence (price makes new low but RSI does not) is a powerful signal.</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Entry Timing</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">Entry timing separates the professional from the amateur. An amateur enters as soon as they see a signal. A professional waits for confirmation.<br><br><strong style="color:var(--text);">Wait for candle close:</strong> never enter mid-candle. Wait for the candle to close and confirm the pattern before executing. A pattern that looks perfect mid-candle often looks completely different at close.<br><br><strong style="color:var(--text);">Entry types:</strong> Market entry (enter at next candle open after signal closes), Limit entry (pre-place an order at the exact level you want to enter), Stop entry (place a buy-stop above resistance or sell-stop below support to enter on a breakout).</div>
+      </div>
+      <div class="card">
+        <div class="card-label">The Pre-Trade Checklist</div>
+        <div style="font-size:13px;color:var(--text2);line-height:2;">Before clicking BUY or SELL, confirm each item:<br>
+          <span style="color:var(--green);">✓</span> HTF bias identified and entry matches<br>
+          <span style="color:var(--green);">✓</span> Entry is at a key structural level<br>
+          <span style="color:var(--green);">✓</span> Candle pattern confirms direction<br>
+          <span style="color:var(--green);">✓</span> Stop loss placed at logical invalidation point<br>
+          <span style="color:var(--green);">✓</span> Minimum 1:1.5 R:R confirmed<br>
+          <span style="color:var(--green);">✓</span> Lot size calculated for max 2% account risk<br>
+          <span style="color:var(--green);">✓</span> No major news event in the next 30 minutes
+        </div>
+      </div>
+    `,
+    activity: `
+      <div class="card" style="margin-bottom:12px;border-color:var(--gold);">
+        <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.03em;color:var(--gold);margin-bottom:4px;">Stage 4 Activity</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1.5px;">15 TRADES — SCORE EACH ON CONFLUENCE</div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-label">Before each trade</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.9;">Before entering each trade in the Sim Trader, write a brief note in the trade notes field listing every confluence factor you can identify. Score yourself:<br><br>Each factor present: +20 points (max 5 factors = 100 points)<br>Target average: 65 points across all 15 trades.<br>No trade should score below 40 (2 or fewer factors present).</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Aim for quality not quantity</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8;">It is better to take 2 well-structured trades this week than 15 low-quality ones. If no good setup appears, do not force one. Patience is a skill — and Stage 4 rewards it.</div>
+      </div>
+    `,
+    quiz: [
+      { q: 'A BUY setup has: Bullish D1 structure, price at a key support level, bullish engulfing candle on 1H, RSI at 32 (oversold). How many confluence factors does this have?', opts: ['1','2','3','4'], ans: 3, exp: '4 factors: HTF bias (Bullish D1), key level (support), candlestick pattern (engulfing), indicator (RSI oversold). A strong, well-confluent setup.' },
+      { q: 'You see a beautiful bullish pin bar forming on the 15M chart. You enter mid-candle because the pattern looks perfect. The candle then closes as a bearish candle. What mistake did you make?', opts: ['Entered too large a lot size','Entered without waiting for candle close — the pattern was not yet confirmed','Did not check the daily chart first','Set the wrong take profit level'], ans: 1, exp: 'Never enter mid-candle. Patterns must be confirmed by the candle close. A setup that looks ideal with 5 minutes remaining can invalidate completely before the candle closes.' },
+      { q: 'RSI on the 1H chart is at 72 (overbought) and you want to take a SELL trade. The D1 trend is bullish. Should you take this trade?', opts: ['Yes — RSI overbought is a strong sell signal','No — the overbought RSI conflicts with the bullish D1 bias','Yes — but with a very small lot size','No — RSI above 70 always means the market will reverse'], ans: 1, exp: 'In a strong bullish trend, overbought RSI is normal — the market can stay overbought for extended periods. Trading against the HTF trend on an overbought signal alone has a low success rate.' },
+      { q: 'What is the purpose of a pre-trade checklist?', opts: ['To slow you down so you miss entries','To ensure you only enter trades with multiple supporting factors — eliminating impulsive entries','To calculate your lot size automatically','To predict market direction with certainty'], ans: 1, exp: 'The checklist forces deliberate thinking before every entry. It filters out impulsive, emotionally-driven trades by requiring you to confirm objective criteria are met.' },
+      { q: 'You have a strong BUY setup on EUR/USD. The trade checks all 5 confluence boxes. Then you notice a high-impact US NFP report is releasing in 20 minutes. What should you do?', opts: ['Enter immediately to get ahead of the move','Wait until after the news release before entering','Enter half size now and add after the news','Cancel the trade — a confluence stack overrides news risk'], ans: 1, exp: 'High-impact news events create unpredictable, wide spikes that can stop out even well-placed trades. Wait for the announcement and for price to settle before entering — even the best setups should not be entered into news.' }
+    ]
+  },
+
+  5: {
+    title: 'Stage 5: Managing the Trade',
+    sub: '20 TRADES — MANAGEMENT DISCIPLINE',
+    learn: `
+      <div class="card" style="margin-bottom:12px;">
+        <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.04em;margin-bottom:4px;">Let Winners Run. Cut Losers Clean.</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--gold);letter-spacing:1.5px;">TRADE MANAGEMENT · HOLD RATIO · STOP WIDENING</div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">The Most Expensive Habit in Trading</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">Most traders lose money not because they cannot find good entries — they lose because of what they do after the entry. Two behaviours are responsible for the majority of unprofitable trading:<br><br><strong style="color:var(--red);">1. Closing winning trades too early</strong> — taking profit at 30% of the potential move because of fear, then watching price continue to the original target.<br><br><strong style="color:var(--red);">2. Widening stop losses</strong> — moving a stop further away when price approaches it, turning a manageable loss into a catastrophic one.</div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">The Hold Ratio</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">The hold ratio measures how long you hold winning trades versus losing trades. Profitable traders hold winners longer than losers.<br><br>A hold ratio above 1.2 means winners are held at least 20% longer than losers on average. This alone — without improving your win rate — makes a significant difference to long-term profitability.</div>
+        <div style="background:var(--bg2);border-radius:8px;padding:12px;margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;">
+          <div><div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:800;color:var(--red);">0.7</div><div style="font-size:10px;color:var(--text3);">Cutting winners early. Common pattern in losing traders.</div></div>
+          <div><div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:800;color:var(--green);">1.4</div><div style="font-size:10px;color:var(--text3);">Letting winners run. Consistent pattern in profitable traders.</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Stop Loss Management Rules</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          <strong style="color:var(--text);">Never widen your stop.</strong> If price is approaching your stop, it means your trade idea may be wrong. The stop is there precisely to protect you at that point. Moving it further away does not improve the trade — it increases your loss.<br><br>
+          <strong style="color:var(--text);">You can move your stop to breakeven</strong> once price moves 1R in your favour (i.e., once you are up by the amount you risked). This eliminates the risk of a loss while leaving the trade open for further gains.<br><br>
+          <strong style="color:var(--text);">Trailing stops</strong> lock in profits by following price at a set distance. Useful in strongly trending markets. Use them only once a trade is meaningfully in profit.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Partial Take Profit vs Full Exit</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">One valid management approach is to close 50% of the position at the first target (locking in profit and reducing emotional pressure) while letting the remaining 50% run to a larger target with a breakeven stop. This balances the psychology of taking profit with the discipline of letting winners run.</div>
+      </div>
+    `,
+    activity: `
+      <div class="card" style="margin-bottom:12px;border-color:var(--gold);">
+        <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.03em;color:var(--gold);margin-bottom:4px;">Stage 5 Activity</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1.5px;">20 TRADES — MANAGEMENT TRACKING</div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-label">Management rules for this stage</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.9;">
+          <div style="display:flex;gap:10px;margin-bottom:8px;"><div style="color:var(--gold);font-weight:700;flex-shrink:0;">Rule 1</div><div>Never close a winning trade before the take profit is hit (unless a clear reversal signal forms on the entry timeframe).</div></div>
+          <div style="display:flex;gap:10px;margin-bottom:8px;"><div style="color:var(--gold);font-weight:700;flex-shrink:0;">Rule 2</div><div>Never widen a stop loss after entry under any circumstance.</div></div>
+          <div style="display:flex;gap:10px;margin-bottom:8px;"><div style="color:var(--gold);font-weight:700;flex-shrink:0;">Rule 3</div><div>Move stop to breakeven once price reaches 1R in profit.</div></div>
+          <div style="display:flex;gap:10px;"><div style="color:var(--gold);font-weight:700;flex-shrink:0;">Rule 4</div><div>Allow losing trades to hit the stop loss naturally. Do not manually close early out of fear — trust the analysis.</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Pass conditions</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8;">Hold ratio above 1.2. Fewer than 3 early exits. Zero stop widening events across 20 trades. Continue applying Stages 2, 3, and 4 rules throughout.</div>
+      </div>
+    `,
+    quiz: [
+      { q: 'You are 15 pips in profit on a trade with a 20-pip stop and a 40-pip target. You feel nervous and close the trade early. What problem does this create?', opts: ['None — taking profit is always correct','It reduces your effective R:R below what you planned, making your edge unprofitable over time','It is the correct action — securing profit is the goal','It shows disciplined risk management'], ans: 1, exp: 'If you plan for 1:2 R:R but consistently exit at 0.75R, your actual R:R becomes negative over time. Your entries can be excellent but poor management will make the strategy a loser.' },
+      { q: 'Your stop is 20 pips below entry. Price drops to 18 pips below entry and slows down. You move your stop 10 pips further to give it more room. What are you doing?', opts: ['Smart trade management — giving the market breathing room','Risk management — adapting to changing conditions','Stop widening — increasing your loss if the trade fails','Breakeven management'], ans: 2, exp: 'Stop widening is one of the most destructive habits in trading. You are now risking 30 pips instead of 20 — a 50% increase in potential loss — in exchange for giving a trade more room that you originally judged was not needed.' },
+      { q: 'Your trade is up by exactly your initial risk amount (1R). What is the correct action according to trade management rules?', opts: ['Close the full trade — 1R is a good profit','Do nothing — let it run to the full target','Move your stop loss to breakeven to eliminate risk','Add to the position to increase potential profit'], ans: 2, exp: 'Once a trade moves 1R in your favour, moving to breakeven eliminates the risk of turning a winner into a loser. You can now let it run to target with zero downside.' },
+      { q: 'What does a hold ratio of 0.6 tell you about a trader?', opts: ['They hold winners much longer than losers — a positive sign','They are cutting winners at 60% of their stop distance','They are closing winning trades much faster than losing trades — a negative behavioural pattern','Their win rate is 60%'], ans: 2, exp: 'A hold ratio below 1.0 means losing trades are being held longer than winning trades. This is the opposite of profitable behaviour. Fear makes you exit winners early; hope makes you hold losers too long.' },
+      { q: 'You want to manage a trade using partial close. Your setup targets 60 pips with a 20-pip stop. What is a sensible partial close plan?', opts: ['Close 50% at 20 pips (1R), move stop to breakeven, let 50% run to 60 pips','Close 100% at 20 pips to guarantee profit','Close 25% every 10 pips regardless of structure','Close 50% immediately at entry to reduce exposure'], ans: 0, exp: 'Closing 50% at 1R locks in a guaranteed profit and moves the stop to breakeven, making the remaining position risk-free. The second half can then target the full 60-pip objective without emotional pressure.' }
+    ]
+  },
+
+  6: {
+    title: 'Stage 6: Consistency',
+    sub: '30 TRADES — ZERO BEHAVIOURAL FLAGS',
+    learn: `
+      <div class="card" style="margin-bottom:12px;">
+        <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.04em;margin-bottom:4px;">The Mind is the Last Market to Conquer</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--gold);letter-spacing:1.5px;">BEHAVIOURAL DISCIPLINE · TILT · EMOTIONAL CONTROL</div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">The Six Behavioural Failures</div>
+        <div style="display:grid;gap:8px;margin-top:4px;">
+          <div style="background:rgba(255,61,90,0.07);border-left:3px solid var(--red);padding:10px 12px;border-radius:0 8px 8px 0;"><div style="font-weight:700;color:var(--red);margin-bottom:2px;">Revenge Trading</div><div style="font-size:11px;color:var(--text2);">Entering a new trade immediately after a loss, driven by the urge to recover the money quickly. The new trade is emotional, not analytical — and typically loses too.</div></div>
+          <div style="background:rgba(255,61,90,0.07);border-left:3px solid var(--red);padding:10px 12px;border-radius:0 8px 8px 0;"><div style="font-weight:700;color:var(--red);margin-bottom:2px;">Overtrading</div><div style="font-size:11px;color:var(--text2);">Trading excessive volume within a single session — taking marginal setups, entering multiple overlapping positions, or trading when no valid setup exists. Overtrading erodes an edge through transaction costs and low-quality entries.</div></div>
+          <div style="background:rgba(212,175,55,0.1);border-left:3px solid var(--gold);padding:10px 12px;border-radius:0 8px 8px 0;"><div style="font-weight:700;color:var(--gold);margin-bottom:2px;">FOMO Entry</div><div style="font-size:11px;color:var(--text2);">Entering a trade because price is moving strongly and you fear missing the move — not because a valid setup exists. FOMO entries are typically at the worst possible price, near the end of the move, with no logical stop placement.</div></div>
+          <div style="background:rgba(212,175,55,0.1);border-left:3px solid var(--gold);padding:10px 12px;border-radius:0 8px 8px 0;"><div style="font-weight:700;color:var(--gold);margin-bottom:2px;">Early Exit</div><div style="font-size:11px;color:var(--text2);">Closing a winning trade before the target is hit, driven by fear of giving back profits. Destroys the R:R edge of your strategy over time.</div></div>
+          <div style="background:rgba(212,175,55,0.1);border-left:3px solid var(--gold);padding:10px 12px;border-radius:0 8px 8px 0;"><div style="font-weight:700;color:var(--gold);margin-bottom:2px;">Stop Widening</div><div style="font-size:11px;color:var(--text2);">Moving a stop loss further away to avoid being stopped out. This converts a manageable planned loss into a potentially catastrophic unplanned one.</div></div>
+          <div style="background:rgba(160,32,240,0.1);border-left:3px solid var(--purple);padding:10px 12px;border-radius:0 8px 8px 0;"><div style="font-weight:700;color:var(--purple);margin-bottom:2px;">Tilt</div><div style="font-size:11px;color:var(--text2);">Two or more of the above flags triggered in a single session. When tilt is detected, the correct action is to immediately stop trading for the rest of that session. Log what happened and return tomorrow with a fresh mindset.</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Building Routine and Discipline</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">Consistency does not come from motivation — it comes from systems. Build a daily trading routine: same analysis time, same process, same journalling. The market rewards traders who show up with a process, not traders who show up with emotion.</div>
+      </div>
+      <div class="card">
+        <div class="card-label">The Daily Max Loss Rule</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">Set a daily maximum loss of 3 to 5% of your account. If you hit it, stop trading for the day — no exceptions. A bad day becomes catastrophic only when you keep trading through it. Your best trading comes when your mind is clear, not when you are chasing losses.</div>
+      </div>
+    `,
+    activity: `
+      <div class="card" style="margin-bottom:12px;border-color:var(--gold);">
+        <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.03em;color:var(--gold);margin-bottom:4px;">Stage 6 Activity</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1.5px;">30 TRADES — ALL 6 DETECTORS ACTIVE</div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-label">The challenge</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.9;">Complete 30 sim trades with all 6 behavioural detectors monitoring every move. Any flag triggered pauses the stage and requires a reflection note. The goal is zero flags across all 30 trades.<br><br>Additionally, end the stage with a positive P&L — the account does not need to be up significantly, just green.</div>
+      </div>
+      <div class="card">
+        <div class="card-label">After each trade</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8;">Write one sentence in the trade notes describing your emotional state at entry and exit. Honest self-observation over 30 trades will reveal patterns about your psychology that no textbook can teach you.</div>
+      </div>
+    `,
+    quiz: [
+      { q: 'You lose 3 trades in a row. Without pausing to reassess, you immediately enter a 4th trade with double the lot size to recover the losses. Which behaviour is this?', opts: ['Overtrading','FOMO Entry','Revenge Trading','Tilt'], ans: 2, exp: 'Revenge trading is characterised by rapid re-entry after a loss, often with increased size, driven by the emotional desire to recover — not by a new analytical setup.' },
+      { q: 'Two distinct valid setups form simultaneously on GBP/USD and EUR/JPY. You enter both at the same time with full size on each. Both move against you. You add a third position on AUD/USD. This sequence describes:', opts: ['Good diversification strategy','Overtrading and early tilt','Normal multi-pair trading','Conservative risk management'], ans: 1, exp: 'Entering multiple full-size positions simultaneously and then adding a third despite drawdown is overtrading. Tilt is imminent when the urge to trade is driven by loss aversion rather than valid setups.' },
+      { q: 'EUR/USD has been rallying strongly for 4 hours. You have no setup — no confluence, no key level, no structure. But price is moving and you fear missing it. You enter long. This is:', opts: ['HTF bias alignment','Breakout trading','FOMO Entry','Momentum trading'], ans: 2, exp: 'Fear of Missing Out (FOMO) causes entries without a valid setup, typically near the exhaustion of a move. These entries often result in buying the top or selling the bottom of a momentum run.' },
+      { q: 'What is the correct response when you trigger 2 or more behavioural flags in a single trading session?', opts: ['Increase position size to recover losses faster','Continue trading but only take A-grade setups','Stop trading for the rest of the session — you are in tilt','Call a financial advisor'], ans: 2, exp: 'Tilt is a compound state where multiple behavioural failures compound. The only correct response is to remove yourself from the market for the rest of that day, journal what happened, and return fresh.' },
+      { q: 'You have a daily maximum loss rule of 3%. Your account is $10,000. You have already lost $280 today. A high-quality setup appears. What should you do?', opts: ['Take the trade — it is a valid setup and you have not hit the limit yet','Take half size only since you are close to the daily limit','Skip the trade — you are too close to the limit to take another risk','Increase size to try to recover the day's losses'], ans: 0, exp: 'You have lost 2.8% — still within the 3% rule. A genuinely valid setup can be taken with correct sizing. However, if the trade triggers your remaining 0.2%, stop for the day regardless of outcome.' }
+    ]
+  },
+
+  7: {
+    title: 'Stage 7: Graduation',
+    sub: '50-TRADE FINAL ASSESSMENT',
+    learn: `
+      <div class="card" style="margin-bottom:12px;">
+        <div style="font-family:'Inter',sans-serif;font-size:22px;font-weight:800;letter-spacing:-0.04em;margin-bottom:4px;">The Trader Passport</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--gold);letter-spacing:1.5px;">FINAL ASSESSMENT · FULL REVIEW · GRADUATION</div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">What this stage proves</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">Stage 7 is not a new lesson — it is a demonstration of everything you have built. Across 50 trades, you must apply every principle from Stages 1 through 6 simultaneously, consistently, and under conditions that test your emotional discipline as well as your technical skill.</div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">What the AI grades you on</div>
+        <div style="display:grid;gap:6px;margin-top:4px;">
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;display:flex;justify-content:space-between;"><span style="font-size:12px;color:var(--text2);">Position sizing consistency</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--gold);">20 pts</span></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;display:flex;justify-content:space-between;"><span style="font-size:12px;color:var(--text2);">HTF bias alignment accuracy</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--gold);">20 pts</span></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;display:flex;justify-content:space-between;"><span style="font-size:12px;color:var(--text2);">Average confluence score</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--gold);">20 pts</span></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;display:flex;justify-content:space-between;"><span style="font-size:12px;color:var(--text2);">Trade management discipline (hold ratio)</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--gold);">20 pts</span></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;display:flex;justify-content:space-between;"><span style="font-size:12px;color:var(--text2);">Behavioural flags (zero = full score)</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--gold);">20 pts</span></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">Graduation Grades</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;text-align:center;">
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;"><div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:800;color:var(--gold);">A</div><div style="font-size:10px;color:var(--text3);">90 to 100</div><div style="font-size:10px;color:var(--text2);margin-top:2px;">Elite trader readiness</div></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;"><div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:800;color:var(--green);">B</div><div style="font-size:10px;color:var(--text3);">75 to 89</div><div style="font-size:10px;color:var(--text2);margin-top:2px;">Strong foundation</div></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;"><div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:800;color:var(--blue);">C</div><div style="font-size:10px;color:var(--text3);">60 to 74</div><div style="font-size:10px;color:var(--text2);margin-top:2px;">Developing — revisit weak stages</div></div>
+          <div style="background:var(--bg2);border-radius:8px;padding:10px;"><div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:800;color:var(--text3);">D</div><div style="font-size:10px;color:var(--text3);">45 to 59</div><div style="font-size:10px;color:var(--text2);margin-top:2px;">Needs improvement</div></div>
+          <div style="background:rgba(255,61,90,0.08);border-radius:8px;padding:10px;"><div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:800;color:var(--red);">F</div><div style="font-size:10px;color:var(--text3);">Below 45</div><div style="font-size:10px;color:var(--text2);margin-top:2px;">Restart from Stage 3+</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Your Trader Passport</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">On completion, the AI generates your Trader Passport: overall grade, a strengths and weaknesses profile, your best and worst trade with AI commentary, regime performance breakdown, and a shareable scorecard. This is your first real evidence of trading readiness.</div>
+      </div>
+    `,
+    activity: `
+      <div class="card" style="margin-bottom:12px;border-color:var(--gold);">
+        <div style="font-family:'Inter',sans-serif;font-size:16px;font-weight:800;letter-spacing:-0.03em;color:var(--gold);margin-bottom:4px;">Stage 7 Activity</div>
+        <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1.5px;">50-TRADE COMPREHENSIVE FINAL REVIEW</div>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-label">The Final Assessment</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.9;">Apply every principle from every stage across 50 sim trades. No shortcuts. No exceptions. This is the final proof of what you have built.<br><br>When you have completed 50 trades, return here and submit your Graduation Quiz. The AI will generate your full Trader Passport based on your sim account history.</div>
+      </div>
+      <div class="card" style="background:rgba(212,175,55,0.04);border-color:var(--gold);">
+        <div style="font-family:'Inter',sans-serif;font-weight:700;color:var(--gold);margin-bottom:6px;">After graduation</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8;">A Wingman graduate has demonstrated: correct sizing, HTF bias alignment, confluence quality, trade management discipline, and emotional consistency — across 130+ graded practice trades. That is the foundation. Real markets will test you further. Use Wingman Sim daily to maintain and sharpen the edge.</div>
+      </div>
+    `,
+    quiz: [
+      { q: 'What percentage of a $10,000 account should you risk on your first live trade after graduation?', opts: ['5% — you have earned it','As much as you are comfortable with','1% maximum — treat the live account with the same discipline as your sim account','0.5% or less — start conservatively and scale up as confidence builds in the live environment'], ans: 3, exp: 'The psychological difference between sim and live trading is significant. Starting with 0.5% or less allows you to experience real market emotions without the pain of large losses while adjusting. Scale up only after demonstrating the same consistency as in your sim.' },
+      { q: 'Your Trader Passport shows a Grade B overall but highlights that your Stage 5 hold ratio was 0.8. What should you focus on?', opts: ['Take higher confluence setups to improve entries','Improve trade management — letting winners run further before exiting','Reduce position sizes across the board','Work on your HTF bias identification'], ans: 1, exp: 'A hold ratio of 0.8 below 1.0 means you are cutting winners shorter than you are holding losers. This is the specific weakness to address — the fix is to commit to a rule: do not close a winner before the target unless a reversal signal forms.' },
+      { q: 'You complete 50 graduation trades and achieve: 72% HTF alignment, average confluence 68, hold ratio 1.3, zero behavioural flags, positive P&L. What grade would you expect?', opts: ['F — needs improvement','C — developing','B — strong foundation','A — elite readiness'], ans: 2, exp: 'Strong across all metrics with a 1.3 hold ratio, zero flags, and positive P&L. The 72% HTF alignment and 68 confluence score are solid but not perfect — a B grade reflects a strong foundation with some room to grow.' },
+      { q: 'What is the most important mindset shift a Wingman graduate must make when moving to a real account?', opts: ['Trade larger to compensate for broker spreads','Apply identical rules as in simulation — the process does not change because money is real','Be more aggressive to grow the account faster initially','Trust your intuition more now that you have experience'], ans: 1, exp: 'The entire purpose of the Academy is to build habits that transfer to the live market. The rules do not change. The size may start smaller as you acclimatise, but the process — sizing, bias, confluence, management, behaviour — is identical.' },
+      { q: 'A fellow trader tells you they skip the pre-trade checklist on obvious setups to save time. What is wrong with this approach?', opts: ['Nothing — experienced traders do not need checklists','The checklist is only necessary for beginners','The checklist filters out impulsive entries. Skipping it, even once, establishes a habit of bypassing the process — which is where all behavioural failures begin','Obvious setups do not need analysis'], ans: 2, exp: 'The checklist is not training wheels — it is a professional process tool. Its value is greatest on the trades that feel most obvious, because those are the trades most likely to be driven by emotion rather than analysis. Every trade gets the same process.' }
+    ]
+  }
+};
+
+function openAcademyStage(n) {
+  const overlay = document.getElementById('academy-overlay');
+  const data = ACADEMY_CONTENT[n];
+  if (!data) return;
+
+  if (n > academyStage) {
+    toast('Complete Stage ' + (n-1) + ' first to unlock this stage.');
     return;
   }
-  // Highlight selected stage
-  document.querySelectorAll('.academy-stage').forEach((el, i) => {
-    const n = i + 1;
-    el.classList.remove('active');
-    if (n < academyStage) { el.classList.add('completed'); el.classList.remove('locked'); }
-    else if (n === academyStage) { el.classList.add('active'); el.classList.remove('locked', 'completed'); }
-    else { el.classList.add('locked'); el.classList.remove('active', 'completed'); }
+
+  // Set titles
+  document.getElementById('overlay-stage-title').textContent = data.title;
+  document.getElementById('overlay-stage-sub').textContent   = data.sub;
+
+  // Set content
+  document.getElementById('overlay-learn-content').innerHTML    = data.learn;
+  document.getElementById('overlay-activity-content').innerHTML = data.activity;
+
+  // Build quiz
+  buildAcademyQuiz(data.quiz, n);
+
+  // Show overlay on learn tab
+  switchAcademyTab(document.querySelector('.academy-tab-btn'), 'learn');
+  overlay.classList.add('open');
+  overlay.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeAcademyOverlay() {
+  document.getElementById('academy-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function switchAcademyTab(btn, tab) {
+  document.querySelectorAll('.academy-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.academy-content-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const el = document.getElementById('academy-content-' + tab);
+  if (el) el.classList.add('active');
+}
+
+let quizAnswers = {};
+let quizStageNum = 0;
+
+function buildAcademyQuiz(questions, stageN) {
+  quizAnswers = {};
+  quizStageNum = stageN;
+  const container = document.getElementById('overlay-quiz-content');
+  const result    = document.getElementById('quiz-result');
+  if (result) result.style.display = 'none';
+
+  container.innerHTML = questions.map((q, i) => `
+    <div class="card" style="margin-bottom:12px;" id="quiz-q-${i}">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;line-height:1.6;">${i+1}. ${q.q}</div>
+      ${q.opts.map((opt, j) => `
+        <button class="academy-quiz-opt" onclick="selectQuizAnswer(${i},${j})" id="quiz-opt-${i}-${j}">${opt}</button>
+      `).join('')}
+      <div id="quiz-exp-${i}" style="display:none;margin-top:8px;font-size:11px;color:var(--text3);background:var(--bg2);border-radius:6px;padding:8px 10px;line-height:1.6;"></div>
+    </div>
+  `).join('') + `<button class="btn btn-primary" onclick="submitAcademyQuiz()" style="width:100%;padding:13px;margin-top:4px;">Submit Answers</button>`;
+}
+
+function selectQuizAnswer(qi, oi) {
+  quizAnswers[qi] = oi;
+  // Highlight selected
+  const q = ACADEMY_CONTENT[quizStageNum].quiz[qi];
+  for (let j = 0; j < q.opts.length; j++) {
+    const btn = document.getElementById('quiz-opt-' + qi + '-' + j);
+    if (btn) { btn.classList.remove('correct','wrong'); btn.style.borderColor = ''; }
+  }
+  const sel = document.getElementById('quiz-opt-' + qi + '-' + oi);
+  if (sel) sel.style.borderColor = 'var(--gold)';
+}
+
+function submitAcademyQuiz() {
+  const questions = ACADEMY_CONTENT[quizStageNum].quiz;
+  let correct = 0;
+  questions.forEach((q, i) => {
+    const chosen = quizAnswers[i];
+    for (let j = 0; j < q.opts.length; j++) {
+      const btn = document.getElementById('quiz-opt-' + i + '-' + j);
+      if (!btn) continue;
+      btn.disabled = true;
+      if (j === q.ans) btn.classList.add('correct');
+      else if (j === chosen && j !== q.ans) btn.classList.add('wrong');
+    }
+    const expEl = document.getElementById('quiz-exp-' + i);
+    if (expEl) { expEl.style.display = 'block'; expEl.textContent = q.exp; }
+    if (chosen === q.ans) correct++;
   });
+
+  const total   = questions.length;
+  const passed  = correct >= Math.ceil(total * 0.8); // 80% pass threshold
+  const result  = document.getElementById('quiz-result');
+  result.style.display = 'block';
+  result.innerHTML = `
+    <div class="card" style="border-color:${passed?'var(--green)':'var(--red)'};">
+      <div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:800;letter-spacing:-0.04em;color:${passed?'var(--green)':'var(--red)'};margin-bottom:6px;">
+        ${passed ? '✓ Quiz Passed' : '✗ Not quite'}
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">You answered ${correct} of ${total} correctly. ${passed ? 'Well done — you have demonstrated understanding of this stage.' : 'Review the incorrect answers and the Learn section before retrying.'}</div>
+      ${passed ? `<button class="btn btn-primary" onclick="markStageComplete(${quizStageNum})" style="width:100%;padding:12px;">Mark Stage ${quizStageNum} Complete</button>` : `<button class="btn btn-ghost" onclick="buildAcademyQuiz(ACADEMY_CONTENT[${quizStageNum}].quiz, ${quizStageNum})" style="width:100%;padding:12px;">Retry Quiz</button>`}
+    </div>`;
+  result.scrollIntoView({ behavior: 'smooth' });
+}
+
+function markStageComplete(n) {
+  if (n >= academyStage) {
+    academyStage = n + 1;
+    localStorage.setItem('wm_academy_stage', String(academyStage));
+  }
+  toast('Stage ' + n + ' complete! Stage ' + Math.min(academyStage, 7) + ' unlocked.');
+  closeAcademyOverlay();
   updateAcademyProgress();
 }
 
+function academySelectStage(n) { openAcademyStage(n); }
+
 function updateAcademyProgress() {
-  const fill = document.getElementById('academy-progress-fill');
-  const label = document.getElementById('academy-stage-label');
-  const streak = document.getElementById('academy-streak');
-  const simTrades = document.getElementById('academy-sim-trades');
-  if (fill) fill.style.width = ((academyStage - 1) / 7 * 100) + '%';
-  if (label) label.textContent = 'Stage ' + academyStage + ' of 7';
-  if (streak) streak.textContent = academyStreak;
-  if (simTrades) simTrades.textContent = trades.length;
+  const fill     = document.getElementById('academy-progress-fill');
+  const label    = document.getElementById('academy-stage-label');
+  const streakEl = document.getElementById('academy-streak');
+  const simEl    = document.getElementById('academy-sim-trades');
+
+  const stagesComplete = Math.max(0, academyStage - 1);
+  if (fill)     fill.style.width = (stagesComplete / 7 * 100) + '%';
+  if (label)    label.textContent = academyStage <= 7 ? 'Stage ' + academyStage + ' of 7' : 'Graduated';
+  if (streakEl) streakEl.textContent = academyStreak;
+  const simTrades = JSON.parse(localStorage.getItem('wm_sim_trades') || '[]');
+  if (simEl) simEl.textContent = simTrades.length;
+
+  // Update stage cards
+  document.querySelectorAll('.academy-stage').forEach((el, i) => {
+    const n = i + 1;
+    el.classList.remove('active','completed','locked');
+    if (n < academyStage)       el.classList.add('completed');
+    else if (n === academyStage) el.classList.add('active');
+    else                         el.classList.add('locked');
+    // Update lock icon
+    const numEl = el.querySelector('.academy-stage-num');
+    if (numEl) numEl.textContent = n < academyStage ? '✓' : n === academyStage ? String(n) : '🔒';
+  });
+
+  // Update detail panel
+  const detailTitle = document.getElementById('overlay-stage-title');
+  if (!detailTitle) return;
+  const currentData = ACADEMY_CONTENT[Math.min(academyStage, 7)];
+  document.getElementById('academy-stage-detail').querySelector('[class="btn btn-primary"]')?.setAttribute('onclick', 'openAcademyStage(' + Math.min(academyStage,7) + ')');
 }
 
-function startAcademyStage1() {
-  toast('Stage 1 knowledge check — coming in next update. Use the Sim Trader to begin practicing!');
-  setTimeout(() => navigate('simtrader', null), 1500);
-}
 
 window.addEventListener('load', () => {
   launchApp(); // Auto-launch — all features free, no API key prompt needed
@@ -3858,7 +4635,9 @@ function updateRisk() {
   const rd = document.getElementById('risk-display');
   const sb = document.getElementById('sidebar-balance');
   if (rd) rd.textContent = bal ? '$' + riskAmt.toFixed(2) : '—';
-  if (sb) sb.textContent = bal ? '$' + bal.toFixed(2) : '—';
+  // sidebar-balance is now driven by updateSidebarStats (sim account) — skip if sim has data
+  const _simAcc = JSON.parse(localStorage.getItem('wm_sim_account') || 'null');
+  if (sb && !_simAcc) sb.textContent = bal ? '$' + bal.toFixed(2) : '—';
   // Sync right panel — show dashes when no balance entered
   const rpBal   = document.getElementById('rp-balance');
   const rpRisk  = document.getElementById('rp-risk-amt');
@@ -4332,13 +5111,75 @@ function renderTrades() {
 }
 
 function updateSidebarStats() {
-  const total = trades.length;
-  const wins  = trades.filter(t=>t.pnl>0).length;
+  // Pull stats from sim trader
+  const simTrades = JSON.parse(localStorage.getItem('wm_sim_trades') || '[]');
+  const simAcc    = JSON.parse(localStorage.getItem('wm_sim_account') || 'null') || { balance:10000, startBalance:10000 };
+  const simPos    = JSON.parse(localStorage.getItem('wm_sim_positions') || '[]');
+
+  const total = simTrades.length;
+  const wins  = simTrades.filter(t=>t.pnl>0).length;
   const wr    = total ? Math.round(wins/total*100) : 0;
-  const wrEl  = document.getElementById('sidebar-winrate');
-  const tEl   = document.getElementById('sidebar-trades');
-  if (wrEl) { wrEl.textContent = wr+'%'; wrEl.style.color = wr>=50?'var(--green)':'var(--red)'; }
-  if (tEl)  tEl.textContent = total;
+
+  // Open P&L
+  const openPnl = simPos.reduce((s,p) => {
+    const price = simGetPrice ? (simGetPrice(p.inst) || p.entryPrice) : p.entryPrice;
+    const diff  = p.dir === 'BUY' ? price - p.entryPrice : p.entryPrice - price;
+    return s + diff * (p.pipVal || 10) * p.lots;
+  }, 0);
+  const equity   = simAcc.balance + openPnl;
+  const totalPnl = simAcc.balance - simAcc.startBalance + openPnl;
+  const bal      = simAcc.balance;
+  const startBal = simAcc.startBalance || 10000;
+
+  // Account panel
+  const sbEl   = document.getElementById('sidebar-balance');
+  const wrEl   = document.getElementById('sidebar-winrate');
+  const tEl    = document.getElementById('sidebar-trades');
+  const eqEl   = document.getElementById('rp-sim-equity');
+  const opPnlEl = document.getElementById('rp-sim-open-pnl');
+  const totPnlEl = document.getElementById('rp-sim-total-pnl');
+
+  if (sbEl)  { sbEl.textContent = '$' + bal.toFixed(2); sbEl.style.color = bal >= startBal ? 'var(--green)' : 'var(--red)'; }
+  if (wrEl)  { wrEl.textContent = wr+'%'; wrEl.style.color = wr>=50?'var(--green)':'var(--red)'; }
+  if (tEl)   tEl.textContent = total;
+  if (eqEl)  { eqEl.textContent = '$' + equity.toFixed(2); eqEl.style.color = equity >= startBal ? 'var(--green)' : 'var(--red)'; }
+  if (opPnlEl) { opPnlEl.textContent = (openPnl>=0?'+':'')+'$'+openPnl.toFixed(2); opPnlEl.style.color = openPnl>=0?'var(--green)':'var(--red)'; }
+  if (totPnlEl) { totPnlEl.textContent = (totalPnl>=0?'+':'')+'$'+totalPnl.toFixed(2); totPnlEl.style.color = totalPnl>=0?'var(--green)':'var(--red)'; }
+
+  // Risk snapshot panel
+  const rpBal   = document.getElementById('rp-balance');
+  const rpRisk  = document.getElementById('rp-risk-amt');
+  const rpLimit = document.getElementById('rp-daily-limit');
+  const rpPos   = document.getElementById('rp-lot-size');
+  const rpBar   = document.getElementById('rp-limit-bar');
+  const rpPct   = document.getElementById('rp-limit-pct');
+
+  if (rpBal)   { rpBal.textContent   = '$' + bal.toFixed(2); rpBal.style.color = bal>=startBal?'var(--green)':'var(--red)'; }
+  if (rpRisk)  rpRisk.textContent  = '$' + (bal * 0.02).toFixed(2);
+  if (rpLimit) rpLimit.textContent = '$' + (bal * 0.05).toFixed(2);
+  if (rpPos)   rpPos.textContent   = simPos.length;
+
+  // Daily drawdown bar
+  const drawdown = Math.max(0, (startBal - bal) / startBal * 100);
+  if (rpBar) { rpBar.style.width = Math.min(100, drawdown) + '%'; rpBar.style.background = drawdown > 5 ? 'var(--red)' : drawdown > 2 ? 'var(--gold)' : 'var(--green)'; }
+  if (rpPct) rpPct.textContent = drawdown.toFixed(1) + '%';
+
+  // Recent sim trades in right panel
+  const rpTrades = document.getElementById('right-panel-trades');
+  if (rpTrades) {
+    if (!simTrades.length) {
+      rpTrades.innerHTML = '<div style="font-size:11px;color:var(--text3);">No sim trades yet</div>';
+    } else {
+      rpTrades.innerHTML = simTrades.slice(-5).reverse().map(t => {
+        const col = t.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+        const sign = t.pnl >= 0 ? '+' : '';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px;">
+          <span style="font-family:var(--font-mono);color:var(--text2);">${t.inst||t.pair||'?'} <span style="color:${t.dir==='BUY'?'var(--green)':'var(--red)'};font-size:9px;">${t.dir||''}</span></span>
+          <span style="font-family:'Inter',sans-serif;font-weight:700;letter-spacing:-0.02em;color:${col};">${sign}$${(t.pnl||0).toFixed(2)}</span>
+        </div>`;
+      }).join('');
+    }
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -6529,6 +7370,8 @@ function simUpdateAccount() {
   if (opEl)  { opEl.textContent  = (openPnl >= 0 ? '+' : '') + '$' + openPnl.toFixed(2);  opEl.style.color  = openPnl  >= 0 ? 'var(--green)' : 'var(--red)'; }
   if (totEl) { totEl.textContent = (totalPnl >= 0 ? '+' : '') + '$' + totalPnl.toFixed(2); totEl.style.color = totalPnl >= 0 ? 'var(--green)' : 'var(--red)'; }
   renderSimPositionsStrip();
+  // Keep right panel in sync
+  updateSidebarStats();
 }
 
 function simAddFunds() {
