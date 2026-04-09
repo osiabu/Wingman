@@ -2,7 +2,7 @@
 
 An intelligent trader training platform covering 54 instruments. Simulated trading, AI trade feedback, behavioural coaching, performance profiling, and a 7-stage Academy journey — all free, no account required.
 
-**Live:** [https://abuj07.github.io/Wingman/](https://abuj07.github.io/Wingman/)
+**Live:** Coming soon via Vercel.
 
 ---
 
@@ -66,7 +66,7 @@ Win rate, average risk:reward, profit factor, session heatmap, instrument breakd
 | AI | Claude API (market scan, trade review, chart analysis), Grok xAI (optional sentiment) |
 | Prices | Binance WebSocket (crypto), metals.live (metals), exchangerate.host (forex fallback) |
 | Charts | TradingView widget (BINANCE:BTCUSDT default) |
-| Hosting | GitHub Pages or any static file server |
+| Hosting | Vercel (primary), or any static file server |
 
 ---
 
@@ -93,8 +93,13 @@ No API keys required to launch. Add a Grok key in Settings for live sentiment an
 
 ## Deployment (Go-Live)
 
-### GitHub Pages (current)
-The site is already live at [https://abuj07.github.io/Wingman/](https://abuj07.github.io/Wingman/) via GitHub Pages. Pushing to `main` updates the live site automatically.
+### Vercel (primary)
+```bash
+npm i -g vercel
+vercel        # preview deployment
+vercel --prod # production deployment
+```
+Connect the GitHub repo in the Vercel dashboard and every push to `main` deploys automatically.
 
 ### Custom Domain
 1. Add a `CNAME` file to the repo root containing your domain (e.g. `wingman.trade`)
