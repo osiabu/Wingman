@@ -1586,34 +1586,7 @@ select.input option { background:#111116; color:#E8E8F0; }
       <div style="max-width:560px;">
 
 
-        <div class="card">
-          <div class="card-label">API Keys (optional)</div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.6;">AI analysis is powered server-side. Add your Grok key below for live market sentiment.</div>
-          <!-- Claude key removed, AI analysis handled server-side -->
-          <div style="margin-bottom:12px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-              <label class="input-label" style="margin:0;color:#A78BFA;">GROK API KEY</label>
-              <span style="font-family:var(--font-mono);font-size:7px;background:#A78BFA22;border:1px solid #A78BFA44;border-radius:3px;padding:1px 6px;color:#A78BFA;">OPTIONAL · FREE TIER</span>
-            </div>
-            <div class="key-wrap">
-              <input type="password" class="input" id="s-grok-key" placeholder="xai-..." autocomplete="off" style="border-color:#7C3AED44;">
-              <button class="key-eye" onclick="toggleVis('s-grok-key',this)">👁</button>
-            </div>
-            <div style="font-size:10px;color:var(--text3);margin-top:4px;">Powers live market sentiment. Get free key at <a href="https://console.x.ai" target="_blank" style="color:#A78BFA;">console.x.ai</a></div>
-          </div>
-          <div style="margin-bottom:12px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-              <label class="input-label" style="margin:0;color:var(--blue);">GEMINI FLASH KEY</label>
-              <span style="font-family:var(--font-mono);font-size:7px;background:var(--blue-dim);border:1px solid #00C8FF44;border-radius:3px;padding:1px 6px;color:var(--blue);">OPTIONAL · FREE · 1500/DAY</span>
-            </div>
-            <div class="key-wrap">
-              <input type="password" class="input" id="s-gemini-key" placeholder="AIza..." autocomplete="off" style="border-color:#00C8FF33;">
-              <button class="key-eye" onclick="toggleVis('s-gemini-key',this)">👁</button>
-            </div>
-            <div style="font-size:10px;color:var(--text3);margin-top:4px;">Google Gemini Flash, alternative sentiment engine. Free 1,500 requests/day at <a href="https://aistudio.google.com" target="_blank" style="color:var(--blue);">aistudio.google.com</a></div>
-          </div>
-          <button class="btn btn-ghost" onclick="saveSettings()" style="width:100%;padding:10px;">Save Keys</button>
-        </div>
+
         <div class="card">
           <div class="card-label">Account Settings</div>
           <div style="margin-bottom:12px;">
@@ -2487,48 +2460,27 @@ select.input option { background:#111116; color:#E8E8F0; }
 // ═══════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════
-let apiKey = localStorage.getItem('wm_claude') || '';
-let tdKey  = localStorage.getItem('wm_td')     || '';
 let trades = JSON.parse(localStorage.getItem('wm_trades') || '[]');
 
-// ── FREE TRIAL ENGINE ──────────────────────────────────────────────────────
-// Gemini 2.5 Flash — free tier, no billing required, 500 req/day
-// Users get 3 free market scans before being asked for their own Claude key
 // ── WORKER CONFIG ────────────────────────────────────────────────────────────
 const WORKER_URL = 'https://wingman-worker.abuj07.workers.dev';
-let proToken = localStorage.getItem('wm_pro_token') || '';
 function workerHeaders() {
-  const h = { 'Content-Type': 'application/json' };
-  if (proToken) h['X-Wingman-Token'] = proToken;
-  return h;
+  return { 'Content-Type': 'application/json' };
 }
 // ─────────────────────────────────────────────────────────────────────────────
-
-const DEMO_GEMINI_KEY = ''; // Set via Worker secret GEMINI_API_KEY — do not put real keys here
-const FREE_SCAN_LIMIT = 3;
-let freeScansUsed = parseInt(localStorage.getItem('wm_free_scans') || '0', 10);
-
-function getFreeScansRemaining() { return Math.max(0, FREE_SCAN_LIMIT - freeScansUsed); }
-function incrementFreeScans() {
-  freeScansUsed++;
-  localStorage.setItem('wm_free_scans', String(freeScansUsed));
-  updateTrialBadge();
-}
 function updateTrialBadge() {
-  // All features are free — hide trial badge always
   const badge = document.getElementById('trial-badge');
   if (badge) badge.style.display = 'none';
 }
 
-// Call Gemini 2.5 Flash for free demo scans
+// Gemini scan — routed through /api/gemini (server-side key)
 async function callGeminiForScan(systemPrompt, userPrompt) {
-  const key = DEMO_GEMINI_KEY;
   const body = {
     system_instruction: { parts: [{ text: systemPrompt }] },
     contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
     generationConfig: { temperature: 0.3, maxOutputTokens: 3000, responseMimeType: 'application/json' }
   };
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+  const res = await fetch('/api/gemini?model=gemini-2.5-flash', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -2541,10 +2493,7 @@ async function callGeminiForScan(systemPrompt, userPrompt) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
-// Show upsell modal when free scans exhausted
-function showUpgradeModal() {
-  // All features are free — no upgrade required
-}
+function showUpgradeModal() {}
 function openSettingsFromModal() {
   document.getElementById('upgrade-modal').style.display = 'none';
   navigate('settings', null);
@@ -3586,23 +3535,7 @@ window.addEventListener('load', () => {
   updateRisk();
   startClock();
 
-  // Populate settings fields if keys exist
-  // Pro token status
-  const ptInput = document.getElementById('s-pro-token');
-  const ptStatus = document.getElementById('pro-token-status');
-  if (proToken && ptInput) {
-    ptInput.value = proToken.slice(0,10)+'...';
-    if (ptStatus) { ptStatus.textContent = '✅ Wingman Pro active'; ptStatus.style.color = 'var(--green)'; }
-  } else if (ptStatus) {
-    ptStatus.textContent = 'No token — subscribe at wingman-trade.com';
-  }
-  if (apiKey)   document.getElementById('s-claude-key').value  = apiKey.slice(0,10)+'...';
-  if (tdKey)    document.getElementById('s-td-key').value    = tdKey.slice(0,10)+'...';
-  if (grokKey)   { const gel = document.getElementById('s-grok-key');   if(gel) gel.value = grokKey.slice(0,10)+'...'; }
-  if (geminiKey)  { const mel = document.getElementById('s-gemini-key');  if(mel) mel.value = geminiKey.slice(0,10)+'...'; }
-  if (finnhubKey && finnhubKey !== FINNHUB_KEY_BUILTIN) {
-    // User has their own Finnhub key stored — no field to prefill (field removed from settings)
-  }
+
   renderAlerts();
   if (priceAlerts.filter(a=>!a.triggered).length) startAlertChecking();
 });
@@ -3669,32 +3602,14 @@ function enterFree() {
 }
 
 function saveKeys() {
-  const ck = document.getElementById('claude-key-input').value.trim();
-  const tk = ''; // Twelve Data removed — metals.live used instead
-  const gk = document.getElementById('grok-key-input')?.value.trim() || '';
-  if (ck && !ck.startsWith('sk-ant')) { toast('❌ Claude key looks invalid'); return; }
-  if (ck) { apiKey = ck; localStorage.setItem('wm_claude', ck); }
-  if (tk) { tdKey  = tk; localStorage.setItem('wm_td',     tk); }
-  if (gk) { grokKey = gk; localStorage.setItem('wm_grok',  gk); }
   launchApp();
   toast('✅ Welcome to Wingman!');
 }
 
 function saveSettings() {
-  const ck = document.getElementById('s-claude-key').value.trim();
-  const tk = document.getElementById('s-td-key').value.trim();
-  const gk = document.getElementById('s-grok-key')?.value.trim()   || '';
-  const mk = document.getElementById('s-gemini-key')?.value.trim() || '';
-  if (ck && !ck.includes('...')) { apiKey    = ck; localStorage.setItem('wm_claude',  ck); }
-  if (tk && !tk.includes('...')) { tdKey     = tk; localStorage.setItem('wm_td',      tk); }
-  if (gk && !gk.includes('...')) { grokKey   = gk; localStorage.setItem('wm_grok',    gk); }
-  if (mk && !mk.includes('...')) { geminiKey = mk; localStorage.setItem('wm_gemini',  mk); }
-  const pt = document.getElementById('s-pro-token')?.value.trim() || '';
-  if (pt && !pt.includes('...')) { proToken = pt; localStorage.setItem('wm_pro_token', pt); }
   clearTimeout(priceRefreshTimer);
   fetchLivePrices();
-  updateTrialBadge(); // hide badge once Claude key or Pro token is saved
-  if (proToken) { toast('✅ Wingman Pro activated!'); } else { toast('✅ Keys saved'); }
+  toast('✅ Settings saved');
 }
 
 function saveAccountSettings() {
@@ -3962,7 +3877,7 @@ async function fetchLivePrices() {
 
   // ── Step 2: Non-crypto → Twelve Data (if key present and not exhausted) ──
   let tdFailed = false;
-  if (nonCryptoPairs.length && tdKey && !tdExhausted) {
+  if (nonCryptoPairs.length && !tdExhausted) {
     const symbols = nonCryptoPairs.map(p => TD_SYMBOLS[p]).filter(Boolean).join(',');
     try {
       const res = await fetch(`${WORKER_URL}/v1/candles?symbol=${symbols}&interval=1day&outputsize=1`);
@@ -3990,8 +3905,6 @@ async function fetchLivePrices() {
       console.warn('TwelveData fetch failed:', e.message);
       tdFailed = true;
     }
-  } else if (nonCryptoPairs.length && !tdKey) {
-    tdFailed = true; // No key — try exchangerate.host for forex
   }
 
   // ── Step 3: exchangerate.host fallback for forex pairs (commercial OK) ──
@@ -4008,10 +3921,7 @@ async function fetchLivePrices() {
       // Pairs not covered by exchangerate.host (metals, indices, energy) — show dashes
       // with a note to add Twelve Data key
       const uncovered = nonCryptoPairs.filter(p => !erResults[p]);
-      if (uncovered.length && !tdKey) {
-        const mStamp = document.getElementById('mobile-price-stamp');
-        if (mStamp) mStamp.textContent = 'Add Twelve Data key for full prices';
-      }
+
     } catch(e) {
       console.warn('Price fallback failed:', e.message);
     }
@@ -4072,7 +3982,7 @@ async function fetchCandles(symbol, interval, outputsize) {
   }
 
   // 2. Twelve Data (if key present and not exhausted)
-  if (tdKey && !tdExhausted) {
+  if (!tdExhausted) {
     try {
       const sym = TD_SYMBOLS[symbol] || symbol;
       const url = `${WORKER_URL}/v1/candles?symbol=${sym}&interval=${iv}&outputsize=${outputsize}`;
@@ -4245,7 +4155,7 @@ function renderScanResults(results) {
       ${r.riskWarning ? `<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:var(--r-sm);padding:10px 13px;margin-bottom:10px;font-size:12px;color:#ff9999;">🚨 ${r.riskWarning}</div>` : ''}
 
       <!-- Grok Sentiment (shown right after verdict) -->
-      ${r.grokSentiment ? renderGrokCard(r.grokSentiment) : (grokKey ? '' : '<div style="background:var(--purple-dim);border:1px solid #7C3AED33;border-radius:var(--r-sm);padding:10px 14px;margin-bottom:12px;font-size:11px;color:#A78BFA;">💜 Add a <strong>Grok</strong> or free <strong>Gemini Flash</strong> key in Settings to unlock live market sentiment. Gemini is free (1,500/day) — get it at <a href="https://aistudio.google.com" target="_blank" style="color:var(--blue);">aistudio.google.com</a></div>')}
+      ${r.grokSentiment ? renderGrokCard(r.grokSentiment) : ''}
 
       <!-- Trend -->
       <div class="card">
@@ -4671,39 +4581,7 @@ async function refreshTradeBehaviourReview() {
     return;
   }
 
-  if (!apiKey) {
-    // Offline summary without API
-    const wins   = allTrades.filter(t => t.pnl > 0).length;
-    const losses = allTrades.filter(t => t.pnl < 0).length;
-    const pnl    = allTrades.reduce((s,t) => s + t.pnl, 0);
-    const lots   = allTrades.map(t => t.lot || 0);
-    const avgLot = lots.length ? (lots.reduce((a,b) => a+b,0)/lots.length).toFixed(2) : '—';
-    // Detect lot escalation after losses
-    let escalationDetected = false;
-    for (let i = 1; i < allTrades.length; i++) {
-      if (allTrades[i-1].pnl < 0 && allTrades[i].lot > allTrades[i-1].lot * 1.5) {
-        escalationDetected = true; break;
-      }
-    }
-    card.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
-        <div style="background:var(--bg2);border-radius:6px;padding:8px;text-align:center;">
-          <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--green);">${wins}</div>
-          <div style="font-family:var(--font-mono);font-size:7px;color:var(--text3);margin-top:2px;">WINS</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:6px;padding:8px;text-align:center;">
-          <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--red);">${losses}</div>
-          <div style="font-family:var(--font-mono);font-size:7px;color:var(--text3);margin-top:2px;">LOSSES</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:6px;padding:8px;text-align:center;">
-          <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:${pnl>=0?'var(--green)':'var(--red)'};">${pnl>=0?'+':''}$${pnl.toFixed(0)}</div>
-          <div style="font-family:var(--font-mono);font-size:7px;color:var(--text3);margin-top:2px;">NET P&L</div>
-        </div>
-      </div>
-      ${escalationDetected ? '<div style="background:var(--red-dim);border-radius:6px;padding:10px;margin-bottom:8px;font-size:12px;color:var(--text2);line-height:1.55;">⚠️ <strong style="color:var(--red);">Size escalation after loss detected.</strong> You increased lot size after a losing trade. This is a high-risk pattern. Keep lot size fixed regardless of previous results.</div>' : ''}
-      <div style="font-size:11px;color:var(--text3);">Avg lot size: <strong style="color:var(--text2);">${avgLot}</strong> · Add your analysis key in Settings for a full behavioural report.</div>`;
-    return;
-  }
+
 
   card.innerHTML = '<div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Analysing your trading behaviour...</div>';
   if (btn) btn.disabled = true;
@@ -5266,7 +5144,7 @@ function updateDailyLimit() {
 // ═══════════════════════════════════════════
 function clearAll() {
   if (confirm('Delete all trades and reset everything?')) {
-    localStorage.clear(); apiKey=''; tdKey=''; trades=[];
+    localStorage.clear(); trades=[];
     document.getElementById('app').style.display='none';
     document.getElementById('setup-screen').style.display='flex';
     toast('All data cleared');
@@ -5288,40 +5166,16 @@ window.addEventListener('resize', () => {
 
 
 // ═══════════════════════════════════════════
-// GROK STATE
+// SENTIMENT — all routed server-side
 // ═══════════════════════════════════════════
-let grokKey    = localStorage.getItem('wm_grok')    || '';
-let finnhubKey = localStorage.getItem('wm_finnhub') || FINNHUB_KEY_BUILTIN;
-let geminiKey  = localStorage.getItem('wm_gemini')  || '';
+const finnhubKey = FINNHUB_KEY_BUILTIN; // kept for legacy references; key lives in backend
 
-// ═══════════════════════════════════════════
-// GEMINI FLASH SENTIMENT (free alternative to Grok)
-// ═══════════════════════════════════════════
-async function runGeminiSentiment(pairs) {
-  if (!geminiKey) return null;
-  const prompt = `You are a financial markets sentiment analyst. Analyse current market sentiment for: ${pairs.join(', ')}. Today is ${new Date().toUTCString()}. For each instrument provide: sentiment score (-100 to +100), dominant narrative (2-3 sentences), key themes (3-5 tags), smart money signals, retail sentiment (contrarian indicator), upcoming risk events, and correlation context. Respond ONLY with raw JSON matching this format: {"sentiments":[{"pair":"XAUUSD","score":65,"narrative":"...","themes":["tag1","tag2"],"smartMoney":"...","retailSentiment":"...","riskEvents":["event1"],"correlationContext":"..."}]}`;
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({ contents:[{ parts:[{ text:prompt }] }], generationConfig:{ temperature:0.3, maxOutputTokens:1500 } })
-    });
-    if (!res.ok) { console.warn('Gemini error:', res.status); return null; }
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    return extractJSON(text);
-  } catch(e) { console.warn('Gemini fetch failed:', e); return null; }
-}
-
-// Returns sentiment from whichever key is available (Grok preferred, Gemini fallback)
 function sentimentPromptFor(pairs) {
   return `You are a financial markets sentiment analyst. Analyse current market sentiment for: ${pairs.join(', ')}. Today is ${new Date().toUTCString()}. For each instrument provide: sentiment score (-100 to +100), dominant narrative (2-3 sentences), key themes (3-5 tags), smart money signals, retail sentiment, upcoming risk events, correlation context. Respond ONLY with raw JSON: {"sentiments":[{"pair":"XAUUSD","score":65,"narrative":"...","themes":["tag1"],"smartMoney":"...","retailSentiment":"...","riskEvents":["event1"],"correlationContext":"..."}]}`;
 }
 
 async function runSentimentAnalysis(pairs) {
-  if (grokKey)   return runGrokSentiment(pairs);
-  if (geminiKey) return runGeminiSentiment(pairs);
-  return null;
+  return runGrokSentiment(pairs);
 }
 
 const GROK_SYSTEM = `You are a financial markets sentiment analyst with access to real-time social media, news, and market narrative data. You specialise in reading what professional traders, analysts and institutions are saying about financial markets RIGHT NOW.
@@ -5340,12 +5194,11 @@ Respond ONLY with raw JSON. No markdown. Start { end }.
 Format: {"sentiments":[{"pair":"XAUUSD","score":65,"narrative":"Gold is catching strong safe-haven bids as markets price in Fed rate cuts and geopolitical uncertainty persists. The DXY weakness is amplifying the move.","themes":["Fed cut bets","DXY weakness","Geopolitical risk","Safe haven demand"],"smartMoney":"Institutions accumulating on dips — COT data shows net long positions near multi-month highs","retailSentiment":"Retail heavily long — contrarian risk to the upside may be fading","riskEvents":["US CPI Thursday","Fed speakers Wednesday","Middle East developments"],"correlationContext":"Inverse DXY correlation tight. Watch EURUSD for dollar direction signal."}]}`;
 
 async function runGrokSentiment(pairs) {
-  if (!grokKey) return null;
   const prompt = `Analyse current market sentiment for: ${pairs.join(', ')}. Today is ${new Date().toUTCString()}. Provide full sentiment analysis for each instrument. JSON only.`;
   try {
-    const res = await fetch('https://api.x.ai/v1/chat/completions', {
+    const res = await fetch('/api/grok', {
       method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${grokKey}` },
+      headers:{ 'Content-Type':'application/json' },
       body:JSON.stringify({
         model:'grok-3',
         max_tokens:2000,
@@ -5371,7 +5224,7 @@ function renderGrokCard(sentiment) {
   const scoreLabel = score > 60 ? 'BULLISH' : score > 20 ? 'LEANING BULL' : score < -60 ? 'BEARISH' : score < -20 ? 'LEANING BEAR' : 'NEUTRAL';
   return `<div class="grok-card">
     <div class="grok-header">
-      <div class="grok-badge">${grokKey ? "GROK" : "GEMINI"} · SENTIMENT</div>
+      <div class="grok-badge">AI SENTIMENT</div>
       <div style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:${scoreColor};">${score > 0 ? '+' : ''}${score}</div>
       <div style="font-family:var(--font-mono);font-size:9px;color:${scoreColor};background:${scoreColor}18;border-radius:4px;padding:2px 7px;">${scoreLabel}</div>
     </div>
@@ -5621,47 +5474,33 @@ Time: ${new Date().toUTCString()}
 ${preEventWarnings ? preEventWarnings + '\n' : ''}${marketData}
 Provide full multi-timeframe analysis with 15M scalp setups, plain English explanations, and copy-ready trade summaries. JSON only.`;
 
-  // Free scan banner
-  if (usingFree) {
-    const rem = getFreeScansRemaining();
-    const banner = document.createElement('div');
-    banner.style.cssText = 'background:var(--gold-dim);border:1px solid var(--gold);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-family:var(--font-mono);font-size:10px;color:var(--gold);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;';
-    // All scans free — no banner needed
-    resultsDiv.appendChild(banner);
-  }
+
 
   try {
     let text = '';
     let grokSentiments = [];
 
-    if (usingFree) {
-      // ── FREE PATH: Gemini 2.5 Flash ─────────────────────────────────────
-      text = await callGeminiForScan(SCAN_SYSTEM, prompt);
-      incrementFreeScans();
-      // No sentiment on free tier — keep it clean
-    } else {
-      // ── PAID PATH: Claude + Grok/Gemini in parallel ──────────────────────
-      const [claudeRes, sentRes] = await Promise.allSettled([
-        fetch(WORKER_URL + '/v1/scan', {
-          method:'POST',
-          headers: workerHeaders(),
-          body:JSON.stringify({ system:SCAN_SYSTEM, messages:[{role:'user',content:prompt}] })
-        }),
-        proToken ? fetch(WORKER_URL + '/v1/sentiment', { method:'POST', headers:workerHeaders(), body:JSON.stringify({ prompt: sentimentPromptFor(pairs) }) }).then(r=>r.json()).catch(()=>null) : Promise.resolve(null)
-      ]);
+    // ── Market Scan + Sentiment in parallel ──────────────────────
+    const [claudeRes, sentRes] = await Promise.allSettled([
+      fetch(WORKER_URL + '/v1/scan', {
+        method:'POST',
+        headers: workerHeaders(),
+        body:JSON.stringify({ system:SCAN_SYSTEM, messages:[{role:'user',content:prompt}] })
+      }),
+      fetch(WORKER_URL + '/v1/sentiment', { method:'POST', headers:workerHeaders(), body:JSON.stringify({ prompt: sentimentPromptFor(pairs) }) }).then(r=>r.json()).catch(()=>null)
+    ]);
 
-      if (claudeRes.status === 'rejected') throw new Error('Claude API error: ' + claudeRes.reason);
-      const claudeResp = claudeRes.value;
-      if (!claudeResp.ok) {
-        const e = await claudeResp.json().catch(()=>({}));
-        throw new Error(e?.error?.message || 'Claude API error ' + claudeResp.status);
-      }
-      const claudeData = await claudeResp.json();
-      text = claudeData.content?.find(b=>b.type==='text')?.text || '';
-
-      const sentData = sentRes.status === 'fulfilled' ? sentRes.value : null;
-      grokSentiments = sentData?.sentiments || [];
+    if (claudeRes.status === 'rejected') throw new Error('Scan error: ' + claudeRes.reason);
+    const claudeResp = claudeRes.value;
+    if (!claudeResp.ok) {
+      const e = await claudeResp.json().catch(()=>({}));
+      throw new Error(e?.error?.message || 'Scan error ' + claudeResp.status);
     }
+    const claudeData = await claudeResp.json();
+    text = claudeData.content?.find(b=>b.type==='text')?.text || '';
+
+    const sentData = sentRes.status === 'fulfilled' ? sentRes.value : null;
+    grokSentiments = sentData?.sentiments || [];
 
     const parsed = extractJSON(text);
     if (!parsed) throw new Error('Could not read AI response. Try again.');
@@ -5680,15 +5519,6 @@ Provide full multi-timeframe analysis with 15M scalp setups, plain English expla
     if (voiceRow) voiceRow.style.display = 'block';
     fetchLivePrices();
 
-    // After free scans exhausted, nudge (don't block)
-    if (usingFree && getFreeScansRemaining() === 0) {
-      setTimeout(() => {
-        const nudge = document.createElement('div');
-        nudge.style.cssText = 'background:var(--bg2);border:1px solid var(--red);border-radius:8px;padding:10px 14px;margin-top:10px;font-size:12px;color:var(--text2);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;';
-        // All scans free — no nudge
-        resultsDiv.appendChild(nudge);
-      }, 800);
-    }
 
   } catch(err) {
     errDiv.innerHTML = '⚠️ ' + err.message;
@@ -6041,12 +5871,12 @@ async function fetchNewsCalendar() {
     renderNewsCalendar('all');
   } catch(e) {
     // Fallback: fetch today's key events
-    if (apiKey) {
+    {
       body.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:8px 0;" class="pulse">Live feed unavailable — loading key events...</div>';
       try {
-        const res2 = await fetch('https://api.anthropic.com/v1/messages', {
+        const res2 = await fetch('/api/claude', {
           method:'POST',
-          headers:{ 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+          headers:{ 'Content-Type':'application/json' },
           body:JSON.stringify({
             model:'claude-haiku-4-5-20251001', max_tokens:800,
             messages:[{role:'user',content:`List the key economic events for ${new Date().toDateString()} that forex and commodity traders should know about. Include time (UTC), event name, country, and impact (high/medium/low). JSON only: {"events":[{"time":"13:30 UTC","event":"US Non-Farm Payrolls","country":"US","impact":"high","note":"Major USD mover"}]}`}]
@@ -6058,10 +5888,8 @@ async function fetchNewsCalendar() {
         allNewsItems = (parsed?.events || []);
         renderNewsCalendar('all');
       } catch(e2) {
-        body.innerHTML = '<div style="font-size:12px;color:var(--text3);">Could not load calendar. Add a Twelve Data key for live data.</div>';
+        body.innerHTML = '<div style="font-size:12px;color:var(--text3);">Could not load calendar. Try again later.</div>';
       }
-    } else {
-      body.innerHTML = '<div style="font-size:12px;color:var(--text3);">Calendar feed unavailable. Try again later.</div>';
     }
   }
   if (btn) btn.textContent = '↻ Refresh';
@@ -6913,7 +6741,6 @@ async function loadEventsForDate(date) {
   // (e.g. a "CPI" event on TradingView gets upgraded to HIGH if Finnhub
   // has breaking headlines mentioning the same topic today)
   try {
-    const key = finnhubKey || FINNHUB_KEY_BUILTIN;
     const newsRes = await fetch(`${WORKER_URL}/v1/news?category=general`, { signal: AbortSignal.timeout(6000) });
     if (newsRes.ok) {
       const articles = await newsRes.json();
@@ -7123,10 +6950,9 @@ function renderScanNewsStrip(events) {
 async function fetchSpeakerAlerts() {
   const strip = document.getElementById('cal-speaker-strip');
   if (!strip) return;
-  const key = finnhubKey || FINNHUB_KEY_BUILTIN;
   const keywords = ['powell','lagarde','trump','fed','ecb','boe','opec','g7','fomc'];
   try {
-    const res = await fetch('${WORKER_URL}/v1/news?category=general');
+    const res = await fetch(`${WORKER_URL}/v1/news?category=general`);
     if (!res.ok) return;
     const articles = await res.json();
 
@@ -7158,13 +6984,11 @@ async function fetchFinnhubNews(category) {
   const body = document.getElementById('cal-news-body');
   const placeholder = document.getElementById('cal-news-placeholder');
   if (!body) return;
-  // Always use effective Finnhub key (built-in or user-supplied)
-  const key = finnhubKey || FINNHUB_KEY_BUILTIN;
   if (placeholder) placeholder.style.display = 'none';
   body.innerHTML = '<div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Fetching headlines...</div>';
 
   try {
-    const res = await fetch('${WORKER_URL}/v1/news?category=general&minId=0');
+    const res = await fetch(`${WORKER_URL}/v1/news?category=general&minId=0`);
     if (!res.ok) throw new Error('Finnhub ' + res.status);
     const articles = await res.json();
 
