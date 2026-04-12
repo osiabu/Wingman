@@ -7973,105 +7973,563 @@ function atUpdateCountdown() {
   el.textContent = `${m}m ${String(s).padStart(2,'0')}s`;
 }
 
-// ── AI Market Scan ────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// MULTI-FACTOR INTELLIGENCE ENGINE — DATA COLLECTION LAYER
+// Pulls real candle data from Binance REST API (no key required)
+// Calculates RSI, MACD, EMA, Bollinger Bands, Volume Profile in-browser
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Fetch Binance klines (OHLCV) for a given interval ────────────────────────
+async function atFetchKlines(interval, limit = 100) {
+  const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`Binance klines ${interval} failed: ${res.status}`);
+  const raw = await res.json();
+  return raw.map(k => ({
+    t: k[0], open: parseFloat(k[1]), high: parseFloat(k[2]),
+    low: parseFloat(k[3]), close: parseFloat(k[4]),
+    volume: parseFloat(k[5]), trades: parseInt(k[8])
+  }));
+}
+
+// ── Fetch Binance 24h ticker (volume, price change, high/low) ─────────────────
+async function atFetch24hTicker() {
+  const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT', { signal: AbortSignal.timeout(6000) });
+  if (!res.ok) throw new Error('Binance ticker failed');
+  return await res.json();
+}
+
+// ── Fetch Binance order book depth (bid/ask pressure) ────────────────────────
+async function atFetchOrderBook() {
+  const res = await fetch('https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=20', { signal: AbortSignal.timeout(6000) });
+  if (!res.ok) throw new Error('Binance depth failed');
+  const d = await res.json();
+  const bidVol = d.bids.reduce((s, b) => s + parseFloat(b[1]), 0);
+  const askVol = d.asks.reduce((s, a) => s + parseFloat(a[1]), 0);
+  const ratio  = bidVol / (bidVol + askVol); // >0.5 = buy pressure
+  const topBid = parseFloat(d.bids[0][0]);
+  const topAsk = parseFloat(d.asks[0][0]);
+  return { bidVol, askVol, ratio, spread: topAsk - topBid, topBid, topAsk };
+}
+
+// ── Fetch recent crypto/macro news headlines via Finnhub ──────────────────────
+async function atFetchCryptoNews() {
+  try {
+    const res = await fetch(`${WORKER_URL}/news?category=crypto&minId=0`, { signal: AbortSignal.timeout(7000) });
+    if (!res.ok) return [];
+    const articles = await res.json();
+    return articles
+      .filter(a => a.headline && a.datetime)
+      .sort((a, b) => b.datetime - a.datetime)
+      .slice(0, 8)
+      .map(a => ({
+        headline: a.headline,
+        summary: (a.summary || '').slice(0, 120),
+        age: Math.round((Date.now() - a.datetime * 1000) / 60000)
+      }));
+  } catch { return []; }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TECHNICAL INDICATOR CALCULATORS (pure JS, no library needed)
+// ════════════════════════════════════════════════════════════════════════════
+
+function atCalcEMA(closes, period) {
+  const k = 2 / (period + 1);
+  let ema = closes[0];
+  for (let i = 1; i < closes.length; i++) ema = closes[i] * k + ema * (1 - k);
+  return ema;
+}
+
+function atCalcEMASeries(closes, period) {
+  const k = 2 / (period + 1);
+  const result = [closes[0]];
+  for (let i = 1; i < closes.length; i++) result.push(closes[i] * k + result[i-1] * (1 - k));
+  return result;
+}
+
+function atCalcRSI(closes, period = 14) {
+  if (closes.length < period + 1) return null;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff >= 0) gains += diff; else losses -= diff;
+  }
+  let avgGain = gains / period, avgLoss = losses / period;
+  for (let i = period + 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(diff, 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-diff, 0)) / period;
+  }
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
+}
+
+function atCalcMACD(closes) {
+  if (closes.length < 35) return null;
+  const ema12Series = atCalcEMASeries(closes, 12);
+  const ema26Series = atCalcEMASeries(closes, 26);
+  const macdSeries  = ema12Series.map((v, i) => v - ema26Series[i]);
+  const macdRecent  = macdSeries.slice(-9);
+  const signal      = atCalcEMA(macdRecent, 9);
+  const macdValue   = macdSeries[macdSeries.length - 1];
+  const histogram   = macdValue - signal;
+  const prevHisto   = macdSeries[macdSeries.length - 2] - atCalcEMA(macdSeries.slice(-10, -1), 9);
+  return { macd: macdValue, signal, histogram, histoRising: histogram > prevHisto };
+}
+
+function atCalcBollingerBands(closes, period = 20, stdDev = 2) {
+  if (closes.length < period) return null;
+  const slice = closes.slice(-period);
+  const mean  = slice.reduce((s, v) => s + v, 0) / period;
+  const variance = slice.reduce((s, v) => s + (v - mean) ** 2, 0) / period;
+  const sd    = Math.sqrt(variance);
+  return { upper: mean + stdDev * sd, middle: mean, lower: mean - stdDev * sd, bandwidth: (sd * 2 * stdDev) / mean * 100 };
+}
+
+function atCalcATR(candles, period = 14) {
+  if (candles.length < period + 1) return null;
+  const trs = [];
+  for (let i = 1; i < candles.length; i++) {
+    const tr = Math.max(
+      candles[i].high - candles[i].low,
+      Math.abs(candles[i].high - candles[i-1].close),
+      Math.abs(candles[i].low  - candles[i-1].close)
+    );
+    trs.push(tr);
+  }
+  return trs.slice(-period).reduce((s, v) => s + v, 0) / period;
+}
+
+function atCalcVWAP(candles) {
+  let cumTPV = 0, cumVol = 0;
+  for (const c of candles) {
+    const tp = (c.high + c.low + c.close) / 3;
+    cumTPV += tp * c.volume;
+    cumVol += c.volume;
+  }
+  return cumVol ? cumTPV / cumVol : null;
+}
+
+function atDetectTrend(closes) {
+  // Simple: compare EMA20 vs EMA50 vs EMA200
+  const ema20  = closes.length >= 20  ? atCalcEMA(closes.slice(-20),  20)  : null;
+  const ema50  = closes.length >= 50  ? atCalcEMA(closes.slice(-50),  50)  : null;
+  const ema200 = closes.length >= 100 ? atCalcEMA(closes.slice(-100), 200) : null;
+  const price  = closes[closes.length - 1];
+  let bull = 0, bear = 0;
+  if (ema20  && price > ema20)  bull++; else if (ema20)  bear++;
+  if (ema50  && price > ema50)  bull++; else if (ema50)  bear++;
+  if (ema200 && price > ema200) bull++; else if (ema200) bear++;
+  if (ema20 && ema50 && ema20 > ema50) bull++; else if (ema20 && ema50) bear++;
+  return { bull, bear, ema20, ema50, ema200, bias: bull > bear ? 'BULLISH' : bear > bull ? 'BEARISH' : 'NEUTRAL' };
+}
+
+// ── Temporal / session scoring ────────────────────────────────────────────────
+function atGetSessionScore() {
+  const now  = new Date();
+  const utcH = now.getUTCHours();
+  const utcM = now.getUTCMinutes();
+  const day  = now.getUTCDay(); // 0=Sun, 1=Mon ... 6=Sat
+  const timeDecimal = utcH + utcM / 60;
+
+  // Session quality (0-10): research shows 11:00-16:00 UTC optimal, late night worst
+  let sessionScore = 5;
+  if (timeDecimal >= 11 && timeDecimal <= 16) sessionScore = 10;      // London + NY overlap: best
+  else if (timeDecimal >= 8 && timeDecimal <= 11) sessionScore = 8;   // London open
+  else if (timeDecimal >= 13 && timeDecimal <= 21) sessionScore = 8;  // NY session
+  else if (timeDecimal >= 1 && timeDecimal <= 5)  sessionScore = 4;   // Asian quiet
+  else if (timeDecimal >= 22 || timeDecimal < 1)  sessionScore = 3;   // Late night dead zone
+
+  // Day-of-week quality: research shows Monday historically strong for BTC
+  // Saturday 15-17 UTC peak liquidity; avoid Sunday night / Monday early for entries
+  const dayScores = { 0: 6, 1: 9, 2: 8, 3: 8, 4: 7, 5: 8, 6: 7 }; // Sun=6, Mon=9, Tue=8...
+  const dayScore  = dayScores[day];
+
+  const dayNames  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const session   = timeDecimal >= 8 && timeDecimal <= 16 ? 'London'
+                  : timeDecimal >= 13 && timeDecimal <= 21 ? 'New York'
+                  : timeDecimal >= 0 && timeDecimal <= 8 ? 'Asia'
+                  : 'Off-Hours';
+
+  return {
+    sessionScore, dayScore, combined: Math.round((sessionScore + dayScore) / 2),
+    day: dayNames[day], session,
+    isOptimalTime: sessionScore >= 8 && dayScore >= 7,
+    note: sessionScore < 5 ? '⚠️ Low-liquidity window — elevated SKIP threshold' : ''
+  };
+}
+
+// ── Volume trend analysis ────────────────────────────────────────────────────
+function atAnalyseVolume(candles) {
+  if (candles.length < 20) return { trend: 'UNKNOWN', ratio: 1 };
+  const recent  = candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+  const average = candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+  const ratio   = recent / average;
+  return {
+    trend: ratio > 1.3 ? 'SURGING' : ratio > 1.0 ? 'ABOVE_AVG' : ratio > 0.7 ? 'NORMAL' : 'WEAK',
+    ratio: parseFloat(ratio.toFixed(2)),
+    recent: Math.round(recent),
+    average: Math.round(average)
+  };
+}
+
+// ── Support / Resistance detection (pivot highs/lows) ────────────────────────
+function atFindKeyLevels(candles) {
+  const price   = candles[candles.length - 1].close;
+  const highs   = candles.map(c => c.high);
+  const lows    = candles.map(c => c.low);
+  const pivotH  = [];
+  const pivotL  = [];
+
+  for (let i = 2; i < candles.length - 2; i++) {
+    if (highs[i] > highs[i-1] && highs[i] > highs[i-2] && highs[i] > highs[i+1] && highs[i] > highs[i+2])
+      pivotH.push(highs[i]);
+    if (lows[i] < lows[i-1] && lows[i] < lows[i-2] && lows[i] < lows[i+1] && lows[i] < lows[i+2])
+      pivotL.push(lows[i]);
+  }
+
+  const nearResistance = pivotH.filter(h => h > price).sort((a, b) => a - b).slice(0, 3);
+  const nearSupport    = pivotL.filter(l => l < price).sort((a, b) => b - a).slice(0, 3);
+
+  // Distance to nearest S/R as % of price
+  const distToRes = nearResistance[0] ? ((nearResistance[0] - price) / price * 100) : null;
+  const distToSup = nearSupport[0]    ? ((price - nearSupport[0]) / price * 100)    : null;
+
+  return { nearResistance, nearSupport, distToRes, distToSup };
+}
+
+// ── News sentiment scoring (keyword based) ────────────────────────────────────
+function atScoreNews(articles) {
+  const bullKeywords = ['rally', 'surge', 'bullish', 'breakout', 'all-time high', 'ath', 'buy',
+    'etf inflow', 'institutional', 'adoption', 'halving', 'upgrade', 'approved', 'reserve',
+    'blackrock', 'fidelity', 'accumulate', 'bottom', 'recovery', 'record'];
+  const bearKeywords = ['crash', 'dump', 'bearish', 'breakdown', 'sell-off', 'hack', 'ban',
+    'regulation', 'liquidation', 'fear', 'panic', 'outflow', 'war', 'conflict', 'sanction',
+    'seized', 'arrest', 'fraud', 'scam', 'bubble', 'correction', 'recession', 'inflation'];
+
+  let bull = 0, bear = 0;
+  articles.forEach(a => {
+    const text = (a.headline + ' ' + a.summary).toLowerCase();
+    // Weight recent news more heavily (< 60 min)
+    const weight = a.age < 60 ? 2 : 1;
+    bullKeywords.forEach(k => { if (text.includes(k)) bull += weight; });
+    bearKeywords.forEach(k => { if (text.includes(k)) bear += weight; });
+  });
+
+  const total = bull + bear;
+  const sentiment = total === 0 ? 'NEUTRAL'
+    : bull / total > 0.65 ? 'BULLISH'
+    : bear / total > 0.65 ? 'BEARISH'
+    : 'MIXED';
+
+  return { bull, bear, sentiment, articles: articles.slice(0, 4).map(a => `[${a.age}m ago] ${a.headline}`) };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MAIN SCAN ORCHESTRATOR
+// ════════════════════════════════════════════════════════════════════════════
 async function atRunScan() {
   if (atScanInProgress) return;
   atScanInProgress = true;
 
   const scanTime = new Date().toLocaleTimeString();
-  atAddLog('scan', `🧠 [${scanTime}] Scanning BTC/USD market…`);
-
-  // Badge flicker to "scanning"
-  const label = document.getElementById('at-engine-label');
+  const label    = document.getElementById('at-engine-label');
   if (label) label.textContent = 'SCANNING…';
+  atAddLog('scan', `🧠 [${scanTime}] Intelligence engine activated — collecting multi-factor data from Binance…`);
 
   try {
     const price = atCurrentPrice || livePriceCache['BTCUSD'];
     if (!price) {
-      atAddLog('skip', `⏳ No live price yet — scan skipped. Binance feed connecting…`);
+      atAddLog('skip', `⏳ No live price yet — scan aborted. Binance WebSocket connecting…`);
       atScanInProgress = false;
       if (label) label.textContent = 'ENGINE RUNNING';
       return;
     }
 
-    // Build context for AI
+    // ── STEP 1: Fetch raw market data in parallel ─────────────────────────
+    atAddLog('scan', `📡 Fetching: 1H candles · 4H candles · 1D candles · order book · 24h ticker · news…`);
+
+    const [klines1h, klines4h, klines1d, ticker24h, orderBook, newsArticles] = await Promise.allSettled([
+      atFetchKlines('1h', 100),
+      atFetchKlines('4h', 100),
+      atFetchKlines('1d', 100),
+      atFetch24hTicker(),
+      atFetchOrderBook(),
+      atFetchCryptoNews()
+    ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : null));
+
+    // ── STEP 2: Calculate indicators on each timeframe ────────────────────
+    const indicators = {};
+
+    if (klines1h) {
+      const closes1h = klines1h.map(c => c.close);
+      indicators['1H'] = {
+        rsi:     atCalcRSI(closes1h),
+        macd:    atCalcMACD(closes1h),
+        bb:      atCalcBollingerBands(closes1h),
+        atr:     atCalcATR(klines1h),
+        vwap:    atCalcVWAP(klines1h.slice(-24)),
+        trend:   atDetectTrend(closes1h),
+        volume:  atAnalyseVolume(klines1h),
+        levels:  atFindKeyLevels(klines1h),
+        lastClose: closes1h[closes1h.length - 1]
+      };
+    }
+
+    if (klines4h) {
+      const closes4h = klines4h.map(c => c.close);
+      indicators['4H'] = {
+        rsi:    atCalcRSI(closes4h),
+        macd:   atCalcMACD(closes4h),
+        bb:     atCalcBollingerBands(closes4h),
+        atr:    atCalcATR(klines4h),
+        trend:  atDetectTrend(closes4h),
+        volume: atAnalyseVolume(klines4h),
+        levels: atFindKeyLevels(klines4h)
+      };
+    }
+
+    if (klines1d) {
+      const closes1d = klines1d.map(c => c.close);
+      indicators['1D'] = {
+        rsi:   atCalcRSI(closes1d),
+        macd:  atCalcMACD(closes1d),
+        trend: atDetectTrend(closes1d),
+        atr:   atCalcATR(klines1d)
+      };
+    }
+
+    // ── STEP 3: Session + temporal context ───────────────────────────────
+    const session = atGetSessionScore();
+
+    // ── STEP 4: News sentiment ────────────────────────────────────────────
+    const news = newsArticles ? atScoreNews(newsArticles) : { sentiment: 'UNKNOWN', articles: [] };
+
+    // ── STEP 5: Order book pressure ───────────────────────────────────────
+    const obSummary = orderBook ? {
+      bidAskRatio: orderBook.ratio.toFixed(3),
+      pressure: orderBook.ratio > 0.55 ? 'BUY_PRESSURE' : orderBook.ratio < 0.45 ? 'SELL_PRESSURE' : 'BALANCED',
+      spread: orderBook.spread.toFixed(2)
+    } : { pressure: 'UNKNOWN' };
+
+    // ── STEP 6: 24h context ───────────────────────────────────────────────
+    const tickerSummary = ticker24h ? {
+      change24h: parseFloat(ticker24h.priceChangePercent).toFixed(2),
+      high24h: parseFloat(ticker24h.highPrice).toFixed(2),
+      low24h: parseFloat(ticker24h.lowPrice).toFixed(2),
+      volume24h: Math.round(parseFloat(ticker24h.volume)).toLocaleString(),
+      quoteVolume: Math.round(parseFloat(ticker24h.quoteVolume) / 1e6) + 'M USDT'
+    } : {};
+
+    // ── STEP 7: Account + position context ───────────────────────────────
     const openPosSummary = atPositions.length
-      ? atPositions.map(p => `${p.dir} ${p.lots}L @ $${p.entryPrice.toFixed(2)} (SL:${p.sl?p.sl.toFixed(2):'none'} TP:${p.tp?p.tp.toFixed(2):'none'})`).join('; ')
-      : 'None';
+      ? atPositions.map(p => `${p.dir} ${p.lots}L @ $${p.entryPrice.toFixed(2)} | SL:${p.sl?.toFixed(2)||'none'} TP:${p.tp?.toFixed(2)||'none'} | P&L:${((p.dir==='BUY'?price-p.entryPrice:p.entryPrice-price)*p.lots).toFixed(2)}`).join('\n')
+      : 'No open positions';
 
-    const recentHistory = atHistory.slice(0, 5).map(t =>
-      `${t.dir} ${t.lots}L closed @ $${t.closePrice?.toFixed(2)} P&L:${t.pnl>=0?'+':''}$${t.pnl?.toFixed(2)}`
-    ).join('; ') || 'No recent trades';
+    const recentTrades = atHistory.slice(0, 5).map(t =>
+      `${t.dir} ${t.lots}L | Entry:$${t.entryPrice?.toFixed(2)} Exit:$${t.closePrice?.toFixed(2)} | P&L:${t.pnl>=0?'+':''}$${t.pnl?.toFixed(2)} | ${t.closeReason?.slice(0,60)}`
+    ).join('\n') || 'No recent trades';
 
-    const accountState = `Balance: $${atAccount.balance.toFixed(2)} | Start: $${atAccount.startBalance.toFixed(2)}`;
-    const openCount    = atPositions.length;
+    const totalPnl  = atHistory.reduce((s, t) => s + (t.pnl || 0), 0);
+    const winRate   = atHistory.length ? Math.round(atHistory.filter(t => t.pnl > 0).length / atHistory.length * 100) : 0;
 
-    const systemPrompt = `You are Wingman's Autotrader Intelligence Engine — a professional algorithmic trading AI. 
-You trade BTC/USD on a simulated $100,000 account using a momentum + structure strategy.
-RULES:
-- You trade BTC/USD exclusively during auto scans (other instruments may be added manually).
-- Minimum lot size: 5 lots. Never go below 5 lots.
-- Leverage: 1:Unlimited (this is a simulator — no margin limits).
-- Maximum 3 concurrent open positions to manage risk.
-- Always set a Stop Loss and Take Profit on every trade.
-- Use a minimum 1:1.5 Risk:Reward ratio. Prefer 1:2 or better.
-- SL should be 0.5%–2% away from entry price for BTC.
-- TP should be 1%–4% away from entry price for BTC.
-- If market is ranging/choppy with no clear structure, output SKIP and explain why.
-- If you already have ${openCount} open position(s), you may still open a trade if conviction is very high (>80%), but prefer to manage existing positions first.
-- Your analysis should consider: price momentum, recent price action, round numbers, likely support/resistance, and risk management.
-You must respond ONLY with valid JSON. No markdown, no prose, just the JSON object.`;
+    // ── STEP 8: Build the AI intelligence brief ───────────────────────────
+    const ind1h = indicators['1H'];
+    const ind4h = indicators['4H'];
+    const ind1d = indicators['1D'];
 
-    const userPrompt = `Current BTC/USD price (Binance live): $${price.toFixed(2)}
-Account: ${accountState}
-Open positions (${openCount}): ${openPosSummary}
-Recent closed trades: ${recentHistory}
-Time: ${new Date().toUTCString()}
+    const technicalBrief = `
+=== MULTI-TIMEFRAME TECHNICAL ANALYSIS ===
 
-Analyse the current BTC/USD market and decide whether to open a BUY, SELL, or SKIP.
-Return this exact JSON:
+DAILY (1D) — Macro trend:
+  Trend bias: ${ind1d?.trend?.bias || 'N/A'} (Bull signals: ${ind1d?.trend?.bull || 0}/4, Bear: ${ind1d?.trend?.bear || 0}/4)
+  RSI(14): ${ind1d?.rsi?.toFixed(1) || 'N/A'} ${ind1d?.rsi > 70 ? '⚠️ OVERBOUGHT' : ind1d?.rsi < 30 ? '⚠️ OVERSOLD' : ''}
+  MACD: ${ind1d?.macd ? `${ind1d.macd.macd.toFixed(0)} | Hist: ${ind1d.macd.histogram.toFixed(0)} | ${ind1d.macd.histogram > 0 ? 'BULLISH' : 'BEARISH'} | Histo ${ind1d.macd.histoRising ? 'RISING ▲' : 'FALLING ▼'}` : 'N/A'}
+  ATR(14): $${ind1d?.atr?.toFixed(0) || 'N/A'}
+
+4-HOUR (4H) — Swing structure:
+  Trend bias: ${ind4h?.trend?.bias || 'N/A'} (Bull: ${ind4h?.trend?.bull || 0}/4, Bear: ${ind4h?.trend?.bear || 0}/4)
+  EMA20: $${ind4h?.trend?.ema20?.toFixed(0) || 'N/A'} | EMA50: $${ind4h?.trend?.ema50?.toFixed(0) || 'N/A'}
+  RSI(14): ${ind4h?.rsi?.toFixed(1) || 'N/A'} ${ind4h?.rsi > 70 ? '⚠️ OVERBOUGHT' : ind4h?.rsi < 30 ? '⚠️ OVERSOLD' : ''}
+  MACD: ${ind4h?.macd ? `Hist: ${ind4h.macd.histogram.toFixed(0)} | ${ind4h.macd.histogram > 0 ? 'BULLISH' : 'BEARISH'} | Histo ${ind4h.macd.histoRising ? 'RISING ▲' : 'FALLING ▼'}` : 'N/A'}
+  BB: Upper $${ind4h?.bb?.upper?.toFixed(0) || 'N/A'} | Mid $${ind4h?.bb?.middle?.toFixed(0) || 'N/A'} | Lower $${ind4h?.bb?.lower?.toFixed(0) || 'N/A'} | BW: ${ind4h?.bb?.bandwidth?.toFixed(1) || 'N/A'}%
+  Volume: ${ind4h?.volume?.trend || 'N/A'} (ratio vs avg: ${ind4h?.volume?.ratio || 'N/A'}x)
+  Key Resistance: ${ind4h?.levels?.nearResistance?.slice(0,2).map(v=>'$'+v.toFixed(0)).join(', ') || 'N/A'}
+  Key Support: ${ind4h?.levels?.nearSupport?.slice(0,2).map(v=>'$'+v.toFixed(0)).join(', ') || 'N/A'}
+  Distance to resistance: ${ind4h?.levels?.distToRes?.toFixed(2) || 'N/A'}% | Distance to support: ${ind4h?.levels?.distToSup?.toFixed(2) || 'N/A'}%
+
+1-HOUR (1H) — Entry timing:
+  Trend bias: ${ind1h?.trend?.bias || 'N/A'}
+  EMA20: $${ind1h?.trend?.ema20?.toFixed(0) || 'N/A'} | EMA50: $${ind1h?.trend?.ema50?.toFixed(0) || 'N/A'} | EMA200: $${ind1h?.trend?.ema200?.toFixed(0) || 'N/A'}
+  RSI(14): ${ind1h?.rsi?.toFixed(1) || 'N/A'} ${ind1h?.rsi > 70 ? '⚠️ OVERBOUGHT' : ind1h?.rsi < 30 ? '⚠️ OVERSOLD' : ''}
+  MACD: ${ind1h?.macd ? `Line: ${ind1h.macd.macd.toFixed(0)} | Signal: ${ind1h.macd.signal.toFixed(0)} | Hist: ${ind1h.macd.histogram.toFixed(0)} | ${ind1h.macd.histoRising ? 'RISING ▲' : 'FALLING ▼'}` : 'N/A'}
+  Bollinger Bands: Upper $${ind1h?.bb?.upper?.toFixed(0) || 'N/A'} | Mid $${ind1h?.bb?.middle?.toFixed(0) || 'N/A'} | Lower $${ind1h?.bb?.lower?.toFixed(0) || 'N/A'}
+  Price vs BB: ${price > (ind1h?.bb?.upper||Infinity) ? 'ABOVE UPPER (overbought zone)' : price < (ind1h?.bb?.lower||0) ? 'BELOW LOWER (oversold zone)' : 'INSIDE BANDS'}
+  VWAP (24h): $${ind1h?.vwap?.toFixed(0) || 'N/A'} | Price ${price > (ind1h?.vwap||0) ? 'ABOVE' : 'BELOW'} VWAP
+  Volume: ${ind1h?.volume?.trend || 'N/A'} (${ind1h?.volume?.ratio || 'N/A'}x avg)
+  ATR(14): $${ind1h?.atr?.toFixed(0) || 'N/A'} (volatility measure)
+  Key Resistance: ${ind1h?.levels?.nearResistance?.slice(0,3).map(v=>'$'+v.toFixed(0)).join(', ') || 'N/A'}
+  Key Support: ${ind1h?.levels?.nearSupport?.slice(0,3).map(v=>'$'+v.toFixed(0)).join(', ') || 'N/A'}
+
+=== ORDER BOOK (REAL-TIME) ===
+  Bid/Ask ratio: ${obSummary.bidAskRatio} | Pressure: ${obSummary.pressure}
+  Spread: $${obSummary.spread}
+
+=== 24-HOUR MARKET SNAPSHOT ===
+  Price change: ${tickerSummary.change24h}%
+  24h High: $${tickerSummary.high24h} | 24h Low: $${tickerSummary.low24h}
+  24h Volume: ${tickerSummary.volume24h} BTC (${tickerSummary.quoteVolume})
+
+=== SESSION & TEMPORAL CONTEXT ===
+  Day: ${session.day} | Session: ${session.session}
+  Liquidity score: ${session.sessionScore}/10 | Day-of-week score: ${session.dayScore}/10
+  Optimal trading window: ${session.isOptimalTime ? 'YES ✅' : 'NO ⚠️'}
+  ${session.note}
+
+=== NEWS & MACRO SENTIMENT ===
+  Sentiment: ${news.sentiment} (Bull signals: ${news.bull}, Bear signals: ${news.bear})
+  Recent headlines:
+  ${news.articles.join('\n  ') || 'No recent headlines'}
+
+=== CURRENT BTC PRICE ===
+  Live (Binance): $${price.toFixed(2)}
+
+=== ACCOUNT STATE ===
+  Balance: $${atAccount.balance.toFixed(2)} | Starting: $${atAccount.startBalance.toFixed(2)}
+  Net P&L: ${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)} | Win rate: ${winRate}% (${atHistory.length} trades)
+  Open positions (${atPositions.length}/3 max):
+  ${openPosSummary}
+
+=== RECENT CLOSED TRADES ===
+${recentTrades}`;
+
+    // ── STEP 9: Build system prompt with full rule set ────────────────────
+    const systemPrompt = `You are Wingman's Autotrader Intelligence Engine — an elite, professional-grade algorithmic trading AI for BTC/USD.
+
+You have been given a comprehensive multi-factor analysis brief compiled from:
+- Real Binance OHLCV candlestick data (1H, 4H, 1D timeframes)
+- Computed RSI, MACD, EMA, Bollinger Bands, ATR, VWAP, Volume Profile, Pivot S/R
+- Live order book bid/ask pressure
+- 24h market ticker data
+- Real-time crypto news sentiment scoring
+- Temporal session quality scoring (time of day + day of week liquidity research)
+
+YOUR DECISION FRAMEWORK — apply ALL of the following before deciding:
+
+1. MULTI-TIMEFRAME CONFLUENCE RULE:
+   - The Daily trend is the MASTER BIAS. Never go against a strong daily trend unless extremely oversold/overbought.
+   - The 4H structure confirms intermediate swing direction.
+   - The 1H provides entry timing and precision.
+   - Minimum 2/3 timeframes must agree for a trade. If only 1/3 agrees, SKIP.
+
+2. INDICATOR CONFLUENCE (require minimum 3 of these to agree):
+   - RSI: Avoid >72 for BUY entries; avoid <28 for SELL entries. Best entries: RSI 40-60 in a trend.
+   - MACD: Histogram rising = bullish momentum; falling = bearish. Crossovers are strong signals.
+   - Bollinger Bands: Price touching lower BB in uptrend = buy zone; touching upper BB in downtrend = sell zone. Avoid trading INTO the bands from outside.
+   - VWAP: Price above VWAP favours BUY; below favours SELL.
+   - EMA alignment: EMA20 > EMA50 > EMA200 = strong bull; inverse = strong bear.
+   - Volume: Volume should CONFIRM the move. Weak volume on breakouts = false signal, SKIP.
+
+3. ORDER BOOK: Strong BUY_PRESSURE (ratio > 0.55) supports BUY; SELL_PRESSURE supports SELL. BALANCED = lower conviction.
+
+4. NEWS / MACRO SENTIMENT: BEARISH news in context of bearish technicals = higher conviction SELL. BULLISH news in uptrend = higher conviction BUY. MIXED/UNKNOWN = reduce position size or SKIP.
+
+5. SESSION QUALITY: Low-liquidity sessions (score < 5) require 80%+ confidence to trade. Optimal sessions (score >= 8) allow 65%+ confidence threshold.
+
+6. KEY LEVEL RESPECT:
+   - Do NOT enter a BUY if price is within 0.5% of major resistance (insufficient room for TP).
+   - Do NOT enter a SELL if price is within 0.5% of major support.
+   - Best entries: BUY near support with room to resistance; SELL near resistance with room to support.
+
+7. RISK MANAGEMENT (NON-NEGOTIABLE):
+   - Minimum 5 lots per trade.
+   - SL: Place at nearest logical structure level (swing high/low, ATR-based). Range: 0.5%–2.5% from entry.
+   - TP: Minimum 1:1.8 R:R. Prefer 1:2.5 or better. TP at next key resistance (BUY) or support (SELL).
+   - Maximum 3 concurrent open positions. If already at 3, SKIP regardless of signal quality.
+   - If account drawdown > 15% from start: reduce conviction threshold to 85%, be very selective.
+
+8. SKIP CONDITIONS (immediately SKIP if any apply):
+   - Fewer than 2/3 timeframes agree on direction.
+   - Fewer than 3 indicators confirm the signal.
+   - Price is in the middle of Bollinger Bands with no clear direction.
+   - Volume is WEAK on a supposed breakout.
+   - News sentiment directly contradicts technical signal.
+   - Already 3 open positions.
+   - Low-liquidity session AND confidence below 80%.
+   - ATR is abnormally low (compression/no movement likely).
+   - RSI divergence present (price making new high but RSI falling, or vice versa).
+
+Be VERY selective. A high SKIP rate is correct behaviour. It is better to miss a trade than to take a low-quality one. Real professionals only trade the A+ setups.
+
+You must respond ONLY with valid JSON. No markdown, no prose, no explanation outside the JSON.`;
+
+    const userPrompt = `${technicalBrief}
+
+Based on ALL of the above data, make your trading decision.
+
+Return ONLY this exact JSON object:
 {
   "action": "BUY" | "SELL" | "SKIP",
-  "lots": <number, minimum 5>,
-  "sl": <stop loss price as number>,
-  "tp": <take profit price as number>,
-  "strategy": "<2-4 sentence plan explaining your entry rationale, key levels, and what you expect to happen>",
+  "lots": <number, minimum 5, scale up to 10 for very high conviction>,
+  "sl": <stop loss price as precise number, null if SKIP>,
+  "tp": <take profit price as precise number, null if SKIP>,
   "confidence": <integer 0-100>,
-  "skip_reason": "<if SKIP, explain why — otherwise null>"
+  "timeframe_alignment": "<which timeframes agree: e.g. '4H + 1H bullish, 1D neutral'>",
+  "indicators_confirming": ["<list of indicators that support your decision>"],
+  "primary_risk": "<biggest risk to this trade or reason this could fail>",
+  "strategy": "<3-5 sentence professional explanation: entry rationale, key levels used for SL/TP, what confirms the trade, what would invalidate it>",
+  "skip_reason": "<if SKIP: detailed explanation covering which confluence factors failed — otherwise null>"
 }`;
+
+    // ── STEP 10: Call Claude AI with full brief ───────────────────────────
+    atAddLog('scan', `🤖 Data collected. Sending ${technicalBrief.length} char brief to Claude intelligence engine…`);
 
     const res = await fetch(`${WORKER_URL}/claude`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-opus-4-6',
-        max_tokens: 600,
+        max_tokens: 900,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }]
       })
     });
 
     if (!res.ok) throw new Error('Claude API ' + res.status);
-    const data = await res.json();
-    const rawText = data.content?.[0]?.text || '';
+    const aiData  = await res.json();
+    const rawText = aiData.content?.[0]?.text || '';
 
     let decision;
     try {
       const clean = rawText.replace(/```json|```/g, '').trim();
       decision = JSON.parse(clean);
     } catch(e) {
-      throw new Error('Could not parse AI response: ' + rawText.slice(0, 120));
+      throw new Error('JSON parse failed: ' + rawText.slice(0, 200));
     }
 
     if (label) label.textContent = 'ENGINE RUNNING';
 
+    // ── STEP 11: Act on decision ──────────────────────────────────────────
     if (decision.action === 'SKIP') {
-      atAddLog('skip', `⏭️ [${scanTime}] SKIP — Confidence: ${decision.confidence}%\n${decision.skip_reason || 'No clear setup.'}`);
+      atAddLog('skip',
+        `⏭️ [${scanTime}] SKIP — Confidence: ${decision.confidence}%\n` +
+        `Timeframes: ${decision.timeframe_alignment || 'N/A'}\n` +
+        `REASON: ${decision.skip_reason || 'No clear confluence'}\n` +
+        `Primary risk noted: ${decision.primary_risk || 'N/A'}`
+      );
     } else if (decision.action === 'BUY' || decision.action === 'SELL') {
-      const lots = Math.max(AT_MIN_LOTS, parseFloat(decision.lots) || AT_MIN_LOTS);
-      atExecuteTrade(decision.action, lots, price, decision.sl, decision.tp, decision.strategy, decision.confidence);
+      if (atPositions.length >= 3) {
+        atAddLog('skip', `⏭️ [${scanTime}] AI wanted to ${decision.action} but max 3 positions already open — trade blocked.`);
+      } else {
+        const lots = Math.max(AT_MIN_LOTS, parseFloat(decision.lots) || AT_MIN_LOTS);
+        const confirming = (decision.indicators_confirming || []).join(', ');
+        const fullStrategy = `${decision.strategy}\n\nConfluence: ${decision.timeframe_alignment || 'N/A'}\nIndicators: ${confirming}\nPrimary risk: ${decision.primary_risk || 'N/A'}`;
+        atExecuteTrade(decision.action, lots, price, decision.sl, decision.tp, fullStrategy, decision.confidence);
+      }
     } else {
-      atAddLog('skip', `⚠️ AI returned unexpected action: ${decision.action}`);
+      atAddLog('skip', `⚠️ AI returned unexpected action: "${decision.action}"`);
     }
 
   } catch(err) {
