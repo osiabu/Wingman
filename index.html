@@ -2101,8 +2101,17 @@ select.input option { background:#111116; color:#E8E8F0; }
             <div id="at-total-pnl-display" style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--text);">$0.00</div>
           </div>
           <!-- Start / Stop engine -->
+          <!-- Main engine start/stop -->
           <button id="at-start-btn" onclick="atStartEngine()" style="background:linear-gradient(135deg,#00E87A,#00A855);border:none;border-radius:8px;padding:7px 14px;color:#000;font-family:var(--font-mono);font-size:10px;cursor:pointer;font-weight:800;white-space:nowrap;letter-spacing:0.5px;">▶ START</button>
           <button id="at-stop-btn" onclick="atStopEngine()" style="display:none;background:linear-gradient(135deg,#FF3D5A,#CC0022);border:none;border-radius:8px;padding:7px 14px;color:#fff;font-family:var(--font-mono);font-size:10px;cursor:pointer;font-weight:800;white-space:nowrap;letter-spacing:0.5px;">■ STOP</button>
+          <!-- Scalp engine separator -->
+          <div style="width:1px;height:22px;background:var(--border2);flex-shrink:0;"></div>
+          <!-- Scalp engine start/stop -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+            <button id="scalp-start-btn" onclick="scalpStartEngine()" style="background:linear-gradient(135deg,#A855F7,#6B21A8);border:none;border-radius:8px;padding:7px 14px;color:#fff;font-family:var(--font-mono);font-size:10px;cursor:pointer;font-weight:800;white-space:nowrap;letter-spacing:0.5px;">⚡ SCALP</button>
+            <button id="scalp-stop-btn" onclick="scalpStopEngine()" style="display:none;background:linear-gradient(135deg,#FF3D5A,#CC0022);border:none;border-radius:8px;padding:7px 14px;color:#fff;font-family:var(--font-mono);font-size:10px;cursor:pointer;font-weight:800;white-space:nowrap;letter-spacing:0.5px;">■ STOP SCALP</button>
+            <span id="scalp-countdown" style="font-family:var(--font-mono);font-size:7px;color:var(--purple);letter-spacing:1px;display:none;">next: —</span>
+          </div>
           <button onclick="atResetAccount()" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--text3);font-family:var(--font-mono);font-size:9px;cursor:pointer;">Reset</button>
         </div>
       </div>
@@ -2130,6 +2139,7 @@ select.input option { background:#111116; color:#E8E8F0; }
             <button class="at-panel-tab active" id="apt-positions" onclick="atPanelTab(this,'at-panel-positions')" style="flex:1;padding:9px 4px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;background:none;border:none;color:var(--gold);cursor:pointer;border-bottom:2px solid var(--gold);">POSITIONS</button>
             <button class="at-panel-tab" id="apt-history" onclick="atPanelTab(this,'at-panel-history')" style="flex:1;padding:9px 4px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;">HISTORY</button>
             <button class="at-panel-tab" id="apt-log" onclick="atPanelTab(this,'at-panel-log')" style="flex:1;padding:9px 4px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;">AI LOG</button>
+            <button class="at-panel-tab" id="apt-scalp" onclick="atPanelTab(this,'at-panel-scalp')" style="flex:1;padding:9px 4px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;">⚡ SCALP</button>
           </div>
 
           <!-- POSITIONS PANEL -->
@@ -2162,6 +2172,34 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
             <div id="at-log-entries">
               <div class="empty" style="padding:20px 0;"><div class="empty-icon" style="font-size:26px;">🧠</div><div class="empty-text" style="font-size:11px;">Engine activity will appear here</div></div>
+            </div>
+          </div>
+
+          <!-- ⚡ SCALP PANEL -->
+          <div id="at-panel-scalp" style="display:none;flex:1;flex-direction:column;overflow-y:auto;padding:10px 12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div id="scalp-engine-badge" style="display:inline-flex;align-items:center;gap:6px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);border-radius:6px;padding:3px 10px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;color:var(--purple);">
+                <span id="scalp-pulse-dot" style="width:6px;height:6px;border-radius:50%;background:var(--purple);flex-shrink:0;animation:none;display:inline-block;"></span>
+                <span id="scalp-engine-label">SCALP IDLE</span>
+              </div>
+              <button onclick="scalpClearAll()" style="background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:2px 8px;cursor:pointer;">Clear All</button>
+            </div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--purple);letter-spacing:1.5px;margin-bottom:6px;">⚡ OPEN SCALP TRADES</div>
+            <div id="scalp-open-positions">
+              <div class="empty" style="padding:14px 0;"><div class="empty-icon" style="font-size:22px;">⚡</div><div class="empty-text" style="font-size:10px;">Start scalp engine above</div></div>
+            </div>
+            <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+              <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1px;">SCALP HISTORY</div>
+              <span id="scalp-history-stats" style="font-family:var(--font-mono);font-size:8px;color:var(--text3);"></span>
+            </div>
+            <div id="scalp-history-entries">
+              <div class="empty" style="padding:10px 0;"><div class="empty-text" style="font-size:10px;color:var(--text4);">No scalp trades yet</div></div>
+            </div>
+            <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1px;margin-bottom:5px;">SCALP ENGINE LOG</div>
+            <div id="scalp-log-entries">
+              <div class="empty" style="padding:10px 0;"><div class="empty-text" style="font-size:10px;color:var(--text4);">Activity will appear here</div></div>
             </div>
           </div>
 
@@ -2476,7 +2514,7 @@ select.input option { background:#111116; color:#E8E8F0; }
         <div class="card" style="margin-bottom:12px;">
           <div class="card-label">Your Rights (GDPR)</div>
           <div style="font-size:12px;color:var(--text2);line-height:1.8;">
-            You have the right to access, correct, or delete your data at any time. Since all data is stored locally, you can clear it by using the "Clear All Data" option in Settings. For any queries, contact us at privacy@wingman.trade.
+            You have the right to access, correct, or delete your data at any time. Since all data is stored locally, you can clear it by using the "Clear All Data" option in Settings. For any queries, contact us at <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3a4a48534c5b59437a4d53545d575b54144e485b5e5f">[email&#160;protected]</a>.
           </div>
         </div>
         <div class="card" style="margin-bottom:12px;">
@@ -2650,7 +2688,7 @@ select.input option { background:#111116; color:#E8E8F0; }
 
 <div id="toast"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 'use strict';
 // ═══════════════════════════════════════════
 // STATE
@@ -7832,6 +7870,502 @@ const AT_MIN_LOTS      = 5;
 const AT_LEVERAGE      = 999999;  // 1:Unlimited
 const AT_SCAN_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
+// ── SCALP ENGINE STATE ───────────────────────────────────────────────────────
+let scalpEngineRunning  = false;
+let scalpScanTimer      = null;   // setInterval for 5–10 min scalp scans
+let scalpUiTimer        = null;   // setInterval for scalp countdown update
+let scalpNextScanMs     = null;   // Timestamp of next scalp scan
+let scalpScanInProgress = false;  // Guard against concurrent scalp scans
+let scalpPositions      = JSON.parse(localStorage.getItem('wm_scalp_positions') || '[]');
+let scalpHistory        = JSON.parse(localStorage.getItem('wm_scalp_history')   || '[]');
+let scalpLog            = JSON.parse(localStorage.getItem('wm_scalp_log')        || '[]');
+
+const SCALP_MIN_LOTS = 3;
+// Random interval between 5 and 10 minutes (ms)
+function scalpNextInterval() { return (Math.floor(Math.random() * 6) + 5) * 60 * 1000; }
+
+function scalpSave() {
+  localStorage.setItem('wm_scalp_positions', JSON.stringify(scalpPositions));
+  localStorage.setItem('wm_scalp_history',   JSON.stringify(scalpHistory));
+  localStorage.setItem('wm_scalp_log',       JSON.stringify(scalpLog.slice(0, 200)));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SCALP ENGINE — 5–10 MINUTE PRECISION SCALP TRADES ON BTC/USD
+// Uses 1M + 5M candles, order book pressure, and micro market structure
+// Separate positions, history, and log from the main swing engine
+// ════════════════════════════════════════════════════════════════════════════
+
+function scalpAddLog(type, message) {
+  const entry = { type, message, time: new Date().toLocaleString() };
+  scalpLog.unshift(entry);
+  scalpSave();
+  scalpRenderLog();
+}
+
+function scalpRenderLog() {
+  const el = document.getElementById('scalp-log-entries');
+  if (!el) return;
+  if (!scalpLog.length) {
+    el.innerHTML = '<div class="empty" style="padding:10px 0;"><div class="empty-text" style="font-size:10px;color:var(--text4);">No activity yet</div></div>';
+    return;
+  }
+  const typeColors = { 'open':'var(--blue)', 'close-win':'var(--green)', 'close-loss':'var(--red)', 'scan':'var(--purple)', 'skip':'rgba(255,180,0,0.6)' };
+  el.innerHTML = scalpLog.slice(0, 60).map(entry => {
+    const col = typeColors[entry.type] || 'var(--border2)';
+    const lines = entry.message.split('\n').map((line, i) => {
+      if (i === 0) return `<div style="color:var(--text);font-weight:600;font-size:10px;">${line}</div>`;
+      return line ? `<div style="color:var(--text3);font-size:9px;">${line}</div>` : '<div style="height:2px;"></div>';
+    }).join('');
+    return `<div style="background:var(--bg2);border-radius:6px;padding:7px 9px;margin-bottom:5px;border-left:2px solid ${col};">${lines}<div style="color:var(--text4);font-size:7px;margin-top:4px;">${entry.time}</div></div>`;
+  }).join('');
+}
+
+function scalpRenderPositions() {
+  const el = document.getElementById('scalp-open-positions');
+  if (!el) return;
+  if (!scalpPositions.length) {
+    el.innerHTML = '<div class="empty" style="padding:12px 0;"><div class="empty-icon" style="font-size:20px;">⚡</div><div class="empty-text" style="font-size:10px;">No open scalp trades</div></div>';
+    return;
+  }
+  el.innerHTML = scalpPositions.map(p => {
+    const price     = atCurrentPrice || p.entryPrice;
+    const priceDiff = p.dir === 'BUY' ? price - p.entryPrice : p.entryPrice - price;
+    const pnl       = priceDiff * (p.pipVal || 1) * p.lots;
+    const col       = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    const elapsed   = Math.round((Date.now() - p.openTimestamp) / 60000);
+    return `<div style="background:var(--bg2);border-radius:7px;padding:8px 10px;margin-bottom:6px;border-left:2px solid var(--purple);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:5px;">
+          <span class="badge badge-${p.dir.toLowerCase()}" style="font-size:7px;">${p.dir}</span>
+          <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;">BTCUSD</span>
+          <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">${p.lots}L</span>
+          <span style="font-family:var(--font-mono);font-size:7px;color:var(--purple);background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.3);border-radius:3px;padding:1px 4px;">SCALP</span>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:${col};">${pnl>=0?'+':''}$${pnl.toFixed(2)}</span>
+      </div>
+      <div style="display:flex;gap:7px;font-family:var(--font-mono);font-size:8px;color:var(--text3);margin-bottom:5px;flex-wrap:wrap;">
+        <span>In: <strong style="color:var(--text2);">${p.entryPrice.toFixed(2)}</strong></span>
+        <span>Now: <strong style="color:var(--text2);">${price.toFixed(2)}</strong></span>
+        ${p.sl ? `<span style="color:var(--red);">SL:${p.sl.toFixed(2)}</span>` : ''}
+        ${p.tp ? `<span style="color:var(--green);">TP:${p.tp.toFixed(2)}</span>` : ''}
+        <span style="color:var(--text4);">${elapsed}m open</span>
+      </div>
+      <button onclick="scalpClosePosition(${p.id})" style="width:100%;background:var(--red-dim);border:1px solid var(--red);border-radius:5px;color:var(--red);font-family:var(--font-mono);font-size:8px;padding:3px;cursor:pointer;font-weight:700;">✕ Close Scalp</button>
+    </div>`;
+  }).join('');
+}
+
+function scalpRenderHistory() {
+  const el = document.getElementById('scalp-history-entries');
+  const statsEl = document.getElementById('scalp-history-stats');
+  if (!el) return;
+  if (!scalpHistory.length) {
+    el.innerHTML = '<div class="empty" style="padding:10px 0;"><div class="empty-text" style="font-size:10px;color:var(--text4);">No closed scalps yet</div></div>';
+    if (statsEl) statsEl.textContent = '';
+    return;
+  }
+  const wins = scalpHistory.filter(t => t.pnl > 0).length;
+  const wr   = Math.round(wins / scalpHistory.length * 100);
+  const pnl  = scalpHistory.reduce((s, t) => s + (t.pnl || 0), 0);
+  if (statsEl) statsEl.innerHTML = `<span style="color:${wr>=50?'var(--green)':'var(--red)'};">${wr}% WR</span> · <span style="color:${pnl>=0?'var(--green)':'var(--red)'};">${pnl>=0?'+':''}$${pnl.toFixed(2)}</span>`;
+  el.innerHTML = scalpHistory.slice(0, 30).map(t => {
+    const pc = t.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<div style="background:var(--bg2);border-radius:6px;padding:7px 9px;margin-bottom:5px;border-left:2px solid ${t.pnl>=0?'var(--green)':'var(--red)'};">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:5px;">
+          <span class="badge badge-${t.dir.toLowerCase()}" style="font-size:7px;">${t.dir}</span>
+          <span style="font-family:var(--font-mono);font-size:9px;color:var(--text3);">${t.lots}L · ${t.duration||'?'}m</span>
+        </div>
+        <span style="font-family:var(--font-mono);font-weight:700;font-size:11px;color:${pc};">${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)}</span>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);margin-top:3px;">${t.entryPrice?.toFixed(2)||'—'} → ${t.closePrice?.toFixed(2)||'—'} · ${t.closeTime||''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Scalp SL/TP auto-close (checked on every Binance tick) ──────────────────
+function scalpCheckSLTP() {
+  if (!scalpPositions.length) return;
+  const price = atCurrentPrice;
+  if (!price) return;
+  const toClose = [];
+  scalpPositions.forEach(pos => {
+    let hit = null;
+    if (pos.dir === 'BUY') {
+      if (pos.sl && price <= pos.sl) hit = 'SL';
+      if (pos.tp && price >= pos.tp) hit = 'TP';
+    } else {
+      if (pos.sl && price >= pos.sl) hit = 'SL';
+      if (pos.tp && price <= pos.tp) hit = 'TP';
+    }
+    // Time-based auto-close: max 10 minutes
+    if (!hit && (Date.now() - pos.openTimestamp) > 10 * 60 * 1000) hit = 'TIME';
+    if (hit) toClose.push({ pos, hit, price });
+  });
+  toClose.forEach(({ pos, hit, price }) => scalpCloseInternal(pos.id, price, hit));
+}
+
+function scalpCloseInternal(id, closePrice, reason) {
+  const idx = scalpPositions.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  const pos = scalpPositions[idx];
+  const priceDiff = pos.dir === 'BUY' ? closePrice - pos.entryPrice : pos.entryPrice - closePrice;
+  const pnl       = priceDiff * (pos.pipVal || 1) * pos.lots;
+  const isWin     = pnl >= 0;
+  const duration  = Math.round((Date.now() - pos.openTimestamp) / 60000);
+
+  let closeReason;
+  if (reason === 'SL')   closeReason = `Stop loss triggered at $${closePrice.toFixed(2)}.`;
+  else if (reason === 'TP')   closeReason = `Take profit reached at $${closePrice.toFixed(2)}. ✅`;
+  else if (reason === 'TIME') closeReason = `10-minute time limit reached — auto-closed at $${closePrice.toFixed(2)}.`;
+  else closeReason = reason || 'Manual close.';
+
+  const closed = { ...pos, closePrice, pnl, closeTime: new Date().toLocaleString(), status: 'closed', closeReason, duration };
+  scalpHistory.unshift(closed);
+  scalpPositions.splice(idx, 1);
+  atAccount.balance += pnl;
+  if (atAccount.balance < 0) atAccount.balance = 0;
+  scalpSave();
+  atSave();
+  scalpRenderPositions();
+  scalpRenderHistory();
+  atUpdateAccount();
+
+  const logType = isWin ? 'close-win' : 'close-loss';
+  scalpAddLog(logType,
+    `${isWin ? '✅' : '❌'} SCALP CLOSED ${pos.dir} ${pos.lots}L\n` +
+    `$${pos.entryPrice.toFixed(2)} → $${closePrice.toFixed(2)} | ${duration}m | ${pnl>=0?'+':''}$${pnl.toFixed(2)}\n${closeReason}`
+  );
+  toast(`${isWin ? '✅' : '❌'} SCALP ${reason}: ${pos.dir} ${pos.lots}L ${pnl>=0?'+':''}$${pnl.toFixed(2)}`);
+}
+
+function scalpClosePosition(id) {
+  const pos   = scalpPositions.find(p => p.id === id);
+  if (!pos) return;
+  const price = atCurrentPrice || pos.entryPrice;
+  scalpCloseInternal(id, price, 'Manual close at $' + price.toFixed(2));
+}
+
+function scalpClearAll() {
+  if (!confirm('Clear all scalp data (positions, history, log)?')) return;
+  [...scalpPositions].forEach(p => scalpClosePosition(p.id));
+  scalpHistory = []; scalpLog = [];
+  scalpSave();
+  scalpRenderPositions(); scalpRenderHistory(); scalpRenderLog();
+  toast('⚡ Scalp data cleared');
+}
+
+// ── Scalp countdown display ──────────────────────────────────────────────────
+function scalpUpdateCountdown() {
+  const el = document.getElementById('scalp-countdown');
+  if (!el) return;
+  if (!scalpNextScanMs || !scalpEngineRunning) { el.textContent = 'next: —'; return; }
+  const rem = Math.max(0, scalpNextScanMs - Date.now());
+  const m   = Math.floor(rem / 60000);
+  const s   = Math.floor((rem % 60000) / 1000);
+  el.textContent = `next: ${m}m ${String(s).padStart(2,'0')}s`;
+}
+
+// ── Scalp engine start / stop ────────────────────────────────────────────────
+function scalpStartEngine() {
+  if (scalpEngineRunning) return;
+  scalpEngineRunning = true;
+
+  document.getElementById('scalp-start-btn').style.display = 'none';
+  document.getElementById('scalp-stop-btn').style.display  = '';
+  document.getElementById('scalp-countdown').style.display = '';
+  const dot   = document.getElementById('scalp-pulse-dot');
+  const label = document.getElementById('scalp-engine-label');
+  if (dot)   { dot.style.background = 'var(--green)'; dot.style.animation = 'atPulse 1.4s ease-in-out infinite'; }
+  if (label) label.textContent = 'SCALP RUNNING';
+
+  // Make sure Binance WS is active for price feed
+  atConnectBinance();
+
+  scalpAddLog('scan', '⚡ Scalp engine started. Taking 5–10 min precision scalp trades on BTCUSD.');
+
+  // Immediate first scalp scan
+  scalpRunScan();
+
+  // Schedule subsequent scans at random 5–10 min intervals
+  function scheduleNext() {
+    if (!scalpEngineRunning) return;
+    const interval = scalpNextInterval();
+    scalpNextScanMs = Date.now() + interval;
+    scalpScanTimer  = setTimeout(() => {
+      scalpRunScan();
+      scheduleNext();
+    }, interval);
+  }
+  scheduleNext();
+
+  // Countdown refresh every second
+  scalpUiTimer = setInterval(scalpUpdateCountdown, 1000);
+  toast('⚡ Scalp engine started');
+}
+
+function scalpStopEngine() {
+  scalpEngineRunning = false;
+  clearTimeout(scalpScanTimer);
+  clearInterval(scalpUiTimer);
+  scalpNextScanMs = null;
+
+  document.getElementById('scalp-start-btn').style.display = '';
+  document.getElementById('scalp-stop-btn').style.display  = 'none';
+  document.getElementById('scalp-countdown').style.display = 'none';
+  const dot   = document.getElementById('scalp-pulse-dot');
+  const label = document.getElementById('scalp-engine-label');
+  if (dot)   { dot.style.background = 'var(--red)'; dot.style.animation = 'none'; }
+  if (label) label.textContent = 'SCALP STOPPED';
+
+  scalpAddLog('scan', '■ Scalp engine stopped by user.');
+  toast('⚡ Scalp engine stopped');
+}
+
+// ── Scalp indicators: 1m and 5m candles ─────────────────────────────────────
+async function scalpRunScan() {
+  if (scalpScanInProgress) return;
+  scalpScanInProgress = true;
+
+  const scanTime = new Date().toLocaleTimeString();
+  scalpAddLog('scan', `⚡ [${scanTime}] Scalp scan — fetching 1M + 5M candle data…`);
+
+  try {
+    const price = atCurrentPrice || livePriceCache['BTCUSD'];
+    if (!price) {
+      scalpAddLog('skip', '⏳ No live price — scalp scan skipped. Waiting for Binance feed…');
+      scalpScanInProgress = false;
+      return;
+    }
+
+    // Max 2 concurrent scalp positions
+    if (scalpPositions.length >= 2) {
+      scalpAddLog('skip', `⏭️ Max 2 scalp positions open (${scalpPositions.length}/2) — scan skipped.`);
+      scalpScanInProgress = false;
+      return;
+    }
+
+    // Fetch 1M, 5M candles + order book in parallel
+    const [klines1m, klines5m, orderBook] = await Promise.allSettled([
+      atFetchKlines('1m', 60),
+      atFetchKlines('5m', 60),
+      atFetchOrderBook()
+    ]).then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
+
+    if (!klines1m || !klines5m) {
+      scalpAddLog('skip', '❌ Scalp data fetch failed — skipping this scan.');
+      scalpScanInProgress = false;
+      return;
+    }
+
+    // ── Compute indicators on scalp timeframes ──
+    const closes1m = klines1m.map(c => c.close);
+    const closes5m = klines5m.map(c => c.close);
+
+    const rsi1m  = atCalcRSI(closes1m, 9);   // Fast RSI on 1M
+    const rsi5m  = atCalcRSI(closes5m, 9);
+    const bb1m   = atCalcBollingerBands(closes1m, 20, 2);
+    const bb5m   = atCalcBollingerBands(closes5m, 20, 2);
+    const atr1m  = atCalcATR(klines1m, 9);
+    const atr5m  = atCalcATR(klines5m, 9);
+    const macd5m = atCalcMACD(closes5m);
+    const vwap5m = atCalcVWAP(klines5m.slice(-20));
+    const ema9_1m  = atCalcEMA(closes1m.slice(-9), 9);
+    const ema21_1m = atCalcEMA(closes1m.slice(-21), 21);
+    const ema9_5m  = atCalcEMA(closes5m.slice(-9), 9);
+    const ema21_5m = atCalcEMA(closes5m.slice(-21), 21);
+    const levels5m = atFindKeyLevels(klines5m);
+    const vol5m    = atAnalyseVolume(klines5m);
+
+    // ── Order book ──
+    const ob = orderBook ? {
+      ratio: orderBook.ratio,
+      pressure: orderBook.ratio > 0.55 ? 'BUY_PRESSURE' : orderBook.ratio < 0.45 ? 'SELL_PRESSURE' : 'BALANCED',
+      spread: orderBook.spread.toFixed(2)
+    } : { pressure: 'UNKNOWN', ratio: 0.5 };
+
+    // ── Micro price action: recent candle patterns ──
+    const last3_1m = klines1m.slice(-3);
+    const last3_5m = klines5m.slice(-3);
+    const recentBullish1m = last3_1m.filter(c => c.close > c.open).length;
+    const recentBearish1m = last3_1m.filter(c => c.close < c.open).length;
+    const recentBullish5m = last3_5m.filter(c => c.close > c.open).length;
+    const recentBearish5m = last3_5m.filter(c => c.close < c.open).length;
+
+    // ── Recent scalp performance context ──
+    const recentScalps = scalpHistory.slice(0, 5).map(t =>
+      `${t.dir} ${t.lots}L | ${t.entryPrice?.toFixed(0)}→${t.closePrice?.toFixed(0)} | ${t.pnl>=0?'+':''}$${t.pnl?.toFixed(0)} | ${t.duration||'?'}m`
+    ).join('\n') || 'No recent scalps';
+
+    // ── Build brief for Claude ──
+    const scalpBrief = `
+=== SCALP INTELLIGENCE BRIEF — BTCUSD ===
+Live price: $${price.toFixed(2)}
+Scan time: ${scanTime}
+
+=== 1-MINUTE MICRO STRUCTURE ===
+RSI(9): ${rsi1m?.toFixed(1) || 'N/A'} ${rsi1m > 75 ? '⚠️ OVERBOUGHT' : rsi1m < 25 ? '⚠️ OVERSOLD' : ''}
+BB Upper: $${bb1m?.upper?.toFixed(2) || 'N/A'} | Mid: $${bb1m?.middle?.toFixed(2) || 'N/A'} | Lower: $${bb1m?.lower?.toFixed(2) || 'N/A'}
+Price vs BB: ${price > (bb1m?.upper||Infinity) ? 'ABOVE UPPER' : price < (bb1m?.lower||0) ? 'BELOW LOWER' : 'INSIDE BANDS'}
+EMA9: $${ema9_1m?.toFixed(2) || 'N/A'} | EMA21: $${ema21_1m?.toFixed(2) || 'N/A'} | EMA bias: ${ema9_1m > ema21_1m ? 'BULLISH' : 'BEARISH'}
+Price vs EMA9: ${price > ema9_1m ? 'ABOVE' : 'BELOW'}
+ATR(9): $${atr1m?.toFixed(2) || 'N/A'}
+Recent 1M candles (last 3): ${recentBullish1m} bullish, ${recentBearish1m} bearish
+
+=== 5-MINUTE SWING CONTEXT ===
+RSI(9): ${rsi5m?.toFixed(1) || 'N/A'} ${rsi5m > 70 ? '⚠️ OVERBOUGHT' : rsi5m < 30 ? '⚠️ OVERSOLD' : ''}
+MACD: ${macd5m ? `Hist: ${macd5m.histogram.toFixed(1)} | ${macd5m.histogram > 0 ? 'BULLISH' : 'BEARISH'} | ${macd5m.histoRising ? 'RISING ▲' : 'FALLING ▼'}` : 'N/A'}
+BB Upper: $${bb5m?.upper?.toFixed(2) || 'N/A'} | Lower: $${bb5m?.lower?.toFixed(2) || 'N/A'} | BW: ${bb5m?.bandwidth?.toFixed(2) || 'N/A'}%
+EMA9: $${ema9_5m?.toFixed(2) || 'N/A'} | EMA21: $${ema21_5m?.toFixed(2) || 'N/A'} | Bias: ${ema9_5m > ema21_5m ? 'BULLISH' : 'BEARISH'}
+VWAP(5M, 20 bars): $${vwap5m?.toFixed(2) || 'N/A'} | Price: ${price > (vwap5m||0) ? 'ABOVE' : 'BELOW'}
+Volume: ${vol5m.trend} (${vol5m.ratio}x avg)
+ATR(9): $${atr5m?.toFixed(2) || 'N/A'}
+Recent 5M candles (last 3): ${recentBullish5m} bullish, ${recentBearish5m} bearish
+Key Resistance: ${levels5m.nearResistance?.slice(0,2).map(v=>'$'+v.toFixed(0)).join(', ') || 'N/A'}
+Key Support: ${levels5m.nearSupport?.slice(0,2).map(v=>'$'+v.toFixed(0)).join(', ') || 'N/A'}
+Dist to resistance: ${levels5m.distToRes?.toFixed(3) || 'N/A'}%
+Dist to support: ${levels5m.distToSup?.toFixed(3) || 'N/A'}%
+
+=== ORDER BOOK (REAL-TIME) ===
+Bid/Ask ratio: ${ob.ratio?.toFixed(3) || 'N/A'} | Pressure: ${ob.pressure}
+Spread: $${ob.spread}
+
+=== OPEN SCALP POSITIONS ===
+${scalpPositions.length ? scalpPositions.map(p=>`${p.dir} ${p.lots}L @ $${p.entryPrice.toFixed(2)} | SL:${p.sl?.toFixed(2)||'none'} TP:${p.tp?.toFixed(2)||'none'} | ${Math.round((Date.now()-p.openTimestamp)/60000)}m open`).join('\n') : 'No open scalps'}
+
+=== RECENT SCALP HISTORY ===
+${recentScalps}`;
+
+    const scalpSystemPrompt = `You are Wingman's Scalp Engine — a precision algorithmic scalping AI specialising in 5–10 minute BTC/USD micro-trades.
+
+Your job is to identify high-probability micro-structure entries using 1M and 5M candle data, order book pressure, and real-time price action. You are fast, decisive, and disciplined.
+
+SCALP DECISION FRAMEWORK:
+
+1. TIMEFRAME ALIGNMENT (both 1M and 5M must broadly agree):
+   - BUY: 5M trend bullish (EMA9 > EMA21, price above VWAP, RSI < 70) AND 1M showing bullish momentum (recent bullish candles, price above EMA9)
+   - SELL: Inverse conditions
+   - If 1M and 5M disagree: SKIP
+
+2. ENTRY PRECISION:
+   - BUY: Price pulling back to 1M EMA9 or lower BB in a 5M uptrend. Or 1M RSI recovering from near-oversold (<35) with bullish candle sequence.
+   - SELL: Price rejecting from 1M EMA9 or upper BB in a 5M downtrend. Or 1M RSI rejecting from near-overbought (>65) with bearish candle sequence.
+
+3. MOMENTUM CONFIRMATION (need at least 2):
+   - 5M MACD histogram rising (bullish) or falling (bearish)
+   - Order book BUY_PRESSURE for longs, SELL_PRESSURE for shorts
+   - Price above VWAP (long) or below VWAP (short)
+   - Recent 1M candle pattern majority bullish/bearish
+
+4. KEY LEVEL AWARENESS:
+   - Do NOT buy within 0.15% of nearest resistance
+   - Do NOT sell within 0.15% of nearest support
+   - Best scalps come from bouncing off S/R with momentum
+
+5. SCALP RISK MANAGEMENT (NON-NEGOTIABLE):
+   - SL: 0.15%–0.4% from entry (ATR-based, tight because this is a scalp)
+   - TP: 1:1.5 minimum R:R. Prefer 1:2. Target is next micro S/R level.
+   - Lots: 3–6. Scale up (5–6) for very high conviction, lower (3) for moderate.
+   - Maximum 2 concurrent open scalp positions.
+   - Trade duration target: 5–10 minutes. The engine will auto-close at 10 min.
+
+6. SKIP CONDITIONS:
+   - 1M and 5M disagree on direction
+   - Bollinger Bands are very narrow (low volatility, ATR compressed) — no momentum to scalp
+   - RSI > 70 for BUY or RSI < 30 for SELL on 5M
+   - Order book is BALANCED with no clear pressure
+   - Price is in the middle of BB with no directional momentum
+   - Already 2 open scalp positions
+
+Be FAST and PRECISE. Scalping requires high selectivity — a SKIP is correct ~60–70% of the time. Only trade when micro-structure is crystal clear.
+
+Respond ONLY with valid JSON, no prose.`;
+
+    const scalpUserPrompt = `${scalpBrief}
+
+Make your scalp trading decision. Return ONLY this exact JSON:
+{
+  "action": "BUY" | "SELL" | "SKIP",
+  "lots": <number, 3–6>,
+  "sl": <stop loss price, null if SKIP>,
+  "tp": <take profit price, null if SKIP>,
+  "confidence": <integer 0–100>,
+  "entry_logic": "<1–2 sentence micro-structure rationale for the entry>",
+  "skip_reason": "<if SKIP: which conditions failed — otherwise null>"
+}`;
+
+    scalpAddLog('scan', `🤖 Scalp brief compiled (${scalpBrief.length} chars) — sending to Claude…`);
+
+    const res = await fetch(`${WORKER_URL}/claude`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 400,
+        system: scalpSystemPrompt,
+        messages: [{ role: 'user', content: scalpUserPrompt }]
+      })
+    });
+
+    if (!res.ok) throw new Error('Claude API ' + res.status);
+    const aiData  = await res.json();
+    const rawText = aiData.content?.[0]?.text || '';
+    let decision;
+    try {
+      decision = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+    } catch(e) {
+      throw new Error('JSON parse failed: ' + rawText.slice(0, 150));
+    }
+
+    if (decision.action === 'SKIP') {
+      scalpAddLog('skip', `⏭️ SCALP SKIP — ${decision.confidence}%\n${decision.skip_reason || 'No clear micro-structure'}`);
+    } else if (decision.action === 'BUY' || decision.action === 'SELL') {
+      if (scalpPositions.length >= 2) {
+        scalpAddLog('skip', `⏭️ Max 2 scalp positions open — blocked.`);
+      } else {
+        const lots = Math.max(SCALP_MIN_LOTS, Math.min(6, parseFloat(decision.lots) || SCALP_MIN_LOTS));
+        const pos = {
+          id:             Date.now(),
+          inst:           'BTCUSD',
+          dir:            decision.action,
+          lots,
+          entryPrice:     price,
+          sl:             decision.sl   || null,
+          tp:             decision.tp   || null,
+          leverage:       AT_LEVERAGE,
+          pipVal:         1,
+          openTime:       new Date().toLocaleString(),
+          openTimestamp:  Date.now(),
+          status:         'open',
+          confidence:     decision.confidence || 0,
+          source:         'SCALP'
+        };
+        scalpPositions.push(pos);
+        scalpSave();
+        scalpRenderPositions();
+        atUpdateAccount();
+
+        const slStr = decision.sl ? `SL $${decision.sl.toFixed(2)}` : 'no SL';
+        const tpStr = decision.tp ? `TP $${decision.tp.toFixed(2)}` : 'no TP';
+        scalpAddLog('open',
+          `⚡ SCALP ${decision.action} ${lots}L @ $${price.toFixed(2)}\n${slStr} | ${tpStr} | ${decision.confidence}%\n${decision.entry_logic || ''}`
+        );
+        toast(`⚡ SCALP ${decision.action} ${lots}L @ $${price.toFixed(2)}`);
+
+        // Switch to scalp panel so user sees it
+        const scalpBtn = document.getElementById('apt-scalp');
+        if (scalpBtn) atPanelTab(scalpBtn, 'at-panel-scalp');
+      }
+    }
+
+  } catch(err) {
+    scalpAddLog('skip', `❌ Scalp scan error: ${err.message}`);
+  }
+
+  scalpScanInProgress = false;
+}
+
 // ── Persistence ──────────────────────────────────────────────────────────────
 function atSave() {
   localStorage.setItem('wm_at_account',   JSON.stringify(atAccount));
@@ -7857,6 +8391,7 @@ function atConnectBinance() {
           atUpdatePriceDisplay();
           // Auto check SL/TP on every tick
           atCheckSLTP();
+          scalpCheckSLTP();
         }
       } catch(err) {}
     };
@@ -8871,7 +9406,7 @@ function atPanelTab(btn, panelId) {
   btn.classList.add('active');
   btn.style.color = 'var(--gold)';
   btn.style.borderBottomColor = 'var(--gold)';
-  ['at-panel-positions','at-panel-history','at-panel-log'].forEach(id => {
+  ['at-panel-positions','at-panel-history','at-panel-log','at-panel-scalp'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = id === panelId ? 'flex' : 'none';
     if (el && id === panelId) el.style.flexDirection = 'column';
@@ -8910,14 +9445,22 @@ function atLoadChart() {
 function atResetAccount() {
   if (!confirm('Reset Autotrader account to $100,000? All positions, history, and logs will be cleared.')) return;
   atStopEngine();
+  scalpStopEngine();
   atPositions = [];
   atHistory   = [];
   atLog       = [];
   atAccount   = { balance: 100000, startBalance: 100000 };
+  scalpPositions = [];
+  scalpHistory   = [];
+  scalpLog       = [];
   atSave();
+  scalpSave();
   atRenderPositions();
   atRenderHistory();
   atRenderLog();
+  scalpRenderPositions();
+  scalpRenderHistory();
+  scalpRenderLog();
   atUpdateAccount();
   toast('✅ Autotrader account reset to $100,000');
 }
@@ -8931,6 +9474,9 @@ function initAutoTrader() {
   atRenderHistory();
   atRenderLog();
   atUpdatePriceDisplay();
+  scalpRenderPositions();
+  scalpRenderHistory();
+  scalpRenderLog();
 
   if (!atChartLoaded) {
     atChartLoaded = true;
@@ -8954,6 +9500,11 @@ function initAutoTrader() {
       atUpdateAccount();
       atUpdateCountdown();
     }, 2000);
+  }
+  // Re-attach scalp countdown timer if scalp engine is running
+  if (scalpEngineRunning) {
+    clearInterval(scalpUiTimer);
+    scalpUiTimer = setInterval(scalpUpdateCountdown, 1000);
   }
 }
 </script>
