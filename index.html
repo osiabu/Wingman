@@ -1016,6 +1016,7 @@ select.input option { background:#111116; color:#E8E8F0; }
 @media(max-width:767px) {
   #tab-autotrader.active { height:calc(100vh - 110px); }
   #at-right-panel { width:100%; border-left:none; border-top:1px solid var(--border); max-height:55vh; }
+  #at-mid-panel   { display:none; }
   #at-body { flex-direction:column; }
   #at-chart-frame { min-height:220px; }
 }
@@ -1066,6 +1067,63 @@ select.input option { background:#111116; color:#E8E8F0; }
 .speaker-strip-icon { font-size:16px; flex-shrink:0; }
 .speaker-strip-text { font-size:11px; color:var(--text2); flex:1; line-height:1.4; }
 .speaker-strip-time { font-family:var(--font-mono); font-size:9px; color:var(--purple); flex-shrink:0; }
+
+/* ── HOME COMMAND CENTRE ─────────────────────────────────────────── */
+#tab-scan {
+  animation: homeBgPulse 8s ease-in-out infinite;
+}
+@keyframes homeBgPulse {
+  0%,100% { background-color: #07090F; }
+  50%      { background-color: #0D1117; }
+}
+.home-action-btn {
+  display: block;
+  width: 100%;
+  padding: 11px 14px;
+  background: rgba(13,17,23,0.75);
+  border: 1px solid rgba(0,201,177,0.25);
+  border-radius: 50px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.home-action-btn:hover {
+  border-color: var(--teal);
+  box-shadow: 0 0 14px rgba(0,201,177,0.25);
+  background: rgba(0,201,177,0.07);
+  color: var(--teal);
+}
+.home-opp-card {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-bottom: 7px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  transition: border-color 0.2s;
+}
+.home-opp-card.buy  { border-left: 3px solid var(--teal); }
+.home-opp-card.sell { border-left: 3px solid var(--red); }
+.home-opp-card.skip { border-left: 3px solid var(--border2); opacity: 0.7; }
+.home-opp-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.home-opp-badge.buy  { background: rgba(0,201,177,0.15); color: var(--teal); }
+.home-opp-badge.sell { background: rgba(239,68,68,0.15);  color: var(--red);  }
+.home-opp-badge.skip { background: var(--bg3);             color: var(--text4);}
 </style>
 </head>
 <body>
@@ -1146,15 +1204,17 @@ select.input option { background:#111116; color:#E8E8F0; }
     <!-- ── SCAN TAB ── -->
     <div class="tab-panel active" id="tab-scan">
 
-      <!-- Welcome banner -->
-      <div style="background:linear-gradient(135deg,var(--bg2) 0%,rgba(212,175,55,0.05) 100%);border:1px solid var(--border2);border-radius:12px;padding:16px 18px;margin-bottom:14px;">
-        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;letter-spacing:-0.3px;margin-bottom:4px;">Develop your trading skills.</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.6;">Practice trading concepts in a simulated environment. AI feedback, behavioural coaching, and performance profiling, all free.</div>
+      <!-- ══ HOME COMMAND CENTRE ══ -->
+
+      <!-- Page header -->
+      <div id="home-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px;">
+        <div style="font-family:var(--font-display);font-size:22px;font-weight:800;letter-spacing:-0.5px;color:var(--text);">♞ WINGMAN</div>
+        <div id="home-utc-clock" style="font-family:var(--font-mono);font-size:13px;color:var(--teal);letter-spacing:2px;"></div>
       </div>
 
-      <!-- Compact price strip -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:6px;">
+      <!-- Ticker strip (snapshot-based, 30s interval) -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
           <div id="price-live-dot" style="width:6px;height:6px;border-radius:50%;background:#00E87A;box-shadow:0 0 6px #00E87A;animation:pulse 1.5s infinite;display:none;"></div>
           <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1px;">LIVE</span>
         </div>
@@ -1163,6 +1223,89 @@ select.input option { background:#111116; color:#E8E8F0; }
         </div>
         <div id="mobile-price-stamp" style="font-family:var(--font-mono);font-size:8px;color:var(--text3);flex-shrink:0;"></div>
       </div>
+
+      <!-- Hero status bar -->
+      <div id="home-hero-bar" style="display:flex;align-items:center;gap:0;margin-bottom:12px;background:rgba(13,17,23,0.72);border:1px solid rgba(0,201,177,0.18);border-radius:10px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:10px 16px;flex-wrap:wrap;gap:6px;">
+        <!-- Session -->
+        <div style="display:flex;align-items:center;gap:7px;padding-right:16px;border-right:1px solid var(--border2);flex-shrink:0;">
+          <div id="home-session-dot" style="width:7px;height:7px;border-radius:50%;background:var(--text4);flex-shrink:0;transition:background 0.4s;"></div>
+          <div>
+            <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;margin-bottom:1px;">SESSION</div>
+            <div id="home-session-label" style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-weight:600;">—</div>
+          </div>
+        </div>
+        <!-- Fear & Greed -->
+        <div style="display:flex;align-items:center;gap:7px;padding:0 16px;border-right:1px solid var(--border2);flex-shrink:0;">
+          <div>
+            <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;margin-bottom:1px;">FEAR & GREED</div>
+            <div id="home-fng-display" style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-weight:600;">—</div>
+          </div>
+        </div>
+        <!-- Market Pulse -->
+        <div style="display:flex;align-items:center;gap:7px;padding:0 16px;border-right:1px solid var(--border2);flex-shrink:0;">
+          <div>
+            <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;margin-bottom:1px;">MARKET PULSE</div>
+            <div id="home-pulse-label" style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--teal);">—</div>
+          </div>
+        </div>
+        <!-- Scalp positions -->
+        <div style="display:flex;align-items:center;gap:7px;padding-left:16px;flex-shrink:0;">
+          <div>
+            <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;margin-bottom:1px;">SCALP POSITIONS</div>
+            <div id="home-scalp-pos" style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-weight:600;">0 / 5</div>
+          </div>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1px;" id="home-hero-refresh-stamp"></div>
+      </div>
+
+      <!-- Feed + Actions row -->
+      <div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-start;flex-wrap:wrap;">
+
+        <!-- LEFT: Opportunity feed (2/3) -->
+        <div style="flex:2;min-width:200px;">
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--teal);letter-spacing:2px;margin-bottom:8px;">⚡ OPPORTUNITY FEED</div>
+          <div id="home-opportunity-feed">
+            <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px;text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--text3);">Start the Scalp Engine to see live opportunities here.</div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Quick-action launcher (1/3) -->
+        <div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--text4);letter-spacing:2px;margin-bottom:0px;">QUICK LAUNCH</div>
+          <button class="home-action-btn" onclick="navigate('autotrader',null);setTimeout(()=>{const b=document.getElementById('scalp-start-btn');if(b&&b.textContent.includes('SCALP'))b.click();},400);">⚡ SCALP</button>
+          <button class="home-action-btn" onclick="navigate('scan',document.getElementById('nav-scan'));setTimeout(()=>{const b=document.getElementById('scan-btn');if(b)b.click();},400);">🔍 MARKET SCAN</button>
+          <button class="home-action-btn" onclick="navigate('chart',null);">📈 OPEN CHART</button>
+          <button class="home-action-btn" onclick="navigate('academy',document.querySelector('.nav-item[onclick*=academy]'));">🎓 ACADEMY</button>
+
+          <!-- Today's performance summary -->
+          <div id="home-perf-summary" style="background:rgba(13,17,23,0.7);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-top:2px;">
+            <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;margin-bottom:6px;">TODAY'S SCALP PERFORMANCE</div>
+            <div style="display:flex;justify-content:space-between;gap:6px;">
+              <div style="text-align:center;">
+                <div id="home-perf-trades" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);">0</div>
+                <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);">TRADES</div>
+              </div>
+              <div style="text-align:center;">
+                <div id="home-perf-wr" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);">—</div>
+                <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);">WIN RATE</div>
+              </div>
+              <div style="text-align:center;">
+                <div id="home-perf-pnl" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);">$0</div>
+                <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);">NET P&L</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wingman Instinct Quote -->
+      <div id="home-instinct-panel" style="border-left:3px solid var(--teal);padding:12px 16px;background:rgba(0,201,177,0.04);border-radius:0 8px 8px 0;margin-bottom:14px;">
+        <div id="home-instinct-text" style="font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--text2);line-height:1.6;">♞ Wingman is watching the markets. Start the Scalp Engine to activate live intelligence.</div>
+      </div>
+
+      <!-- Divider before existing scan content -->
+      <div style="height:1px;background:var(--border2);margin-bottom:14px;opacity:0.5;"></div>
 
       <div id="scan-layout">
 
@@ -2124,7 +2267,7 @@ select.input option { background:#111116; color:#E8E8F0; }
       <!-- MAIN BODY -->
       <div id="at-body" style="display:flex;flex:1;min-height:0;overflow:hidden;">
 
-        <!-- CHART (reference, left) -->
+        <!-- COL 1: CHART (left, flex:1) -->
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;position:relative;">
           <div style="position:absolute;top:10px;right:12px;z-index:10;background:rgba(6,6,8,0.75);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-family:var(--font-mono);font-size:8px;color:var(--text4);letter-spacing:1px;pointer-events:none;">📈 CHART REFERENCE ONLY — AI USES BINANCE LIVE FEED</div>
           <iframe id="at-chart-frame" src="" style="flex:1;border:none;display:block;background:#060608;" allowtransparency="true" frameborder="0"></iframe>
@@ -2136,14 +2279,44 @@ select.input option { background:#111116; color:#E8E8F0; }
           </div>
         </div>
 
-        <!-- RIGHT PANEL -->
-        <div id="at-right-panel" style="width:320px;flex-shrink:0;background:var(--bg1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <!-- COL 2: ACTIVITY LOG (middle, fixed 260px) -->
+        <div id="at-mid-panel" style="width:260px;flex-shrink:0;background:var(--bg1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+          <!-- Mid panel tabs: AI Log | Scalp Log -->
+          <div style="display:flex;border-bottom:1px solid var(--border);">
+            <button class="at-mid-tab active" id="amt-ailog" onclick="atMidTab(this,'at-mid-ailog')" style="flex:1;padding:8px 4px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;background:none;border:none;color:var(--purple);cursor:pointer;border-bottom:2px solid var(--purple);">🧠 AI LOG</button>
+            <button class="at-mid-tab" id="amt-scalp" onclick="atMidTab(this,'at-mid-scalplog')" style="flex:1;padding:8px 4px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;">⚡ SCALP LOG</button>
+          </div>
+
+          <!-- AI LOG sub-panel -->
+          <div id="at-mid-ailog" style="display:flex;flex:1;flex-direction:column;overflow-y:auto;padding:8px 10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;">INTELLIGENCE ENGINE</span>
+              <button onclick="atClearLog()" style="background:none;border:1px solid var(--border2);border-radius:4px;color:var(--text3);font-family:var(--font-mono);font-size:7px;padding:1px 6px;cursor:pointer;">Clear</button>
+            </div>
+            <div id="at-log-entries">
+              <div class="empty" style="padding:20px 0;"><div class="empty-icon" style="font-size:22px;">🧠</div><div class="empty-text" style="font-size:10px;">Engine activity will appear here</div></div>
+            </div>
+          </div>
+
+          <!-- SCALP LOG sub-panel -->
+          <div id="at-mid-scalplog" style="display:none;flex:1;flex-direction:column;overflow-y:auto;padding:8px 10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;">SCALP ENGINE LOG</span>
+              <button onclick="scalpClearAll()" style="background:none;border:1px solid var(--border2);border-radius:4px;color:var(--text3);font-family:var(--font-mono);font-size:7px;padding:1px 6px;cursor:pointer;">Clear</button>
+            </div>
+            <div id="scalp-log-entries">
+              <div class="empty" style="padding:10px 0;"><div class="empty-text" style="font-size:10px;color:var(--text4);">Activity will appear here</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COL 3: RIGHT PANEL (positions / history / scalp trades) -->
+        <div id="at-right-panel" style="width:300px;flex-shrink:0;background:var(--bg1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
 
           <!-- Panel tabs -->
           <div style="display:flex;border-bottom:1px solid var(--border);">
             <button class="at-panel-tab active" id="apt-positions" onclick="atPanelTab(this,'at-panel-positions')" style="flex:1;padding:9px 4px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;background:none;border:none;color:var(--gold);cursor:pointer;border-bottom:2px solid var(--gold);">POSITIONS</button>
             <button class="at-panel-tab" id="apt-history" onclick="atPanelTab(this,'at-panel-history')" style="flex:1;padding:9px 4px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;">HISTORY</button>
-            <button class="at-panel-tab" id="apt-log" onclick="atPanelTab(this,'at-panel-log')" style="flex:1;padding:9px 4px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;">AI LOG</button>
             <button class="at-panel-tab" id="apt-scalp" onclick="atPanelTab(this,'at-panel-scalp')" style="flex:1;padding:9px 4px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;">⚡ SCALP</button>
           </div>
 
@@ -2169,18 +2342,7 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
           </div>
 
-          <!-- AI LOG PANEL -->
-          <div id="at-panel-log" style="display:none;flex:1;overflow-y:auto;padding:10px 12px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1.5px;">INTELLIGENCE ENGINE LOG</span>
-              <button onclick="atClearLog()" style="background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:2px 8px;cursor:pointer;">Clear</button>
-            </div>
-            <div id="at-log-entries">
-              <div class="empty" style="padding:20px 0;"><div class="empty-icon" style="font-size:26px;">🧠</div><div class="empty-text" style="font-size:11px;">Engine activity will appear here</div></div>
-            </div>
-          </div>
-
-          <!-- ⚡ SCALP PANEL -->
+          <!-- ⚡ SCALP PANEL (trades only — log moved to middle column) -->
           <div id="at-panel-scalp" style="display:none;flex:1;flex-direction:column;overflow-y:auto;padding:10px 12px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
               <div id="scalp-engine-badge" style="display:inline-flex;align-items:center;gap:6px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);border-radius:6px;padding:3px 10px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;color:var(--purple);">
@@ -2221,11 +2383,6 @@ select.input option { background:#111116; color:#E8E8F0; }
             </div>
             <div id="scalp-history-entries">
               <div class="empty" style="padding:10px 0;"><div class="empty-text" style="font-size:10px;color:var(--text4);">No scalp trades yet</div></div>
-            </div>
-            <div style="height:1px;background:var(--border);margin:8px 0;"></div>
-            <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1px;margin-bottom:5px;">SCALP ENGINE LOG</div>
-            <div id="scalp-log-entries">
-              <div class="empty" style="padding:10px 0;"><div class="empty-text" style="font-size:10px;color:var(--text4);">Activity will appear here</div></div>
             </div>
           </div>
 
@@ -2973,9 +3130,8 @@ function updatePriceTileFromCache(pairId, price) {
       <div class="price-tile-val ${changeClass}">${price.toFixed(dp)}${arrow}</div>`;
     setTimeout(() => el.classList.remove('flash-up','flash-down'), 800);
   }
-  // Debounced full rebuild so the second (unnamed) scroll copy also shows live prices
-  clearTimeout(_stripRebuildTimer);
-  _stripRebuildTimer = setTimeout(() => { if (typeof rebuildPriceStrip === 'function') rebuildPriceStrip(); }, 500);
+  // Second scroll copy updated only on 30-second snapshot interval (see home_startTickerInterval)
+  // — do NOT call rebuildPriceStrip() here; it resets the CSS animation on every tick.
 }
 
 // Default home page price strip — always show these regardless of scan selection
@@ -8139,7 +8295,12 @@ function scalpUpdateFearGreedDisplay() {
 }
 
 function scalpAddLog(type, message) {
-  const entry = { type, message, time: new Date().toLocaleString() };
+  // Compact log: strip verbose preamble, keep first 120 chars only
+  const compact = message
+    .replace(/\n+/g, ' | ')
+    .replace(/\s{2,}/g, ' ')
+    .slice(0, 120);
+  const entry = { type, message: compact, time: new Date().toISOString().slice(11,19) };
   scalpLog.unshift(entry);
   scalpSave();
   scalpRenderLog();
@@ -8152,14 +8313,18 @@ function scalpRenderLog() {
     el.innerHTML = '<div class="empty" style="padding:10px 0;"><div class="empty-text" style="font-size:10px;color:var(--text4);">No activity yet</div></div>';
     return;
   }
-  const typeColors = { 'open':'var(--blue)', 'close-win':'var(--green)', 'close-loss':'var(--red)', 'scan':'var(--purple)', 'skip':'rgba(255,180,0,0.6)' };
-  el.innerHTML = scalpLog.slice(0, 60).map(entry => {
-    const col = typeColors[entry.type] || 'var(--border2)';
-    const lines = entry.message.split('\n').map((line, i) => {
-      if (i === 0) return `<div style="color:var(--text);font-weight:600;font-size:10px;">${line}</div>`;
-      return line ? `<div style="color:var(--text3);font-size:9px;">${line}</div>` : '<div style="height:2px;"></div>';
-    }).join('');
-    return `<div style="background:var(--bg2);border-radius:6px;padding:7px 9px;margin-bottom:5px;border-left:2px solid ${col};">${lines}<div style="color:var(--text4);font-size:7px;margin-top:4px;">${entry.time}</div></div>`;
+  const typeColors = { 'open':'var(--teal)', 'close-win':'var(--green)', 'close-loss':'var(--red)', 'scan':'var(--purple)', 'skip':'rgba(255,180,0,0.6)' };
+  const typeIcons  = { 'open':'▶', 'close-win':'✓', 'close-loss':'✗', 'scan':'◎', 'skip':'—' };
+  el.innerHTML = scalpLog.slice(0, 80).map(entry => {
+    const col  = typeColors[entry.type] || 'var(--border2)';
+    const icon = typeIcons[entry.type]  || '·';
+    return `<div style="display:flex;gap:6px;align-items:flex-start;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <span style="font-family:var(--font-mono);font-size:8px;color:${col};flex-shrink:0;margin-top:1px;">${icon}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text2);line-height:1.4;word-break:break-word;">${entry.message}</div>
+      </div>
+      <span style="font-family:var(--font-mono);font-size:7px;color:var(--text4);flex-shrink:0;">${entry.time}</span>
+    </div>`;
   }).join('');
 }
 
@@ -10477,7 +10642,12 @@ function atRenderHistory() {
 
 // ── AI Log panel ──────────────────────────────────────────────────────────────
 function atAddLog(type, message) {
-  const entry = { type, message, time: new Date().toLocaleString() };
+  // Compact: keep first 130 chars, collapse whitespace
+  const compact = message
+    .replace(/\n+/g, ' | ')
+    .replace(/\s{2,}/g, ' ')
+    .slice(0, 130);
+  const entry = { type, message: compact, time: new Date().toISOString().slice(11,19) };
   atLog.unshift(entry);
   atSave();
   atRenderLog();
@@ -10490,25 +10660,17 @@ function atRenderLog() {
     el.innerHTML = '<div class="empty" style="padding:20px 0;"><div class="empty-icon" style="font-size:26px;">🧠</div><div class="empty-text" style="font-size:11px;">Engine activity will appear here</div></div>';
     return;
   }
-  el.innerHTML = atLog.slice(0, 80).map(entry => {
-    const typeColors = {
-      'open':       'var(--blue)',
-      'close-win':  'var(--green)',
-      'close-loss': 'var(--red)',
-      'scan':       'var(--purple)',
-      'skip':       'rgba(255,180,0,0.6)'
-    };
-    const borderColor = typeColors[entry.type] || 'var(--border2)';
-    const lines = entry.message.split('\n').map((line, i) => {
-      if (i === 0) return `<div style="color:var(--text);font-weight:600;">${line}</div>`;
-      if (line.startsWith('STRATEGY:') || line.startsWith('REASON:')) {
-        return `<div style="color:var(--text2);margin-top:4px;"><span style="color:${borderColor};">${line.split(':')[0]}:</span>${line.slice(line.indexOf(':')+1)}</div>`;
-      }
-      return line ? `<div style="color:var(--text3);">${line}</div>` : '<div style="height:3px;"></div>';
-    }).join('');
-    return `<div class="at-log-entry ${entry.type}" style="border-left-color:${borderColor};">
-      ${lines}
-      <div style="color:var(--text4);font-size:8px;margin-top:5px;">${entry.time}</div>
+  const typeColors = { 'open':'var(--teal)', 'close-win':'var(--green)', 'close-loss':'var(--red)', 'scan':'var(--purple)', 'skip':'rgba(255,180,0,0.6)' };
+  const typeIcons  = { 'open':'▶', 'close-win':'✓', 'close-loss':'✗', 'scan':'◎', 'skip':'—' };
+  el.innerHTML = atLog.slice(0, 100).map(entry => {
+    const col  = typeColors[entry.type] || 'var(--border2)';
+    const icon = typeIcons[entry.type]  || '·';
+    return `<div style="display:flex;gap:6px;align-items:flex-start;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <span style="font-family:var(--font-mono);font-size:8px;color:${col};flex-shrink:0;margin-top:1px;">${icon}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text2);line-height:1.4;word-break:break-word;">${entry.message}</div>
+      </div>
+      <span style="font-family:var(--font-mono);font-size:7px;color:var(--text4);flex-shrink:0;">${entry.time}</span>
     </div>`;
   }).join('');
 }
@@ -10537,7 +10699,23 @@ function atPanelTab(btn, panelId) {
   btn.classList.add('active');
   btn.style.color = 'var(--gold)';
   btn.style.borderBottomColor = 'var(--gold)';
-  ['at-panel-positions','at-panel-history','at-panel-log','at-panel-scalp'].forEach(id => {
+  ['at-panel-positions','at-panel-history','at-panel-scalp'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === panelId ? 'flex' : 'none';
+    if (el && id === panelId) el.style.flexDirection = 'column';
+  });
+}
+
+function atMidTab(btn, panelId) {
+  document.querySelectorAll('.at-mid-tab').forEach(b => {
+    b.classList.remove('active');
+    b.style.color = 'var(--text3)';
+    b.style.borderBottomColor = 'transparent';
+  });
+  btn.classList.add('active');
+  btn.style.color = 'var(--purple)';
+  btn.style.borderBottomColor = 'var(--purple)';
+  ['at-mid-ailog','at-mid-scalplog'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = id === panelId ? 'flex' : 'none';
     if (el && id === panelId) el.style.flexDirection = 'column';
@@ -10643,6 +10821,215 @@ function initAutoTrader() {
     scalpUiTimer = setInterval(scalpUpdateCountdown, 1000);
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// HOME COMMAND CENTRE — all functions prefixed home_
+// ═══════════════════════════════════════════════════════════════════
+
+// ── UTC Clock ────────────────────────────────────────────────────
+function home_tickClock() {
+  const el = document.getElementById('home-utc-clock');
+  if (!el) return;
+  const now = new Date();
+  const hh = String(now.getUTCHours()).padStart(2,'0');
+  const mm = String(now.getUTCMinutes()).padStart(2,'0');
+  const ss = String(now.getUTCSeconds()).padStart(2,'0');
+  el.textContent = `${hh}:${mm}:${ss} UTC`;
+}
+
+// ── Ticker snapshot — rebuild strip every 30 s, uninterrupted animation ──
+let _homeTickerTimer = null;
+function home_startTickerInterval() {
+  if (_homeTickerTimer) return; // already running
+  rebuildPriceStrip(); // immediate first snapshot
+  _homeTickerTimer = setInterval(() => {
+    if (typeof rebuildPriceStrip === 'function') rebuildPriceStrip();
+  }, 30000);
+}
+
+// ── Hero Status Bar ──────────────────────────────────────────────
+function home_refreshHeroBar() {
+  // Session
+  const sessionDot   = document.getElementById('home-session-dot');
+  const sessionLabel = document.getElementById('home-session-label');
+  if (sessionDot && sessionLabel) {
+    const now    = new Date();
+    const utcH   = now.getUTCHours();
+    const utcMin = now.getUTCMinutes();
+    const utcT   = utcH * 60 + utcMin;
+    // Session windows (UTC minutes)
+    const sessions = [
+      { name: 'Sydney',          start: 21*60, end: 6*60+0,  wrap: true  },
+      { name: 'Tokyo',           start: 0*60,  end: 9*60,    wrap: false },
+      { name: 'London',          start: 8*60,  end: 17*60,   wrap: false },
+      { name: 'New York',        start: 13*60, end: 22*60,   wrap: false },
+      { name: 'London+NY',       start: 13*60, end: 17*60,   wrap: false },
+    ];
+    const inSession = (s) => s.wrap ? (utcT >= s.start || utcT < s.end) : (utcT >= s.start && utcT < s.end);
+    const highLiq = ['London','New York','London+NY'];
+    let active = sessions.filter(inSession);
+    // Prefer overlap label
+    const overlap = active.find(s => s.name === 'London+NY');
+    let label = overlap ? 'London+NY Overlap' : (active.length ? active[active.length-1].name : 'Off-Hours');
+    const isHigh = overlap || active.some(s => highLiq.includes(s.name));
+    sessionLabel.textContent = label;
+    if (isHigh) {
+      sessionDot.style.background = '#00E87A';
+      sessionDot.style.boxShadow  = '0 0 6px #00E87A';
+      sessionDot.style.animation  = 'pulse 1.5s infinite';
+    } else {
+      sessionDot.style.background = 'var(--text4)';
+      sessionDot.style.boxShadow  = 'none';
+      sessionDot.style.animation  = 'none';
+    }
+  }
+
+  // Fear & Greed
+  const fngEl = document.getElementById('home-fng-display');
+  if (fngEl) {
+    if (scalpFearGreed && scalpFearGreed.value != null) {
+      const v = scalpFearGreed.value;
+      const lbl = scalpFearGreed.label || (v < 25 ? 'Extreme Fear' : v < 45 ? 'Fear' : v < 55 ? 'Neutral' : v < 75 ? 'Greed' : 'Extreme Greed');
+      const col = v < 30 ? 'var(--red)' : v < 50 ? '#FF9900' : v < 70 ? 'var(--text2)' : 'var(--teal)';
+      fngEl.innerHTML = `<span style="color:${col};font-weight:700;">${v}</span> <span style="color:var(--text3);font-size:9px;">${lbl}</span>`;
+    } else {
+      fngEl.textContent = '— loading…';
+      // Attempt fetch if scalpFetchFearGreed exists
+      if (typeof scalpFetchFearGreed === 'function' && !scalpFearGreed) {
+        scalpFetchFearGreed().then(fg => { scalpFearGreed = fg; home_refreshHeroBar(); }).catch(()=>{});
+      }
+    }
+  }
+
+  // Market Pulse (derived from session score)
+  const pulseEl = document.getElementById('home-pulse-label');
+  if (pulseEl && typeof atGetSessionScore === 'function') {
+    const s = atGetSessionScore();
+    const score = s && s.score != null ? s.score : 0;
+    let word, col;
+    if (score >= 75)      { word = 'ACTIVE';   col = 'var(--teal)'; }
+    else if (score >= 45) { word = 'MODERATE'; col = '#FF9900'; }
+    else if (score < 20)  { word = 'QUIET';    col = 'var(--text3)'; }
+    else                  { word = 'VOLATILE'; col = 'var(--purple)'; }
+    pulseEl.textContent = word;
+    pulseEl.style.color = col;
+  }
+
+  // Scalp positions
+  const posEl = document.getElementById('home-scalp-pos');
+  if (posEl) {
+    const open = (typeof scalpPositions !== 'undefined') ? Object.keys(scalpPositions).length : 0;
+    posEl.textContent = `${open} / 5`;
+    posEl.style.color = open >= 5 ? 'var(--red)' : open > 0 ? 'var(--teal)' : 'var(--text)';
+  }
+
+  const stamp = document.getElementById('home-hero-refresh-stamp');
+  if (stamp) {
+    const n = new Date();
+    stamp.textContent = `Updated ${String(n.getUTCHours()).padStart(2,'0')}:${String(n.getUTCMinutes()).padStart(2,'0')} UTC`;
+  }
+}
+
+// ── Opportunity Feed ─────────────────────────────────────────────
+function home_refreshFeed() {
+  const el = document.getElementById('home-opportunity-feed');
+  if (!el) return;
+  // Pull last 5 from scalpLog
+  const log = (typeof scalpLog !== 'undefined') ? scalpLog : [];
+  const trades = log.filter(e => e.type === 'open' || e.type === 'skip' || e.type === 'close-win' || e.type === 'close-loss').slice(0, 5);
+  if (!trades.length) {
+    el.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px;text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--text3);">Start the Scalp Engine to see live opportunities here.</div>';
+    return;
+  }
+  el.innerHTML = trades.map(entry => {
+    const msg = entry.message || '';
+    // Determine action
+    let action = 'SKIP', cls = 'skip';
+    if (entry.type === 'open') {
+      action = msg.includes('SHORT') || msg.includes('SELL') ? 'SELL' : 'BUY';
+      cls = action === 'BUY' ? 'buy' : 'sell';
+    }
+    // Extract instrument
+    const instMatch = msg.match(/\b(BTCUSD|ETHUSD|XAUUSD|XAGUSD|EURUSD|GBPUSD|SOLUSD|USOIL|UKOIL|[A-Z]{6})\b/);
+    const inst = instMatch ? instMatch[1] : '—';
+    // Extract confidence
+    const confMatch = msg.match(/(\d{1,3})%/);
+    const conf = confMatch ? confMatch[1] + '%' : '';
+    // First meaningful sentence
+    const first = msg.split(/[\n.!]/)[0].trim().slice(0, 90);
+    // Timestamp
+    const ts = entry.time ? entry.time.slice(0,20) : '';
+    return `<div class="home-opp-card ${cls}">
+      <div class="home-opp-badge ${cls}">${action}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap;">
+          <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;color:var(--text);">${inst}</span>
+          ${conf ? `<span style="font-family:var(--font-mono);font-size:9px;color:var(--text3);">${conf}</span>` : ''}
+          <span style="font-family:var(--font-mono);font-size:8px;color:var(--text4);margin-left:auto;">${ts}</span>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${first}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Performance Summary ──────────────────────────────────────────
+function home_refreshPerf() {
+  const hist = (typeof scalpHistory !== 'undefined') ? scalpHistory : [];
+  const today = new Date().toDateString();
+  const todayTrades = hist.filter(t => t.closeTime && new Date(t.closeTime).toDateString() === today);
+  const count = todayTrades.length;
+  const wins  = todayTrades.filter(t => (t.pnl || 0) > 0).length;
+  const pnl   = todayTrades.reduce((s, t) => s + (t.pnl || 0), 0);
+  const wr    = count ? Math.round(wins / count * 100) + '%' : '—';
+  const el_t  = document.getElementById('home-perf-trades');
+  const el_w  = document.getElementById('home-perf-wr');
+  const el_p  = document.getElementById('home-perf-pnl');
+  if (el_t) el_t.textContent = count;
+  if (el_w) { el_w.textContent = wr; el_w.style.color = count ? (wins/count >= 0.5 ? 'var(--teal)' : 'var(--red)') : 'var(--text)'; }
+  if (el_p) { el_p.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(0); el_p.style.color = pnl > 0 ? 'var(--teal)' : pnl < 0 ? 'var(--red)' : 'var(--text)'; }
+}
+
+// ── Instinct Quote ───────────────────────────────────────────────
+function home_refreshInstinct() {
+  const el = document.getElementById('home-instinct-text');
+  if (!el) return;
+  const log = (typeof scalpLog !== 'undefined') ? scalpLog : [];
+  let instinct = null;
+  for (const entry of log) {
+    const msg = entry.message || '';
+    // Look for instinct_reading field in the message text
+    const m = msg.match(/instinct[_\s]reading["\s:]+([^"\n\|]{10,120})/i);
+    if (m) { instinct = m[1].replace(/[",\\]+/g,'').trim(); break; }
+    // Also try structured JSON-like
+    const m2 = msg.match(/"instinct_reading"\s*:\s*"([^"]{10,120})"/i);
+    if (m2) { instinct = m2[1].trim(); break; }
+  }
+  el.textContent = instinct
+    ? '♞ ' + instinct
+    : '♞ Wingman is watching the markets. Start the Scalp Engine to activate live intelligence.';
+}
+
+// ── Master init & intervals ──────────────────────────────────────
+let _homeHeroTimer  = null;
+let _homeFeedTimer  = null;
+let _homeClockTimer = null;
+
+function home_init() {
+  home_tickClock();
+  home_startTickerInterval();
+  home_refreshHeroBar();
+  home_refreshFeed();
+  home_refreshPerf();
+  home_refreshInstinct();
+
+  if (!_homeClockTimer) _homeClockTimer = setInterval(home_tickClock, 1000);
+  if (!_homeHeroTimer)  _homeHeroTimer  = setInterval(() => { home_refreshHeroBar(); home_refreshPerf(); home_refreshInstinct(); }, 60000);
+  if (!_homeFeedTimer)  _homeFeedTimer  = setInterval(() => { home_refreshFeed(); home_refreshInstinct(); }, 10000);
+}
+
+// Boot when DOM ready — slight delay so globals like scalpLog are populated
+setTimeout(home_init, 1800);
 </script>
 </body>
 </html>
