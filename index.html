@@ -2959,7 +2959,8 @@ function updatePriceTileFromCache(pairId, price) {
   const flashClass  = changed ? (up ? 'flash-up' : 'flash-down') : '';
   prevPrices[pairId] = price;
   const src = priceSourceCache[pairId] || 'td';
-  const srcBadge = src === 'binance' ? '<span style="font-size:7px;color:#F0B90B;margin-left:3px;">B</span>'
+  const srcBadge = src === 'deriv'   ? '<span style="font-size:7px;color:#FF444F;margin-left:3px;">D</span>'
+               : src === 'binance' ? '<span style="font-size:7px;color:#F0B90B;margin-left:3px;">B</span>'
                  : src === 'er'      ? '<span style="font-size:7px;color:#00C8FF;margin-left:3px;">ER</span>'
                  : '';
   // Update the named tile (first scroll copy) in-place
@@ -3012,7 +3013,8 @@ function rebuildPriceStrip() {
     const price = livePriceCache[p];
     const dp = lowDpPairs.includes(p) ? 2 : 5;
     const src = priceSourceCache[p] || '';
-    const srcBadge = src === 'binance' ? '<span style="font-size:7px;color:#F0B90B;margin-left:3px;">B</span>'
+    const srcBadge = src === 'deriv'   ? '<span style="font-size:7px;color:#FF444F;margin-left:3px;">D</span>'
+               : src === 'binance' ? '<span style="font-size:7px;color:#F0B90B;margin-left:3px;">B</span>'
                    : src === 'er'      ? '<span style="font-size:7px;color:#00C8FF;margin-left:3px;">ER</span>'
                    : '';
     return `<div class="price-tile"${withId ? ` id="ptile-${p}"` : ''} style="min-width:100px;flex-shrink:0;">
@@ -7920,9 +7922,31 @@ let atLog       = JSON.parse(localStorage.getItem('wm_at_log')       || '[]');
 let atEngineRunning   = false;
 let atScanTimer       = null;   // setInterval handle for 30-min scans
 let atUiTimer         = null;   // setInterval handle for 2s UI refresh
-let atBinanceWs       = null;   // Binance WebSocket
+let atBinanceWs       = null;   // Binance WebSocket (BTC only)
 let atCurrentPrice    = null;   // Latest BTC/USD price from Binance
 let atPrevClose       = null;   // Previous tick price for change %
+
+// ── DERIV WEBSOCKET — Autotrader forex live feed ──────────────────────────────
+// Scoped exclusively to the Autotrader/Scalp engine. No other part of the app uses this.
+// Deriv public WS requires no account or API key for read-only tick streaming.
+let atDerivWs         = null;   // Deriv WebSocket connection
+let atDerivConnected  = false;  // Connection state
+let atDerivSubscriptions = {};  // active symbol → subscription id map
+// Deriv symbol map — Autotrader instrument id → Deriv symbol string
+const DERIV_SYMBOLS = {
+  'EURUSD':  'frxEURUSD',
+  'GBPUSD':  'frxGBPUSD',
+  'USDJPY':  'frxUSDJPY',
+  'USDCHF':  'frxUSDCHF',
+  'AUDUSD':  'frxAUDUSD',
+  'NZDUSD':  'frxNZDUSD',
+  'USDCAD':  'frxUSDCAD',
+  'EURGBP':  'frxEURGBP',
+  'EURJPY':  'frxEURJPY',
+  'GBPJPY':  'frxGBPJPY',
+  'XAUUSD':  'frxXAUUSD',
+  'XAGUSD':  'frxXAGUSD',
+};
 let atCurrentTF       = '60';   // Chart reference TF
 let atCurrentInst     = 'BTCUSD'; // Watched instrument for chart
 let atNextScanMs      = null;   // Timestamp of next scan
@@ -8307,9 +8331,17 @@ function scalpStartEngine() {
   atConnectBinance();
   for (const id of scalpSelectedInstruments) {
     if (BINANCE_SYMBOLS[id] && id !== 'BTCUSD') connectBinancePair(id);
-    if (!BINANCE_SYMBOLS[id]) fetchPriceForInstrument(id);
+    // For forex/metals with a Deriv mapping — use Deriv live feed instead of polling
+    if (DERIV_SYMBOLS[id]) {
+      atEnsureDerivFeed(id);
+    } else if (!BINANCE_SYMBOLS[id]) {
+      fetchPriceForInstrument(id);
+    }
   }
-  if (scalpSelectedInstruments.includes('XAUUSD')) scalpFetchXAUPrice();
+  if (scalpSelectedInstruments.includes('XAUUSD')) {
+    // Deriv covers XAUUSD — also run the legacy XAU fetch as initial seed price
+    scalpFetchXAUPrice();
+  }
 
   // Fetch Fear & Greed index on start and refresh every 15 min
   scalpFetchFearGreed().then(fg => {
@@ -8322,7 +8354,7 @@ function scalpStartEngine() {
     if (scalpSelectedInstruments.includes('XAUUSD')) scalpFetchXAUPrice();
   }, 15 * 60 * 1000);
 
-  scalpAddLog('scan', `⚡ Scalp engine started. Instruments: ${scalpSelectedInstruments.join(', ')} | 5–10 min precision scalps | Instinct Layer: ACTIVE`);
+  scalpAddLog('scan', `⚡ Scalp engine started. Instruments: ${scalpSelectedInstruments.join(', ')} | 5–10 min precision scalps | Instinct Layer: ACTIVE | Forex/metals via Deriv live feed | BTC via Binance WS`);
 
   // Scan all selected instruments sequentially, 2s gap between each
   async function scalpRunAllInstruments() {
@@ -8356,6 +8388,7 @@ function scalpStartEngine() {
 }
 
 function scalpStopEngine() {
+  atDisconnectDeriv();
   scalpEngineRunning = false;
   clearTimeout(scalpScanTimer);
   clearInterval(scalpUiTimer);
@@ -8668,12 +8701,17 @@ async function scalpRunScan(instId) {
     } else if (isXAU) {
       await scalpFetchXAUPrice();
       price = scalpXauPrice || livePriceCache['XAUUSD'];
+    } else if (DERIV_SYMBOLS[inst]) {
+      // Forex/metal — use Deriv live feed price from cache
+      // Ensure the feed is alive and subscribe if not already
+      atEnsureDerivFeed(inst);
+      price = livePriceCache[inst];
     } else {
       await fetchPriceForInstrument(inst);
       price = livePriceCache[inst];
     }
     if (!price) {
-      scalpAddLog('skip', `⏳ No live price for ${inst} — scalp scan skipped.`);
+      scalpAddLog('skip', `⏳ No live price for ${inst} — Deriv feed initialising, will retry next scan…`);
       scalpScanInProgress = false;
       return;
     }
@@ -9058,16 +9096,16 @@ You weigh BOTH layers equally. A perfect technical setup in a dead market (low i
 - ADX(14) on 5M must be > 15 (choppy market = SKIP — noise, not signal)
 - BB Squeeze ACTIVE on both 1M AND 5M: SKIP — wait for the breakout, don't guess direction
 - RSI divergence AGAINST intended direction: SKIP — reversal warning, don't fight the signal
-- Confluence score must favour your direction by >55%
+- Confluence score must favour your direction by >45%
 
-**TIER 2 — ENTRY SIGNAL (minimum 2 of 4 required):**
+**TIER 2 — ENTRY SIGNAL (minimum 1 of 4 required):**
 A) StochRSI 1M: %K crossing above %D from <20 = BUY | crossing below %D from >80 = SELL
 B) Hull MA(9): rising = BUY momentum | falling = SELL momentum (near-zero lag)
 C) Parabolic SAR: price above SAR = bullish | SAR flip is the strongest signal in the suite
 D) Price Action: Bullish/bearish engulfing or pin bar at structural S/R level
 ${isXAU ? `E) GOLD BONUS: XAU Golden Window is active (London open / Silver Bullet) = entry signal weight ×1.5` : `E) BTC BONUS: London-NY overlap session + high volume = entry signal weight ×1.5`}
 
-**TIER 3 — MOMENTUM CONFIRMATION (minimum 3 of 5 required):**
+**TIER 3 — MOMENTUM CONFIRMATION (minimum 2 of 5 required):**
 1. 5M MACD histogram rising + positive = BUY | falling + negative = SELL
 2. OBV rising = institutional accumulation | OBV falling = distribution
 3. MFI recovering from <35 = BUY signal | MFI falling from >65 = SELL signal
@@ -9088,16 +9126,16 @@ ${isXAU ? `E) GOLD BONUS: XAU Golden Window is active (London open / Silver Bull
 === INSTINCT LAYER RULES ===
 
 **INSTINCT SCORE INTERPRETATION:**
-- Score 70–100 (STRONG): Market conditions are favourable. Technical signals carry FULL weight. A+ setups are valid.
-- Score 55–69 (MODERATE): Conditions are reasonable but not ideal. Require STRONGER technical confluence. Only A+ setups.
-- Score 40–54 (WEAK): Something feels off about the market. Raise confluence requirements to 3 Tier 2 + 4 Tier 3 signals.
-- Score 0–39 (POOR): The room feels wrong. SKIP unless the technical setup is absolutely unmistakable (confidence > 85%).
+- Score 70–100 (STRONG): Market conditions are favourable. Technical signals carry FULL weight. A+ and B+ setups are valid.
+- Score 55–69 (MODERATE): Conditions are reasonable. Standard confluence requirements apply. Both A+ and B+ setups are valid.
+- Score 40–54 (WEAK): Something feels off. Require minimum 2 Tier 2 + 3 Tier 3 signals. B+ setups with 35%+ confidence are acceptable.
+- Score 0–39 (POOR): Conditions are difficult. SKIP unless confidence is above 55% AND minimum 2 Tier 2 signals fire.
 
 **INSTINCT OVERRIDES (these can flip your decision regardless of technicals):**
 - DEAD_MARKET + LOW_VOLATILITY + STAGNANT: SKIP regardless of technical signals — bots get chopped apart in dead markets
 - ${isXAU ? 'GOLD DEAD ZONE (20:00–06:00 UTC) + low energy: SKIP unless unusual volatility spike detected' : 'BTC dead zone (22:00–06:00 UTC) + low session score: SKIP unless volume is 2×+ average'}
-- COLD_LOSING_STREAK (engine mojo): Raise confidence threshold to 80%. The market regime may have shifted — be defensive.
-- HOT_STREAK: Slightly lower threshold to 60%. Conditions are working in your favour — press the edge.
+- COLD_LOSING_STREAK (engine mojo): Raise confidence threshold to 50%. The market regime may have shifted — be slightly more cautious.
+- HOT_STREAK: Lower threshold to 35%. Conditions are working in your favour — press the edge.
 - Fear & Greed EXTREME_FEAR (<25) for ${isXAU ? 'gold = flight-to-safety BUY bias — weight BUY signals +10%' : 'BTC with volume surge = potential capitulation bounce — BUY bias'}
 - Fear & Greed EXTREME_GREED (>75): Be more cautious with BUY entries — market may be extended
 - F&G momentum FALLING fast (delta < -10): Sentiment deteriorating — add urgency to SELL thesis
@@ -9107,7 +9145,7 @@ ${isXAU ? `E) GOLD BONUS: XAU Golden Window is active (London open / Silver Bull
 **COMBINED REASONING (what elite traders actually think):**
 When you analyse the brief, think like a professional trader at their desk: "Do conditions FEEL right? Is this the kind of market where I want to be active? Does the technical picture MATCH the energy I'm sensing in the market right now?" If the answer to all three is yes — that's your trade. If any answer is no — reassess.
 
-Be ruthlessly selective. The best scalpers SKIP 65–75% of scans. A high SKIP rate is intelligent, not passive.
+Be selective but not paralysed. The best scalpers find the balance between patience and action. SKIP when signals genuinely conflict; trade when at least 35% confidence with 2+ Tier 2 signals aligned.
 
 Respond ONLY with valid JSON. No markdown, no prose outside JSON.`;
 
@@ -9265,6 +9303,128 @@ function atDisconnectBinance() {
     atBinanceWs.close();
     atBinanceWs = null;
   }
+}
+
+// ── DERIV WEBSOCKET — Autotrader forex live price feed ───────────────────────
+// Opens a single persistent connection to Deriv's public tick API.
+// Subscribes to any forex/metal instruments requested by the scalp engine.
+// Prices are written into livePriceCache[instId] exactly like Binance does for BTC.
+
+function atConnectDeriv(onReadyCb) {
+  // Already connected — fire callback immediately
+  if (atDerivWs && atDerivWs.readyState === 1) {
+    if (onReadyCb) onReadyCb();
+    return;
+  }
+  // Already connecting — queue callback
+  if (atDerivWs && atDerivWs.readyState === 0) {
+    const prev = atDerivWs.onopen;
+    atDerivWs.onopen = (e) => { if (prev) prev(e); if (onReadyCb) onReadyCb(); };
+    return;
+  }
+
+  try {
+    atDerivWs = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+
+    atDerivWs.onopen = () => {
+      atDerivConnected = true;
+      atAddLog('scan', '🌐 Deriv WebSocket connected — live forex/metals feed active for Autotrader');
+      // Re-subscribe to any instruments that were requested before connect completed
+      Object.keys(atDerivSubscriptions).forEach(instId => {
+        const derivSym = DERIV_SYMBOLS[instId];
+        if (derivSym) atDerivSubscribeTick(instId, derivSym);
+      });
+      if (onReadyCb) onReadyCb();
+    };
+
+    atDerivWs.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        // Tick response — update price cache
+        if (msg.msg_type === 'tick' && msg.tick) {
+          const tick = msg.tick;
+          // Find which of our instrument IDs this Deriv symbol maps to
+          const instId = Object.keys(DERIV_SYMBOLS).find(k => DERIV_SYMBOLS[k] === tick.symbol);
+          if (instId) {
+            const price = parseFloat(tick.quote);
+            if (!isNaN(price)) {
+              livePriceCache[instId] = price;
+              priceSourceCache[instId] = 'deriv';
+              // If scalp engine has an open position on this instrument, check SL/TP
+              scalpCheckSLTP();
+            }
+          }
+        }
+        // Subscription confirmation — store subscription id for later unsubscribe
+        if (msg.msg_type === 'tick' && msg.subscription) {
+          const instId = Object.keys(DERIV_SYMBOLS).find(k => DERIV_SYMBOLS[k] === msg.tick?.symbol);
+          if (instId) atDerivSubscriptions[instId] = msg.subscription.id;
+        }
+        // Error from Deriv
+        if (msg.error) {
+          atAddLog('scan', `⚠️ Deriv WS error: ${msg.error.message}`);
+        }
+      } catch(err) {}
+    };
+
+    atDerivWs.onerror = () => {
+      atDerivConnected = false;
+      atAddLog('scan', '⚠️ Deriv WS error — will retry on next scan');
+    };
+
+    atDerivWs.onclose = () => {
+      atDerivConnected = false;
+      atDerivSubscriptions = {};
+      // Auto-reconnect if scalp engine is still running
+      if (scalpEngineRunning) {
+        setTimeout(() => atConnectDeriv(), 8000);
+      }
+    };
+  } catch(err) {
+    atAddLog('scan', '⚠️ Could not open Deriv WS: ' + err.message);
+  }
+}
+
+function atDerivSubscribeTick(instId, derivSym) {
+  if (!atDerivWs || atDerivWs.readyState !== 1) return;
+  // Don't duplicate-subscribe
+  if (atDerivSubscriptions[instId]) return;
+  atDerivWs.send(JSON.stringify({
+    ticks: derivSym,
+    subscribe: 1
+  }));
+  // Mark as pending (actual id comes back in onmessage)
+  atDerivSubscriptions[instId] = 'pending';
+}
+
+function atDerivUnsubscribeAll() {
+  if (!atDerivWs || atDerivWs.readyState !== 1) return;
+  Object.values(atDerivSubscriptions).forEach(subId => {
+    if (subId && subId !== 'pending') {
+      atDerivWs.send(JSON.stringify({ forget: subId }));
+    }
+  });
+  atDerivSubscriptions = {};
+}
+
+function atDisconnectDeriv() {
+  atDerivUnsubscribeAll();
+  if (atDerivWs) {
+    atDerivWs.onclose = null;
+    atDerivWs.close();
+    atDerivWs = null;
+  }
+  atDerivConnected = false;
+}
+
+// Called by the scalp engine when it starts scanning a forex/metal instrument.
+// Ensures the Deriv feed is live and a tick subscription is active for that instrument.
+function atEnsureDerivFeed(instId) {
+  const derivSym = DERIV_SYMBOLS[instId];
+  if (!derivSym) return; // not a Deriv-mapped instrument (e.g. BTC uses Binance)
+  atConnectDeriv(() => {
+    atDerivSubscribeTick(instId, derivSym);
+  });
 }
 
 // ── Price display ─────────────────────────────────────────────────────────────
@@ -9823,32 +9983,27 @@ YOUR DECISION FRAMEWORK — apply ALL of the following before deciding:
 
 4. NEWS / MACRO SENTIMENT: BEARISH news in context of bearish technicals = higher conviction SELL. BULLISH news in uptrend = higher conviction BUY. MIXED/UNKNOWN = reduce position size or SKIP.
 
-5. SESSION QUALITY: Low-liquidity sessions (score < 5) require 80%+ confidence to trade. Optimal sessions (score >= 8) allow 65%+ confidence threshold.
+5. SESSION QUALITY: Low-liquidity sessions (score < 5) require 50%+ confidence to trade. Optimal sessions (score >= 8) allow 35%+ confidence threshold.
 
 6. KEY LEVEL RESPECT:
-   - Do NOT enter a BUY if price is within 0.5% of major resistance (insufficient room for TP).
-   - Do NOT enter a SELL if price is within 0.5% of major support.
+   - Do NOT enter a BUY if price is within 0.3% of major resistance (insufficient room for TP).
+   - Do NOT enter a SELL if price is within 0.3% of major support.
    - Best entries: BUY near support with room to resistance; SELL near resistance with room to support.
 
 7. RISK MANAGEMENT (NON-NEGOTIABLE):
    - Minimum 5 lots per trade.
    - SL: Place at nearest logical structure level (swing high/low, ATR-based). Range: 0.5%–2.5% from entry.
-   - TP: Minimum 1:1.8 R:R. Prefer 1:2.5 or better. TP at next key resistance (BUY) or support (SELL).
+   - TP: Minimum 1:1.5 R:R. Prefer 1:2 or better. TP at next key resistance (BUY) or support (SELL).
    - Maximum 3 concurrent open positions. If already at 3, SKIP regardless of signal quality.
-   - If account drawdown > 15% from start: reduce conviction threshold to 85%, be very selective.
+   - If account drawdown > 15% from start: reduce conviction threshold to 55%, remain selective.
 
-8. SKIP CONDITIONS (immediately SKIP if any apply):
-   - Fewer than 2/3 timeframes agree on direction.
-   - Fewer than 3 indicators confirm the signal.
-   - Price is in the middle of Bollinger Bands with no clear direction.
-   - Volume is WEAK on a supposed breakout.
-   - News sentiment directly contradicts technical signal.
+8. SKIP CONDITIONS (skip only if the signal is genuinely conflicted):
+   - All 3 timeframes disagree AND fewer than 2 indicators confirm the signal.
+   - News sentiment directly and strongly contradicts technical signal.
    - Already 3 open positions.
-   - Low-liquidity session AND confidence below 80%.
-   - ATR is abnormally low (compression/no movement likely).
-   - RSI divergence present (price making new high but RSI falling, or vice versa).
+   A 35%+ confidence reading with at least 2 confirming indicators is sufficient to act. Do not over-filter — trade with reduced lots on lower conviction setups rather than skipping entirely.
 
-Be VERY selective. A high SKIP rate is correct behaviour. It is better to miss a trade than to take a low-quality one. Real professionals only trade the A+ setups.
+Aim for active participation. Find the balance between patience and action. Missing trades is as costly as bad trades.
 
 You must respond ONLY with valid JSON. No markdown, no prose, no explanation outside the JSON.`;
 
