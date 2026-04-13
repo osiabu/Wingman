@@ -2582,7 +2582,8 @@ select.input option { background:#111116; color:#E8E8F0; }
         </div>
         <div class="card">
           <div class="card-label">Third-Party Services</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.8;">Wingman integrates with third-party services including TradingView, Binance, and Forex Factory. Use of these services is subject to their respective terms. Wingman is not affiliated with any of these providers.</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.8;">Wingman integrates with third-party services including TradingView, Binance, Forex Factory, and Deriv. Use of these services is subject to their respective terms. Wingman is not affiliated with any of these providers.</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:6px;">Forex &amp; metals live prices and candle data: <span style="color:#FF444F;font-weight:600;">Powered by Deriv</span> | Crypto: Binance | Indices &amp; other: TwelveData</div>
         </div>
       </div>
     </div>
@@ -4205,23 +4206,36 @@ async function fetchLivePrices() {
   const cryptoPairs  = allPairs.filter(p => BINANCE_SYMBOLS[p]);
   const nonCryptoPairs = allPairs.filter(p => !BINANCE_SYMBOLS[p]);
 
-  // ── Step 2: Non-crypto → /api/prices (TwelveData + open.er-api.com, Redis cached) ──
+  // ── Step 2a: Forex/metals with Deriv mapping → Deriv WebSocket (primary, free, real-time) ──
+  const derivPairs = nonCryptoPairs.filter(p => DERIV_SYMBOLS[p]);
+  const tdOnlyPairs = nonCryptoPairs.filter(p => !DERIV_SYMBOLS[p]);
+
+  // Ensure Deriv WS is open and subscribe all forex/metal pairs at once
+  if (derivPairs.length) {
+    atConnectDeriv(() => {
+      derivPairs.forEach(p => {
+        const derivSym = DERIV_SYMBOLS[p];
+        if (derivSym) atDerivSubscribeTick(p, derivSym);
+      });
+    });
+    // Prices flow into livePriceCache via atDerivWs.onmessage automatically
+  }
+
+  // ── Step 2b: Remaining non-crypto (indices, softs etc) → TwelveData fallback ──
   // ETF proxies are used for indices (DIA≈US30/100, SPY≈SPX500/10, QQQ≈NAS100/~43)
-  // Scale factors convert ETF price → approximate index point value
   const ETF_SCALE = { US30: 100, SPX500: 10, NAS100: 43, UK100: 110, GER40: 50, JPN225: 650, AUS200: 55, HK50: 700 };
 
-  if (nonCryptoPairs.length) {
-    const symbols = nonCryptoPairs.map(p => TD_SYMBOLS[p]).filter(Boolean);
+  if (tdOnlyPairs.length) {
+    const symbols = tdOnlyPairs.map(p => TD_SYMBOLS[p]).filter(Boolean);
     if (symbols.length) {
       try {
         const res = await fetch(`/api/prices?symbols=${encodeURIComponent(symbols.join(','))}`);
         if (res.ok) {
           const priceMap = await res.json();
-          nonCryptoPairs.forEach(p => {
+          tdOnlyPairs.forEach(p => {
             const tdSym = TD_SYMBOLS[p];
             let price = tdSym ? priceMap[tdSym] : undefined;
             if (price && !isNaN(price)) {
-              // Apply scale factor for ETF-proxied indices
               if (ETF_SCALE[p]) price = price * ETF_SCALE[p];
               livePriceCache[p] = price;
               priceSourceCache[p] = priceMap._source || 'td';
@@ -4230,7 +4244,7 @@ async function fetchLivePrices() {
           });
         }
       } catch(e) {
-        console.warn('Price API failed:', e.message);
+        console.warn('TwelveData price fallback failed:', e.message);
       }
     }
   }
@@ -7728,17 +7742,24 @@ function simOnInstrumentChange() {
 }
 
 // Fetch price for a single instrument and populate livePriceCache.
-// Uses Binance WS for crypto (connects if not already), /api/prices for everything else.
+// Priority: Binance WS (crypto) → Deriv WS (forex/metals) → TwelveData (everything else)
 async function fetchPriceForInstrument(inst) {
   if (!inst) return;
-  // If it's a crypto pair with a Binance symbol, connect the WS — it will populate cache asynchronously
+  // Crypto — connect Binance WS
   if (BINANCE_SYMBOLS[inst]) {
     connectBinancePair(inst);
-    // Give the WS a moment to deliver the first tick, then fall through to API if still missing
     await new Promise(r => setTimeout(r, 600));
     if (livePriceCache[inst]) return;
   }
-  // Non-crypto (or crypto WS didn't deliver in time): hit /api/prices directly
+  // Forex/metals — use Deriv WS (primary)
+  if (DERIV_SYMBOLS[inst]) {
+    atEnsureDerivFeed(inst);
+    // Give Deriv WS up to 2s to deliver the first tick
+    await new Promise(r => setTimeout(r, 800));
+    if (livePriceCache[inst]) return;
+    // Deriv didn't deliver in time — fall through to TwelveData
+  }
+  // TwelveData fallback (indices, softs, or if Deriv timed out)
   const tdSym = TD_SYMBOLS[inst];
   if (!tdSym) return;
   try {
@@ -7754,7 +7775,7 @@ async function fetchPriceForInstrument(inst) {
       updatePriceTileFromCache(inst, price);
     }
   } catch (e) {
-    console.warn('fetchPriceForInstrument failed for', inst, e.message);
+    console.warn('fetchPriceForInstrument fallback failed for', inst, e.message);
   }
 }
 
@@ -8028,31 +8049,11 @@ async function scalpFetchXAUPrice() {
 
 // ── Fetch Binance klines for non-BTC instruments via worker candles proxy ─────
 async function scalpFetchKlinesXAU(interval, limit = 100) {
-  // Use the existing WORKER_URL/candles endpoint (Twelve Data / proxied)
-  try {
-    const sym = 'XAU/USD';
-    const url = `${WORKER_URL}/candles?symbol=${encodeURIComponent(sym)}&interval=${interval}&outputsize=${limit}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) throw new Error('candles ' + res.status);
-    const data = await res.json();
-    // Twelve Data returns { values: [{datetime, open, high, low, close, volume}] }
-    const values = data.values || data;
-    if (!Array.isArray(values) || values.length < 10) throw new Error('insufficient data');
-    return values.reverse().map(k => ({
-      t:      new Date(k.datetime).getTime(),
-      open:   parseFloat(k.open),
-      high:   parseFloat(k.high),
-      low:    parseFloat(k.low),
-      close:  parseFloat(k.close),
-      volume: parseFloat(k.volume || 1)
-    }));
-  } catch(e) {
-    // Fallback: return null — scan will handle gracefully
-    return null;
-  }
+  // Route through Deriv (primary) → TwelveData (fallback)
+  return scalpFetchCandlesDeriv('XAUUSD', interval, limit);
 }
 
-// ── Generic candle fetcher — routes to Binance (crypto) or TwelveData (everything else) ──
+// ── Generic candle fetcher — Binance (crypto) | Deriv primary (forex/metals) | TwelveData fallback ──
 async function scalpFetchKlinesGeneric(instId, interval, limit = 100) {
   const bSym = BINANCE_SYMBOLS[instId];
   if (bSym) {
@@ -8064,9 +8065,15 @@ async function scalpFetchKlinesGeneric(instId, interval, limit = 100) {
       return raw.map(k => ({ t:k[0], open:parseFloat(k[1]), high:parseFloat(k[2]), low:parseFloat(k[3]), close:parseFloat(k[4]), volume:parseFloat(k[5]) }));
     } catch { return null; }
   }
+  // Forex/metals — use Deriv (primary) with TwelveData fallback
+  // This path is kept for instruments NOT in DERIV_SYMBOLS (e.g. indices, softs)
+  if (DERIV_SYMBOLS[instId]) {
+    return scalpFetchCandlesDeriv(instId, interval, limit);
+  }
+  // Non-Deriv, non-Binance — TwelveData only
   const tdSym = TD_SYMBOLS[instId];
   if (!tdSym) return null;
-  const tdMap = { '1m':'1min', '3m':'3min', '5m':'5min' };
+  const tdMap = { '1m':'1min', '3m':'3min', '5m':'5min', '15m':'15min', '1h':'1h', '4h':'4h', '1d':'1day' };
   const tdInterval = tdMap[interval] || interval;
   try {
     const url = `${WORKER_URL}/candles?symbol=${encodeURIComponent(tdSym)}&interval=${tdInterval}&outputsize=${limit}`;
@@ -8747,17 +8754,18 @@ async function scalpRunScan(instId) {
       ]).then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
       orderBook = null;
     } else {
-      // Non-crypto (XAU, XAG, EUR, GBP…): TwelveData via worker
-      [klines1m, klines5m] = await Promise.allSettled([
-        scalpFetchKlinesGeneric(inst, '1m', 100),
-        scalpFetchKlinesGeneric(inst, '5m', 100)
+      // Non-crypto (XAU, XAG, EUR, GBP…): Deriv candles primary, TwelveData fallback
+      // scalpFetchCandlesDeriv handles the routing: Deriv WS → TwelveData fallback internally
+      [klines1m, klines3m, klines5m] = await Promise.allSettled([
+        scalpFetchCandlesDeriv(inst, '1m', 100),
+        scalpFetchCandlesDeriv(inst, '3m', 80),
+        scalpFetchCandlesDeriv(inst, '5m', 100)
       ]).then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
-      klines3m  = null;
       orderBook = null;
     }
 
     if (!klines1m || !klines5m) {
-      scalpAddLog('skip', `❌ Candle data fetch failed for ${inst} — skipping scan.`);
+      scalpAddLog('skip', `❌ Candle data fetch failed for ${inst} — 1M: ${!!klines1m}, 5M: ${!!klines5m}. Check Deriv WS connection or TwelveData plan limits.`);
       scalpScanInProgress = false;
       return;
     }
@@ -9350,7 +9358,9 @@ function atConnectDeriv(onReadyCb) {
             if (!isNaN(price)) {
               livePriceCache[instId] = price;
               priceSourceCache[instId] = 'deriv';
-              // If scalp engine has an open position on this instrument, check SL/TP
+              // Update sidebar price tile in real-time
+              updatePriceTileFromCache(instId, price);
+              // Check scalp SL/TP on every tick
               scalpCheckSLTP();
             }
           }
@@ -9416,6 +9426,115 @@ function atDisconnectDeriv() {
   }
   atDerivConnected = false;
 }
+// ── DERIV CANDLE FETCH — OHLCV history via ticks_history ─────────────────────
+// Requests candle history from Deriv WebSocket for any DERIV_SYMBOLS-mapped instrument.
+// Returns array of {t, open, high, low, close, volume} in chronological order (oldest first).
+// interval: '1m' | '3m' | '5m' (maps to Deriv granularity in seconds)
+// limit: number of candles to fetch (max ~5000 but we use 100–200)
+// This is a one-shot request (not a subscription) — uses the existing persistent WS.
+
+const DERIV_GRANULARITY = { '1m': 60, '3m': 180, '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
+
+function atDerivFetchCandles(instId, interval, limit = 100) {
+  return new Promise((resolve, reject) => {
+    const derivSym     = DERIV_SYMBOLS[instId];
+    const granularity  = DERIV_GRANULARITY[interval];
+    if (!derivSym || !granularity) return reject(new Error('No Deriv mapping for ' + instId + '@' + interval));
+
+    const reqId = Date.now() + Math.floor(Math.random() * 10000);
+    const endEpoch = Math.floor(Date.now() / 1000);
+    const startEpoch = endEpoch - granularity * (limit + 5); // fetch a few extra for safety
+
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Deriv candle timeout for ' + instId));
+    }, 12000);
+
+    function onMessage(e) {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.req_id !== reqId) return;
+        clearTimeout(timeout);
+        cleanup();
+        if (msg.error) return reject(new Error('Deriv: ' + msg.error.message));
+        if (msg.msg_type !== 'candles' || !msg.candles) return reject(new Error('Deriv: unexpected response type ' + msg.msg_type));
+        // Deriv candles: [{epoch, open, high, low, close}] — no volume, so we fake it as 1
+        const candles = msg.candles
+          .slice(-limit)
+          .map(c => ({
+            t:      c.epoch * 1000,
+            open:   parseFloat(c.open),
+            high:   parseFloat(c.high),
+            low:    parseFloat(c.low),
+            close:  parseFloat(c.close),
+            volume: 1
+          }));
+        if (candles.length < 10) return reject(new Error('Deriv returned insufficient candles: ' + candles.length));
+        resolve(candles);
+      } catch(err) {
+        reject(err);
+      }
+    }
+
+    function cleanup() {
+      if (atDerivWs) atDerivWs.removeEventListener('message', onMessage);
+    }
+
+    // Ensure WS is open before sending
+    atConnectDeriv(() => {
+      if (!atDerivWs || atDerivWs.readyState !== 1) {
+        clearTimeout(timeout);
+        return reject(new Error('Deriv WS not ready'));
+      }
+      atDerivWs.addEventListener('message', onMessage);
+      atDerivWs.send(JSON.stringify({
+        ticks_history: derivSym,
+        style:         'candles',
+        granularity:   granularity,
+        start:         startEpoch,
+        end:           endEpoch,
+        count:         limit + 5,
+        req_id:        reqId
+      }));
+    });
+  });
+}
+
+// Convenience wrapper — tries Deriv first, falls back to TwelveData via worker
+async function scalpFetchCandlesDeriv(instId, interval, limit = 100) {
+  // Crypto — always use Binance REST
+  if (BINANCE_SYMBOLS[instId]) {
+    return scalpFetchKlinesGeneric(instId, interval, limit);
+  }
+  // Forex/metals with Deriv mapping — try Deriv first
+  if (DERIV_SYMBOLS[instId]) {
+    try {
+      const candles = await atDerivFetchCandles(instId, interval, limit);
+      if (candles && candles.length >= 10) return candles;
+    } catch(e) {
+      console.warn('Deriv candles failed for', instId, interval, '— trying TwelveData fallback:', e.message);
+    }
+    // Fallback to TwelveData via worker
+    const tdSym = TD_SYMBOLS[instId];
+    if (tdSym) {
+      const tdMap = { '1m':'1min', '3m':'3min', '5m':'5min', '15m':'15min', '1h':'1h', '4h':'4h', '1d':'1day' };
+      const tdInterval = tdMap[interval] || interval;
+      try {
+        const url = `${WORKER_URL}/candles?symbol=${encodeURIComponent(tdSym)}&interval=${tdInterval}&outputsize=${limit}`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const values = data.values || data;
+        if (!Array.isArray(values) || values.length < 10) return null;
+        return values.reverse().map(k => ({ t:new Date(k.datetime).getTime(), open:parseFloat(k.open), high:parseFloat(k.high), low:parseFloat(k.low), close:parseFloat(k.close), volume:parseFloat(k.volume||1) }));
+      } catch { return null; }
+    }
+    return null;
+  }
+  // Everything else — existing generic fetcher
+  return scalpFetchKlinesGeneric(instId, interval, limit);
+}
+
 
 // Called by the scalp engine when it starts scanning a forex/metal instrument.
 // Ensures the Deriv feed is live and a tick subscription is active for that instrument.
