@@ -7982,7 +7982,7 @@ let scalpEngineRunning  = false;
 let scalpScanTimer      = null;   // setInterval for 5–10 min scalp scans
 let scalpUiTimer        = null;   // setInterval for scalp countdown update
 let scalpNextScanMs     = null;   // Timestamp of next scalp scan
-let scalpScanInProgress = false;  // Guard against concurrent scalp scans
+const scalpScanInProgress = new Set(); // Per-instrument scan guards — prevents double-scanning same instrument while allowing concurrent scans across different instruments
 let scalpPositions      = JSON.parse(localStorage.getItem('wm_scalp_positions') || '[]');
 let scalpHistory        = JSON.parse(localStorage.getItem('wm_scalp_history')   || '[]');
 let scalpLog            = JSON.parse(localStorage.getItem('wm_scalp_log')        || '[]');
@@ -8365,12 +8365,18 @@ function scalpStartEngine() {
 
   // Scan all selected instruments sequentially, 2s gap between each
   async function scalpRunAllInstruments() {
+    if (!scalpEngineRunning) return;
+    // Stagger instrument scans by 3s each to avoid hammering APIs simultaneously
+    // Each scan is independent — per-instrument guard prevents double-scanning
     for (let i = 0; i < scalpSelectedInstruments.length; i++) {
       if (!scalpEngineRunning) break;
-      await scalpRunScan(scalpSelectedInstruments[i]);
-      if (i < scalpSelectedInstruments.length - 1) {
-        await new Promise(r => setTimeout(r, 2000));
-      }
+      const inst = scalpSelectedInstruments[i];
+      // Fire each scan without awaiting completion — they run concurrently
+      // The per-instrument scalpScanInProgress Set prevents any instrument
+      // from being double-scanned while a previous scan is still in flight
+      setTimeout(() => {
+        if (scalpEngineRunning) scalpRunScan(inst);
+      }, i * 3000); // 3s stagger between each instrument kick-off
     }
   }
 
@@ -8690,10 +8696,9 @@ function scalpAnalysePriceAction(candles) {
 
 // ── SCALP ENGINE — MAIN SCAN ─────────────────────────────────────────────────
 async function scalpRunScan(instId) {
-  if (scalpScanInProgress) return;
-  scalpScanInProgress = true;
-
   const inst    = instId || 'BTCUSD';
+  if (scalpScanInProgress.has(inst)) return; // already scanning this instrument
+  scalpScanInProgress.add(inst);
   const isBTC   = inst === 'BTCUSD';
   const isXAU   = inst === 'XAUUSD';
   const isCrypto = !!BINANCE_SYMBOLS[inst];
@@ -8719,19 +8724,19 @@ async function scalpRunScan(instId) {
     }
     if (!price) {
       scalpAddLog('skip', `⏳ No live price for ${inst} — Deriv feed initialising, will retry next scan…`);
-      scalpScanInProgress = false;
+      scalpScanInProgress.delete(inst);
       return;
     }
 
     // Max 5 concurrent scalp positions total, max 1 per instrument
     if (scalpPositions.length >= 5) {
       scalpAddLog('skip', `⏭️ Max 5 scalp positions open — scan skipped for ${inst}.`);
-      scalpScanInProgress = false;
+      scalpScanInProgress.delete(inst);
       return;
     }
     if (scalpPositions.some(p => p.inst === inst)) {
       scalpAddLog('skip', `⏭️ Already have an open scalp on ${inst} — skipping.`);
-      scalpScanInProgress = false;
+      scalpScanInProgress.delete(inst);
       return;
     }
 
@@ -8766,7 +8771,7 @@ async function scalpRunScan(instId) {
 
     if (!klines1m || !klines5m) {
       scalpAddLog('skip', `❌ Candle data fetch failed for ${inst} — 1M: ${!!klines1m}, 5M: ${!!klines5m}. Check Deriv WS connection or TwelveData plan limits.`);
-      scalpScanInProgress = false;
+      scalpScanInProgress.delete(inst);
       return;
     }
 
@@ -9261,7 +9266,7 @@ Return ONLY this exact JSON object:
     scalpAddLog('skip', `❌ Scalp scan error: ${err.message}`);
   }
 
-  scalpScanInProgress = false;
+  scalpScanInProgress.delete(inst);
 }
 
 // ── Persistence ──────────────────────────────────────────────────────────────
