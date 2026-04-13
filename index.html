@@ -9031,7 +9031,7 @@ Return ONLY this exact JSON object:
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-opus-4-6',
-        max_tokens: 400,
+        max_tokens: 900,
         system: scalpSystemPrompt,
         messages: [{ role: 'user', content: scalpUserPrompt }]
       })
@@ -9042,7 +9042,11 @@ Return ONLY this exact JSON object:
     const rawText = aiData.content?.[0]?.text || '';
     let decision;
     try {
-      decision = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+      // Strip markdown fences then extract the first {...} block for robustness
+      const stripped = rawText.replace(/```json|```/g, '').trim();
+      const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON object found');
+      decision = JSON.parse(jsonMatch[0]);
     } catch(e) {
       throw new Error('JSON parse failed: ' + rawText.slice(0, 150));
     }
