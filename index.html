@@ -170,7 +170,11 @@ select.input option { background:#111116; color:#E8E8F0; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
 @keyframes shimmer { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
-@keyframes ticker-scroll { 0% { transform:translateX(0); } 100% { transform:translateX(-50%); } }
+/* Ticker: scroll exactly one full copy-width then reset — true seamless loop */
+@keyframes ticker-scroll {
+  0%   { transform:translateX(0); }
+  100% { transform:translateX(-50%); }
+}
 .fade-up { animation:fadeUp 0.35s ease forwards; }
 .pulse { animation:pulse 1.5s ease-in-out infinite; }
 .spinner {
@@ -340,12 +344,13 @@ select.input option { background:#111116; color:#E8E8F0; }
 
 /* ─── PRICE TICKER ─── */
 .price-ticker {
-  display:flex; gap:12px; overflow:hidden; padding-bottom:2px;
-  min-width:0; position:relative;
+  display:flex; overflow:hidden; padding-bottom:2px;
+  min-width:0; position:relative; width:100%;
 }
 .price-ticker-track {
-  display:flex; gap:12px; flex-shrink:0;
-  animation:ticker-scroll 30s linear infinite;
+  display:flex; gap:12px; flex-shrink:0; width:max-content;
+  animation:ticker-scroll 55s linear infinite;
+  will-change:transform;
 }
 .price-ticker-track:hover { animation-play-state:paused; }
 .price-ticker::-webkit-scrollbar { display:none; }
@@ -2121,7 +2126,7 @@ select.input option { background:#111116; color:#E8E8F0; }
 
         <!-- CHART (reference, left) -->
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;position:relative;">
-          <div style="position:absolute;top:10px;left:12px;z-index:10;background:rgba(6,6,8,0.75);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-family:var(--font-mono);font-size:8px;color:var(--text4);letter-spacing:1px;pointer-events:none;">📈 CHART REFERENCE ONLY — AI USES BINANCE LIVE FEED</div>
+          <div style="position:absolute;top:10px;right:12px;z-index:10;background:rgba(6,6,8,0.75);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-family:var(--font-mono);font-size:8px;color:var(--text4);letter-spacing:1px;pointer-events:none;">📈 CHART REFERENCE ONLY — AI USES BINANCE LIVE FEED</div>
           <iframe id="at-chart-frame" src="" style="flex:1;border:none;display:block;background:#060608;" allowtransparency="true" frameborder="0"></iframe>
 
           <!-- Open positions strip -->
@@ -2177,12 +2182,23 @@ select.input option { background:#111116; color:#E8E8F0; }
 
           <!-- ⚡ SCALP PANEL -->
           <div id="at-panel-scalp" style="display:none;flex:1;flex-direction:column;overflow-y:auto;padding:10px 12px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
               <div id="scalp-engine-badge" style="display:inline-flex;align-items:center;gap:6px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);border-radius:6px;padding:3px 10px;font-family:var(--font-mono);font-size:8px;letter-spacing:1px;color:var(--purple);">
                 <span id="scalp-pulse-dot" style="width:6px;height:6px;border-radius:50%;background:var(--purple);flex-shrink:0;animation:none;display:inline-block;"></span>
                 <span id="scalp-engine-label">SCALP IDLE</span>
               </div>
+              <!-- Instrument selector -->
+              <div style="display:flex;gap:4px;align-items:center;">
+                <span style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1px;">INSTRUMENT</span>
+                <button onclick="scalpSetInstrument('BTCUSD',this)" id="scalp-inst-btc" style="background:var(--gold-dim);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-family:var(--font-mono);font-size:8px;padding:3px 8px;cursor:pointer;font-weight:700;">BTC</button>
+                <button onclick="scalpSetInstrument('XAUUSD',this)" id="scalp-inst-xau" style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:3px 8px;cursor:pointer;font-weight:700;">XAU</button>
+              </div>
               <button onclick="scalpClearAll()" style="background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:2px 8px;cursor:pointer;">Clear All</button>
+            </div>
+            <!-- Fear & Greed display -->
+            <div id="scalp-fng-bar" style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:8px;">
+              <span style="color:var(--text4);letter-spacing:1px;">SENTIMENT</span>
+              <span id="scalp-fng-value" style="color:var(--text3);">— loading...</span>
             </div>
             <div style="font-family:var(--font-mono);font-size:8px;color:var(--purple);letter-spacing:1.5px;margin-bottom:6px;">⚡ OPEN SCALP TRADES</div>
             <div id="scalp-open-positions">
@@ -2951,14 +2967,37 @@ function updatePriceTileFromCache(pairId, price) {
 }
 
 // Default home page price strip — always show these regardless of scan selection
-const HOME_PRICE_PAIRS = ['XAUUSD','BTCUSD','EURUSD','GBPUSD','USDJPY','ETHUSD','US30','USOIL'];
+// Categorised ticker order: Crypto → Forex → Metals → Indices → Energy/Commodities
+const HOME_PRICE_PAIRS = [
+  // ── Crypto ──
+  'BTCUSD','ETHUSD','SOLUSD','XRPUSD','BNBUSD',
+  // ── Forex ──
+  'EURUSD','GBPUSD','USDJPY','GBPJPY','AUDUSD','USDCAD','USDCHF','NZDUSD',
+  // ── Metals ──
+  'XAUUSD','XAGUSD','XPTUSD',
+  // ── Indices ──
+  'US30','SPX500','NAS100','UK100','GER40',
+  // ── Energy/Commodities ──
+  'USOIL','UKOIL','NATGAS'
+];
+
+// Category separators for the ticker
+const TICKER_CATEGORIES = [
+  { label: '₿ CRYPTO',     pairs: ['BTCUSD','ETHUSD','SOLUSD','XRPUSD','BNBUSD'] },
+  { label: '💱 FOREX',     pairs: ['EURUSD','GBPUSD','USDJPY','GBPJPY','AUDUSD','USDCAD','USDCHF','NZDUSD'] },
+  { label: '🥇 METALS',    pairs: ['XAUUSD','XAGUSD','XPTUSD'] },
+  { label: '📈 INDICES',   pairs: ['US30','SPX500','NAS100','UK100','GER40'] },
+  { label: '⚡ ENERGY',    pairs: ['USOIL','UKOIL','NATGAS'] },
+];
 
 function rebuildPriceStrip() {
-  // Home strip always shows the default common instruments
-  const pairs = HOME_PRICE_PAIRS;
   const mobile = document.getElementById('mobile-price-tiles');
   if (!mobile) return;
   const lowDpPairs = ['BTCUSD','ETHUSD','SOLUSD','BNBUSD','ADAUSD','DOTUSD','LINKUSD','XRPUSD','US30','SPX500','NAS100','UK100','GER40','JPN225','AUS200','HK50','XAUUSD','XAGUSD','XPTUSD','XCUUSD','USOIL','UKOIL','NATGAS','COFFEE','COCOA','SUGAR','WHEAT','CORN','SOYBEAN','COTTON','LUMBER'];
+
+  const makeSep = (label) =>
+    `<div style="display:flex;align-items:center;flex-shrink:0;padding:0 6px 0 14px;font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;white-space:nowrap;user-select:none;border-left:1px solid var(--border2);margin-left:4px;">${label}</div>`;
+
   const makeTile = (p, withId) => {
     const price = livePriceCache[p];
     const dp = lowDpPairs.includes(p) ? 2 : 5;
@@ -2966,15 +3005,28 @@ function rebuildPriceStrip() {
     const srcBadge = src === 'binance' ? '<span style="font-size:7px;color:#F0B90B;margin-left:3px;">B</span>'
                    : src === 'er'      ? '<span style="font-size:7px;color:#00C8FF;margin-left:3px;">ER</span>'
                    : '';
-    return `<div class="price-tile"${withId ? ` id="ptile-${p}"` : ''} style="min-width:100px;">
+    return `<div class="price-tile"${withId ? ` id="ptile-${p}"` : ''} style="min-width:100px;flex-shrink:0;">
       <div class="price-tile-pair">${p}${srcBadge}</div>
       <div class="price-tile-val">${price ? price.toFixed(dp) : '—'}</div>
     </div>`;
   };
-  // Two copies for seamless loop
-  const tilesA = pairs.map(p => makeTile(p, true)).join('');
-  const tilesB = pairs.map(p => makeTile(p, false)).join('');
-  mobile.innerHTML = `<div class="price-ticker-track">${tilesA}${tilesB}</div>`;
+
+  // Build one full sequence with category separators
+  let sequence = '';
+  TICKER_CATEGORIES.forEach(cat => {
+    sequence += makeSep(cat.label);
+    cat.pairs.forEach(p => { sequence += makeTile(p, true); });
+  });
+
+  // Second copy (no IDs — they're for live price update targeting only on copy A)
+  let sequenceCopy = '';
+  TICKER_CATEGORIES.forEach(cat => {
+    sequenceCopy += makeSep(cat.label);
+    cat.pairs.forEach(p => { sequenceCopy += makeTile(p, false); });
+  });
+
+  // Single track with exactly 2 identical copies — translate by -50% = one full loop
+  mobile.innerHTML = `<div class="price-ticker-track">${sequence}${sequenceCopy}</div>`;
 }
 
 // ═══════════════════════════════════════════
@@ -7884,6 +7936,74 @@ const SCALP_MIN_LOTS = 3;
 // Random interval between 5 and 10 minutes (ms)
 function scalpNextInterval() { return (Math.floor(Math.random() * 6) + 5) * 60 * 1000; }
 
+// ── Scalp instrument — BTCUSD or XAUUSD ──────────────────────────────────────
+let scalpInstrument = localStorage.getItem('wm_scalp_inst') || 'BTCUSD';
+let scalpFearGreed  = null;   // Cached Fear & Greed data { value, label, btcDominance }
+let scalpXauPrice   = null;   // Latest XAUUSD live price
+let scalpXauPrev    = null;   // Previous XAUUSD price for change calc
+
+// ── Fetch Alternative.me Fear & Greed Index (free, no key) ───────────────────
+async function scalpFetchFearGreed() {
+  try {
+    const res = await fetch('https://api.alternative.me/fng/?limit=2&format=json', { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const now  = data.data[0];
+    const prev = data.data[1];
+    return {
+      value:     parseInt(now.value),
+      label:     now.value_classification,
+      prevValue: parseInt(prev.value),
+      delta:     parseInt(now.value) - parseInt(prev.value),
+      momentum:  parseInt(now.value) > parseInt(prev.value) ? 'RISING' : 'FALLING',
+      zone:      parseInt(now.value) >= 75 ? 'EXTREME_GREED'
+               : parseInt(now.value) >= 55 ? 'GREED'
+               : parseInt(now.value) >= 45 ? 'NEUTRAL'
+               : parseInt(now.value) >= 25 ? 'FEAR'
+               : 'EXTREME_FEAR'
+    };
+  } catch { return null; }
+}
+
+// ── Fetch live XAUUSD price via the existing worker prices endpoint ───────────
+async function scalpFetchXAUPrice() {
+  try {
+    await fetchPriceForInstrument('XAUUSD');
+    const p = livePriceCache['XAUUSD'];
+    if (p && !isNaN(p)) {
+      scalpXauPrev  = scalpXauPrice;
+      scalpXauPrice = p;
+    }
+    return scalpXauPrice;
+  } catch { return scalpXauPrice; }
+}
+
+// ── Fetch Binance klines for non-BTC instruments via worker candles proxy ─────
+async function scalpFetchKlinesXAU(interval, limit = 100) {
+  // Use the existing WORKER_URL/candles endpoint (Twelve Data / proxied)
+  try {
+    const sym = 'XAU/USD';
+    const url = `${WORKER_URL}/candles?symbol=${encodeURIComponent(sym)}&interval=${interval}&outputsize=${limit}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('candles ' + res.status);
+    const data = await res.json();
+    // Twelve Data returns { values: [{datetime, open, high, low, close, volume}] }
+    const values = data.values || data;
+    if (!Array.isArray(values) || values.length < 10) throw new Error('insufficient data');
+    return values.reverse().map(k => ({
+      t:      new Date(k.datetime).getTime(),
+      open:   parseFloat(k.open),
+      high:   parseFloat(k.high),
+      low:    parseFloat(k.low),
+      close:  parseFloat(k.close),
+      volume: parseFloat(k.volume || 1)
+    }));
+  } catch(e) {
+    // Fallback: return null — scan will handle gracefully
+    return null;
+  }
+}
+
 function scalpSave() {
   localStorage.setItem('wm_scalp_positions', JSON.stringify(scalpPositions));
   localStorage.setItem('wm_scalp_history',   JSON.stringify(scalpHistory));
@@ -7895,6 +8015,29 @@ function scalpSave() {
 // Uses 1M + 5M candles, order book pressure, and micro market structure
 // Separate positions, history, and log from the main swing engine
 // ════════════════════════════════════════════════════════════════════════════
+
+// ── Instrument selector ───────────────────────────────────────────────────────
+function scalpSetInstrument(inst, btn) {
+  scalpInstrument = inst;
+  localStorage.setItem('wm_scalp_inst', inst);
+  // Update button styles
+  const btcBtn = document.getElementById('scalp-inst-btc');
+  const xauBtn = document.getElementById('scalp-inst-xau');
+  if (btcBtn) { btcBtn.style.background = inst==='BTCUSD'?'var(--gold-dim)':'var(--bg3)'; btcBtn.style.borderColor = inst==='BTCUSD'?'var(--gold)':'var(--border2)'; btcBtn.style.color = inst==='BTCUSD'?'var(--gold)':'var(--text3)'; }
+  if (xauBtn) { xauBtn.style.background = inst==='XAUUSD'?'rgba(255,215,0,0.12)':'var(--bg3)'; xauBtn.style.borderColor = inst==='XAUUSD'?'#FFD700':'var(--border2)'; xauBtn.style.color = inst==='XAUUSD'?'#FFD700':'var(--text3)'; }
+  scalpAddLog('scan', `⚡ Scalp instrument switched to ${inst}`);
+}
+
+// ── Fear & Greed display ──────────────────────────────────────────────────────
+function scalpUpdateFearGreedDisplay() {
+  const el = document.getElementById('scalp-fng-value');
+  if (!el) return;
+  if (!scalpFearGreed) { el.textContent = '— unavailable'; el.style.color = 'var(--text3)'; return; }
+  const f = scalpFearGreed;
+  const zoneColors = { EXTREME_GREED:'#FF3D5A', GREED:'#FF8C00', NEUTRAL:'var(--text2)', FEAR:'#00C8FF', EXTREME_FEAR:'#00E87A' };
+  const zoneEmoji  = { EXTREME_GREED:'🔴', GREED:'🟠', NEUTRAL:'⚪', FEAR:'🔵', EXTREME_FEAR:'🟢' };
+  el.innerHTML = `<span style="color:${zoneColors[f.zone]};font-weight:700;">${zoneEmoji[f.zone]} ${f.label} (${f.value})</span> <span style="color:var(--text4);">∆${f.delta>=0?'+':''}${f.delta} · ${f.momentum}</span>`;
+}
 
 function scalpAddLog(type, message) {
   const entry = { type, message, time: new Date().toLocaleString() };
@@ -7938,9 +8081,10 @@ function scalpRenderPositions() {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div style="display:flex;align-items:center;gap:5px;">
           <span class="badge badge-${p.dir.toLowerCase()}" style="font-size:7px;">${p.dir}</span>
-          <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;">BTCUSD</span>
+          <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;">${p.inst||'BTCUSD'}</span>
           <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">${p.lots}L</span>
           <span style="font-family:var(--font-mono);font-size:7px;color:var(--purple);background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.3);border-radius:3px;padding:1px 4px;">SCALP</span>
+          ${p.instinctScore !== undefined ? `<span style="font-family:var(--font-mono);font-size:7px;color:${p.instinctScore>=70?'var(--green)':p.instinctScore>=50?'var(--gold)':'var(--red)'};background:var(--bg3);border-radius:3px;padding:1px 4px;">🧠${p.instinctScore}</span>` : ''}
         </div>
         <span style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:${col};">${pnl>=0?'+':''}$${pnl.toFixed(2)}</span>
       </div>
@@ -7987,10 +8131,12 @@ function scalpRenderHistory() {
 // ── Scalp SL/TP auto-close (checked on every Binance tick) ──────────────────
 function scalpCheckSLTP() {
   if (!scalpPositions.length) return;
-  const price = atCurrentPrice;
-  if (!price) return;
   const toClose = [];
   scalpPositions.forEach(pos => {
+    const price = (pos.inst === 'XAUUSD')
+      ? (scalpXauPrice || livePriceCache['XAUUSD'])
+      : atCurrentPrice;
+    if (!price) return;
     let hit = null;
     if (pos.dir === 'BUY') {
       if (pos.sl && price <= pos.sl) hit = 'SL';
@@ -8043,7 +8189,9 @@ function scalpCloseInternal(id, closePrice, reason) {
 function scalpClosePosition(id) {
   const pos   = scalpPositions.find(p => p.id === id);
   if (!pos) return;
-  const price = atCurrentPrice || pos.entryPrice;
+  const price = (pos.inst === 'XAUUSD')
+    ? (scalpXauPrice || livePriceCache['XAUUSD'] || pos.entryPrice)
+    : (atCurrentPrice || pos.entryPrice);
   scalpCloseInternal(id, price, 'Manual close at $' + price.toFixed(2));
 }
 
@@ -8080,10 +8228,26 @@ function scalpStartEngine() {
   if (dot)   { dot.style.background = 'var(--green)'; dot.style.animation = 'atPulse 1.4s ease-in-out infinite'; }
   if (label) label.textContent = 'SCALP RUNNING';
 
-  // Make sure Binance WS is active for price feed
+  // Make sure Binance WS is active for BTC price feed
   atConnectBinance();
 
-  scalpAddLog('scan', '⚡ Scalp engine started. Taking 5–10 min precision scalp trades on BTCUSD.');
+  // For XAUUSD, kick off a price fetch immediately
+  if (scalpInstrument === 'XAUUSD') {
+    scalpFetchXAUPrice();
+  }
+
+  // Fetch Fear & Greed index on start and refresh every 15 min
+  scalpFetchFearGreed().then(fg => {
+    scalpFearGreed = fg;
+    scalpUpdateFearGreedDisplay();
+  });
+  const fgRefresh = setInterval(() => {
+    if (!scalpEngineRunning) { clearInterval(fgRefresh); return; }
+    scalpFetchFearGreed().then(fg => { scalpFearGreed = fg; scalpUpdateFearGreedDisplay(); });
+    if (scalpInstrument === 'XAUUSD') scalpFetchXAUPrice();
+  }, 15 * 60 * 1000);
+
+  scalpAddLog('scan', `⚡ Scalp engine started. Instrument: ${scalpInstrument} | 5–10 min precision scalps | Instinct Layer: ACTIVE`);
 
   // Immediate first scalp scan
   scalpRunScan();
@@ -8123,18 +8287,301 @@ function scalpStopEngine() {
   toast('⚡ Scalp engine stopped');
 }
 
-// ── Scalp indicators: 1m and 5m candles ─────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// ELITE SCALP INDICATOR LIBRARY — World-class precision instruments
+// ════════════════════════════════════════════════════════════════════════════
+
+// Stochastic RSI — measures momentum of RSI itself (5-3-3 crypto scalp settings)
+function scalpCalcStochRSI(closes, rsiLen=14, stochLen=14, kSmooth=3, dSmooth=3) {
+  if (closes.length < rsiLen + stochLen + kSmooth + 2) return null;
+  // Build RSI series
+  const rsiSeries = [];
+  for (let i = rsiLen; i < closes.length; i++) {
+    const slice = closes.slice(i - rsiLen, i + 1);
+    const r = atCalcRSI(slice, rsiLen);
+    if (r !== null) rsiSeries.push(r);
+  }
+  if (rsiSeries.length < stochLen) return null;
+  // Stoch on RSI
+  const rawK = [];
+  for (let i = stochLen - 1; i < rsiSeries.length; i++) {
+    const window = rsiSeries.slice(i - stochLen + 1, i + 1);
+    const minR = Math.min(...window);
+    const maxR = Math.max(...window);
+    rawK.push(maxR === minR ? 50 : (rsiSeries[i] - minR) / (maxR - minR) * 100);
+  }
+  if (rawK.length < kSmooth) return null;
+  // Smooth %K
+  const smoothK = [];
+  for (let i = kSmooth - 1; i < rawK.length; i++) {
+    smoothK.push(rawK.slice(i - kSmooth + 1, i + 1).reduce((s,v)=>s+v,0) / kSmooth);
+  }
+  if (smoothK.length < dSmooth) return null;
+  // %D = SMA of smoothed %K
+  const kVal = smoothK[smoothK.length - 1];
+  const dVal = smoothK.slice(-dSmooth).reduce((s,v)=>s+v,0) / dSmooth;
+  const kPrev = smoothK.length >= 2 ? smoothK[smoothK.length - 2] : kVal;
+  const dPrev = smoothK.length >= dSmooth + 1 ? smoothK.slice(-dSmooth-1,-1).reduce((s,v)=>s+v,0)/dSmooth : dVal;
+  return {
+    k: parseFloat(kVal.toFixed(2)), d: parseFloat(dVal.toFixed(2)),
+    kPrev, dPrev,
+    bullCross: kPrev <= dPrev && kVal > dVal,   // K crossed above D — bullish
+    bearCross: kPrev >= dPrev && kVal < dVal,   // K crossed below D — bearish
+    oversold:  kVal < 20, overbought: kVal > 80,
+    risingFromOversold:  kVal < 20 && kVal > kPrev,
+    fallingFromOverbought: kVal > 80 && kVal < kPrev
+  };
+}
+
+// On-Balance Volume (OBV) — cumulative volume confirming price moves
+function scalpCalcOBV(candles) {
+  if (candles.length < 5) return null;
+  let obv = 0;
+  const obvSeries = [0];
+  for (let i = 1; i < candles.length; i++) {
+    if (candles[i].close > candles[i-1].close)      obv += candles[i].volume;
+    else if (candles[i].close < candles[i-1].close) obv -= candles[i].volume;
+    obvSeries.push(obv);
+  }
+  const recent5  = obvSeries.slice(-5);
+  const prev5    = obvSeries.slice(-10, -5);
+  const obvTrend = recent5[recent5.length-1] > recent5[0] ? 'RISING' : 'FALLING';
+  const obvMomentum = recent5.reduce((s,v)=>s+v,0)/5 > prev5.reduce((s,v)=>s+v,0)/5 ? 'BULLISH' : 'BEARISH';
+  return { current: obv, trend: obvTrend, momentum: obvMomentum, series: obvSeries.slice(-5) };
+}
+
+// ADX — Average Directional Index, measures TREND STRENGTH (14 period)
+function scalpCalcADX(candles, period=14) {
+  if (candles.length < period * 2) return null;
+  const trList=[], plusDM=[], minusDM=[];
+  for (let i = 1; i < candles.length; i++) {
+    const high = candles[i].high, low = candles[i].low;
+    const prevHigh = candles[i-1].high, prevLow = candles[i-1].low, prevClose = candles[i-1].close;
+    trList.push(Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose)));
+    const upMove   = high - prevHigh;
+    const downMove = prevLow - low;
+    plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
+    minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
+  }
+  const smooth = (arr, p) => {
+    let val = arr.slice(0, p).reduce((s,v)=>s+v,0);
+    const out = [val];
+    for (let i = p; i < arr.length; i++) { val = val - val/p + arr[i]; out.push(val); }
+    return out;
+  };
+  const sTR = smooth(trList, period);
+  const sPDM = smooth(plusDM, period);
+  const sMDM = smooth(minusDM, period);
+  const diPlus  = sPDM.map((v,i) => sTR[i] ? v / sTR[i] * 100 : 0);
+  const diMinus = sMDM.map((v,i) => sTR[i] ? v / sTR[i] * 100 : 0);
+  const dx = diPlus.map((v,i) => (diPlus[i]+diMinus[i]) ? Math.abs(diPlus[i]-diMinus[i])/(diPlus[i]+diMinus[i])*100 : 0);
+  const adxSeries = smooth(dx.slice(period), period);
+  const adx = adxSeries[adxSeries.length-1] / period; // normalise
+  const diP = diPlus[diPlus.length-1];
+  const diM = diMinus[diMinus.length-1];
+  return {
+    adx: parseFloat(adx.toFixed(2)),
+    diPlus: parseFloat(diP.toFixed(2)),
+    diMinus: parseFloat(diM.toFixed(2)),
+    trending:  adx > 20,       // ADX > 20 = trend present
+    strong:    adx > 30,       // ADX > 30 = strong trend
+    bullBias:  diP > diM,
+    bearBias:  diM > diP
+  };
+}
+
+// Parabolic SAR — dynamic S/R that flips on trend reversal
+function scalpCalcParabolicSAR(candles, startAF=0.02, maxAF=0.2) {
+  if (candles.length < 5) return null;
+  let bull = candles[1].close > candles[0].close;
+  let sar  = bull ? candles[0].low  : candles[0].high;
+  let ep   = bull ? candles[0].high : candles[0].low;
+  let af   = startAF;
+  for (let i = 1; i < candles.length; i++) {
+    const prev_sar = sar;
+    sar = sar + af * (ep - sar);
+    if (bull) {
+      sar = Math.min(sar, candles[Math.max(0,i-1)].low, candles[Math.max(0,i-2)].low);
+      if (candles[i].low < sar) {
+        bull = false; sar = ep; ep = candles[i].low; af = startAF;
+      } else {
+        if (candles[i].high > ep) { ep = candles[i].high; af = Math.min(af + startAF, maxAF); }
+      }
+    } else {
+      sar = Math.max(sar, candles[Math.max(0,i-1)].high, candles[Math.max(0,i-2)].high);
+      if (candles[i].high > sar) {
+        bull = true; sar = ep; ep = candles[i].high; af = startAF;
+      } else {
+        if (candles[i].low < ep) { ep = candles[i].low; af = Math.min(af + startAF, maxAF); }
+      }
+    }
+  }
+  return { sar: parseFloat(sar.toFixed(2)), bull, bear: !bull, signal: bull ? 'BULLISH' : 'BEARISH' };
+}
+
+// Keltner Channels — ATR-based channel around EMA20 (better than BB for trending markets)
+function scalpCalcKeltner(candles, emaPeriod=20, atrPeriod=10, mult=1.5) {
+  if (candles.length < emaPeriod + atrPeriod) return null;
+  const closes = candles.map(c => c.close);
+  const ema    = atCalcEMA(closes.slice(-emaPeriod), emaPeriod);
+  const atr    = atCalcATR(candles, atrPeriod);
+  if (!atr) return null;
+  const upper = ema + mult * atr;
+  const lower = ema - mult * atr;
+  const price  = closes[closes.length-1];
+  return {
+    upper: parseFloat(upper.toFixed(2)),
+    middle: parseFloat(ema.toFixed(2)),
+    lower: parseFloat(lower.toFixed(2)),
+    aboveUpper: price > upper,
+    belowLower: price < lower,
+    inside: price >= lower && price <= upper,
+    position: price > upper ? 'ABOVE_UPPER' : price < lower ? 'BELOW_LOWER' : 'INSIDE'
+  };
+}
+
+// Hull Moving Average — almost zero lag MA, ideal for scalp trend direction
+function scalpCalcHMA(closes, period=9) {
+  if (closes.length < period * 2) return null;
+  const wma = (arr, p) => {
+    let num=0, den=0;
+    for (let i=0; i<p; i++) { const w=p-i; num+=arr[arr.length-1-i]*w; den+=w; }
+    return den ? num/den : null;
+  };
+  const half = Math.floor(period/2);
+  const sqrt = Math.round(Math.sqrt(period));
+  const wma1 = wma(closes, half);
+  const wma2 = wma(closes, period);
+  if (!wma1 || !wma2) return null;
+  // Build the 2*wmaHalf - wmaPeriod series for recent candles
+  const raw = [];
+  for (let i = Math.max(0, closes.length - sqrt - 5); i < closes.length; i++) {
+    const s = closes.slice(0, i+1);
+    const w1 = wma(s, Math.min(half, s.length));
+    const w2 = wma(s, Math.min(period, s.length));
+    if (w1 && w2) raw.push(2*w1 - w2);
+  }
+  if (raw.length < sqrt) return null;
+  const hma  = wma(raw, Math.min(sqrt, raw.length));
+  const hmaPrev = raw.length >= 2 ? wma(raw.slice(0,-1), Math.min(sqrt, raw.length-1)) : hma;
+  return {
+    value: parseFloat((hma||0).toFixed(2)),
+    rising: hma > hmaPrev,
+    signal: hma > hmaPrev ? 'BULLISH' : 'BEARISH'
+  };
+}
+
+// RSI Divergence detector — price makes new high/low but RSI doesn't (early reversal signal)
+function scalpDetectDivergence(closes, rsiLen=9, lookback=10) {
+  if (closes.length < rsiLen + lookback + 2) return { bullDiv: false, bearDiv: false };
+  // Build RSI series for last lookback+1 bars
+  const rsiArr = [];
+  for (let i = closes.length - lookback - 2; i < closes.length; i++) {
+    const sl = closes.slice(Math.max(0, i - rsiLen), i + 1);
+    rsiArr.push(atCalcRSI(sl, Math.min(rsiLen, sl.length)));
+  }
+  const priceSlice = closes.slice(-lookback - 2);
+  const priceNow   = priceSlice[priceSlice.length - 1];
+  const priceHigh  = Math.max(...priceSlice.slice(0, -1));
+  const priceLow   = Math.min(...priceSlice.slice(0, -1));
+  const rsiNow     = rsiArr[rsiArr.length - 1];
+  const rsiHigh    = Math.max(...rsiArr.slice(0, -1).filter(v => v !== null));
+  const rsiLow     = Math.min(...rsiArr.slice(0, -1).filter(v => v !== null));
+  // Bearish div: price at/above prior high, RSI below prior high
+  const bearDiv = priceNow >= priceHigh * 0.999 && rsiNow < rsiHigh * 0.97;
+  // Bullish div: price at/below prior low, RSI above prior low
+  const bullDiv = priceNow <= priceLow * 1.001 && rsiNow > rsiLow * 1.03;
+  return { bullDiv, bearDiv };
+}
+
+// Bollinger Band Squeeze detector — low BW = coiled spring about to break
+function scalpDetectBBSqueeze(closes, period=20) {
+  if (closes.length < period + 10) return { squeeze: false, bw: null };
+  const bbNow  = atCalcBollingerBands(closes, period, 2);
+  // Compute average bandwidth over past 20 bars for context
+  const bwHistory = [];
+  for (let i = period; i < closes.length - 5; i++) {
+    const bb = atCalcBollingerBands(closes.slice(0, i+1), period, 2);
+    if (bb) bwHistory.push(bb.bandwidth);
+  }
+  const avgBW = bwHistory.length ? bwHistory.reduce((s,v)=>s+v,0)/bwHistory.length : null;
+  const squeeze = avgBW && bbNow && bbNow.bandwidth < avgBW * 0.6; // BW < 60% of avg = squeeze
+  return { squeeze, bw: bbNow?.bandwidth, avgBW, expanding: bbNow && avgBW && bbNow.bandwidth > avgBW * 1.2 };
+}
+
+// Money Flow Index — volume-weighted RSI (overbought/oversold + divergence)
+function scalpCalcMFI(candles, period=9) {
+  if (candles.length < period + 2) return null;
+  const tps = candles.map(c => (c.high + c.low + c.close) / 3);
+  let posFlow = 0, negFlow = 0;
+  const slice = candles.slice(-period - 1);
+  const tpSlice = tps.slice(-period - 1);
+  for (let i = 1; i < slice.length; i++) {
+    const mf = tpSlice[i] * slice[i].volume;
+    if (tpSlice[i] > tpSlice[i-1]) posFlow += mf;
+    else negFlow += mf;
+  }
+  if (negFlow === 0) return 100;
+  const mfi = 100 - (100 / (1 + posFlow / negFlow));
+  return {
+    value: parseFloat(mfi.toFixed(1)),
+    overbought: mfi > 80,
+    oversold:   mfi < 20,
+    signal: mfi > 65 ? 'SELLING_PRESSURE' : mfi < 35 ? 'BUYING_PRESSURE' : 'NEUTRAL'
+  };
+}
+
+// Micro price action patterns (engulfing, pin bars, inside bars)
+function scalpAnalysePriceAction(candles) {
+  const n = candles.length;
+  if (n < 4) return {};
+  const c  = candles[n-1]; // current
+  const p  = candles[n-2]; // previous
+  const p2 = candles[n-3]; // two back
+  const body  = c => Math.abs(c.close - c.open);
+  const range = c => c.high - c.low;
+  const bullCandle = c => c.close > c.open;
+  const bearCandle = c => c.close < c.open;
+
+  // Bullish engulfing: current bull candle body fully engulfs previous bear candle body
+  const bullEngulf = bullCandle(c) && bearCandle(p) && c.open <= p.close && c.close >= p.open;
+  // Bearish engulfing
+  const bearEngulf = bearCandle(c) && bullCandle(p) && c.open >= p.close && c.close <= p.open;
+  // Bullish pin bar: long lower shadow, small body near top
+  const lowerShadow = Math.min(c.open, c.close) - c.low;
+  const upperShadow = c.high - Math.max(c.open, c.close);
+  const bullPin = lowerShadow > body(c) * 2 && lowerShadow > upperShadow * 2;
+  // Bearish pin bar: long upper shadow
+  const bearPin = upperShadow > body(c) * 2 && upperShadow > lowerShadow * 2;
+  // Three consecutive candles same direction = momentum
+  const bull3 = bullCandle(c) && bullCandle(p) && bullCandle(p2);
+  const bear3 = bearCandle(c) && bearCandle(p) && bearCandle(p2);
+  // Body-to-range ratio (conviction) — high = strong directional candle
+  const conviction = range(c) > 0 ? (body(c) / range(c)) : 0;
+
+  return { bullEngulf, bearEngulf, bullPin, bearPin, bull3, bear3, conviction: parseFloat(conviction.toFixed(2)) };
+}
+
+// ── SCALP ENGINE — MAIN SCAN ─────────────────────────────────────────────────
 async function scalpRunScan() {
   if (scalpScanInProgress) return;
   scalpScanInProgress = true;
 
+  const inst    = scalpInstrument || 'BTCUSD';
+  const isBTC   = inst === 'BTCUSD';
+  const isXAU   = inst === 'XAUUSD';
   const scanTime = new Date().toLocaleTimeString();
-  scalpAddLog('scan', `⚡ [${scanTime}] Scalp scan — fetching 1M + 5M candle data…`);
+  scalpAddLog('scan', `⚡ [${scanTime}] Scalp scan — ${inst} | fetching 1M + 3M + 5M + Instinct Layer…`);
 
   try {
-    const price = atCurrentPrice || livePriceCache['BTCUSD'];
+    // ── Resolve live price ──
+    let price = isBTC ? (atCurrentPrice || livePriceCache['BTCUSD']) : null;
+    if (isXAU) {
+      await scalpFetchXAUPrice();
+      price = scalpXauPrice || livePriceCache['XAUUSD'];
+    }
     if (!price) {
-      scalpAddLog('skip', '⏳ No live price — scalp scan skipped. Waiting for Binance feed…');
+      scalpAddLog('skip', `⏳ No live price for ${inst} — scalp scan skipped.`);
       scalpScanInProgress = false;
       return;
     }
@@ -8146,90 +8593,326 @@ async function scalpRunScan() {
       return;
     }
 
-    // Fetch 1M, 5M candles + order book in parallel
-    const [klines1m, klines5m, orderBook] = await Promise.allSettled([
-      atFetchKlines('1m', 60),
-      atFetchKlines('5m', 60),
-      atFetchOrderBook()
-    ]).then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
+    // ── Fetch candle data (instrument-aware) ──
+    let klines1m, klines3m, klines5m, orderBook;
+    if (isBTC) {
+      // BTC: use Binance REST API directly
+      [klines1m, klines3m, klines5m, orderBook] = await Promise.allSettled([
+        atFetchKlines('1m', 100),
+        atFetchKlines('3m', 80),
+        atFetchKlines('5m', 100),
+        atFetchOrderBook()
+      ]).then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
+    } else {
+      // XAU: use WORKER candles proxy (Twelve Data) for 1M, 5M (3M not always available)
+      const xauIntervalMap = { '1m': '1min', '5m': '5min', '15m': '15min' };
+      [klines1m, klines5m] = await Promise.allSettled([
+        scalpFetchKlinesXAU(xauIntervalMap['1m'], 100),
+        scalpFetchKlinesXAU(xauIntervalMap['5m'], 100)
+      ]).then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
+      klines3m  = null; // not available for XAU via this endpoint
+      orderBook = null; // no order book for XAU in this setup
+    }
 
     if (!klines1m || !klines5m) {
-      scalpAddLog('skip', '❌ Scalp data fetch failed — skipping this scan.');
+      scalpAddLog('skip', `❌ Candle data fetch failed for ${inst} — skipping scan.`);
       scalpScanInProgress = false;
       return;
     }
 
-    // ── Compute indicators on scalp timeframes ──
+    // ══════════════════════════════════════════════════════════════════════
+    // INSTINCT LAYER — Quantified "Gut Feeling"
+    // What separates elite human traders from bots: reading the ROOM,
+    // sensing market regime, emotional environment, time-of-day alignment,
+    // anomaly detection, and cross-asset context.
+    // ══════════════════════════════════════════════════════════════════════
+
+    // 1. Fear & Greed (crypto sentiment, also used as risk-appetite proxy for XAU)
+    if (!scalpFearGreed) {
+      scalpFearGreed = await scalpFetchFearGreed();
+      scalpUpdateFearGreedDisplay();
+    }
+    const fg = scalpFearGreed;
+
+    // 2. Session quality — what's the "energy" of the room right now?
+    const session = atGetSessionScore();
+    const utcH    = new Date().getUTCHours();
+    const utcM    = new Date().getUTCMinutes();
+    const timeDecimal = utcH + utcM / 60;
+    // Gold-specific: best scalp window is London open (07-09 UTC) and NY Silver Bullet (10-11 UTC)
+    const xauGoldenWindow  = isXAU && ((timeDecimal >= 7 && timeDecimal <= 9.5) || (timeDecimal >= 9.9 && timeDecimal <= 11.1) || (timeDecimal >= 13 && timeDecimal <= 16));
+    const xauDeadZone      = isXAU && (timeDecimal >= 20 || timeDecimal < 6);
+    // BTC: optimal is London+NY overlap
+    const btcOptimal       = isBTC && session.isOptimalTime;
+
+    // 3. Volatility regime detection — is the market "awake"?
+    const recentCandles  = klines5m.slice(-10);
+    const avgRange       = recentCandles.reduce((s,c) => s + (c.high - c.low), 0) / recentCandles.length;
+    const allRanges      = klines5m.map(c => c.high - c.low);
+    const medianRange    = [...allRanges].sort((a,b)=>a-b)[Math.floor(allRanges.length/2)];
+    const volatilityRatio = avgRange / (medianRange || 1);
+    const volatilityRegime = volatilityRatio > 1.5 ? 'HIGH_VOLATILITY'
+                           : volatilityRatio > 0.9 ? 'NORMAL'
+                           : 'LOW_VOLATILITY_DEAD_MARKET';
+
+    // 4. Price momentum fingerprint — is the market moving with purpose or drifting?
+    const last10Closes = klines5m.slice(-10).map(c => c.close);
+    const priceRange10 = Math.max(...last10Closes) - Math.min(...last10Closes);
+    const priceMoveAsPct = (priceRange10 / price) * 100;
+    const marketEnergy = priceMoveAsPct > 0.4 ? 'HIGH_ENERGY' : priceMoveAsPct > 0.15 ? 'MODERATE' : 'STAGNANT';
+
+    // 5. Candle rhythm — are candles getting bigger (momentum building) or smaller (exhaustion)?
+    const last5Bodies = klines1m.slice(-5).map(c => Math.abs(c.close - c.open));
+    const first5Bodies = klines1m.slice(-10,-5).map(c => Math.abs(c.close - c.open));
+    const avgBodyRecent = last5Bodies.reduce((s,v)=>s+v,0) / 5;
+    const avgBodyPrev   = first5Bodies.reduce((s,v)=>s+v,0) / 5;
+    const candleRhythm  = avgBodyRecent > avgBodyPrev * 1.25 ? 'ACCELERATING' : avgBodyRecent < avgBodyPrev * 0.75 ? 'DECELERATING' : 'STEADY';
+
+    // 6. Spread / liquidity health (BTC only from order book)
+    const spreadHealth = orderBook ? (orderBook.spread < 50 ? 'TIGHT' : orderBook.spread < 150 ? 'NORMAL' : 'WIDE_CAUTION') : 'UNKNOWN';
+
+    // 7. Price level context — where is price relative to recent structure?
+    const high20 = Math.max(...klines5m.slice(-20).map(c => c.high));
+    const low20  = Math.min(...klines5m.slice(-20).map(c => c.low));
+    const rangePos = (price - low20) / ((high20 - low20) || 1); // 0=bottom, 1=top of 20-bar range
+    const rangeContext = rangePos > 0.8 ? 'NEAR_TOP_OF_RANGE' : rangePos < 0.2 ? 'NEAR_BOTTOM_OF_RANGE' : 'MID_RANGE';
+
+    // 8. Recent scalp performance — is the engine "in flow" or "off"?
+    const last5Scalps   = scalpHistory.filter(t => t.inst === inst).slice(0, 5);
+    const recentScalpWR = last5Scalps.length ? Math.round(last5Scalps.filter(t=>t.pnl>0).length / last5Scalps.length * 100) : null;
+    const recentPnl     = last5Scalps.reduce((s,t) => s + (t.pnl||0), 0);
+    const engineMojo    = recentScalpWR === null ? 'NEUTRAL'
+                        : recentScalpWR >= 70 ? 'HOT_STREAK'
+                        : recentScalpWR >= 50 ? 'PERFORMING'
+                        : recentScalpWR < 30  ? 'COLD_LOSING_STREAK' : 'BELOW_AVG';
+
+    // 9. XAU-specific instinct: DXY inverse correlation proxy
+    // We use the recent XAUUSD price momentum vs expected behaviour
+    const xauMomentum = isXAU && scalpXauPrev ? ((price - scalpXauPrev) / scalpXauPrev * 100).toFixed(3) : null;
+
+    // 10. Composite instinct score (0-100)
+    let instinctScore = 50; // neutral base
+    // Session alignment
+    if (isBTC && btcOptimal) instinctScore += 10;
+    if (isXAU && xauGoldenWindow) instinctScore += 12;
+    if (isXAU && xauDeadZone) instinctScore -= 20;
+    // Volatility
+    if (volatilityRegime === 'HIGH_VOLATILITY') instinctScore += 8;
+    if (volatilityRegime === 'LOW_VOLATILITY_DEAD_MARKET') instinctScore -= 15;
+    // Market energy
+    if (marketEnergy === 'HIGH_ENERGY') instinctScore += 8;
+    if (marketEnergy === 'STAGNANT') instinctScore -= 12;
+    // Candle rhythm
+    if (candleRhythm === 'ACCELERATING') instinctScore += 7;
+    if (candleRhythm === 'DECELERATING') instinctScore -= 5;
+    // Fear & Greed alignment
+    if (fg) {
+      if (fg.zone === 'EXTREME_FEAR')   instinctScore += 8;  // contrarian opportunity
+      if (fg.zone === 'EXTREME_GREED')  instinctScore += 5;  // momentum but be cautious
+      if (fg.zone === 'NEUTRAL')        instinctScore += 3;
+      if (fg.delta > 5)   instinctScore += 4; // momentum building
+      if (fg.delta < -5)  instinctScore -= 4; // sentiment collapsing
+    }
+    // Engine mojo
+    if (engineMojo === 'HOT_STREAK')        instinctScore += 7;
+    if (engineMojo === 'COLD_LOSING_STREAK') instinctScore -= 10;
+    // Range position (avoid scalping mid-range with no clear direction)
+    if (rangeContext === 'MID_RANGE') instinctScore -= 5;
+    if (rangeContext === 'NEAR_TOP_OF_RANGE' || rangeContext === 'NEAR_BOTTOM_OF_RANGE') instinctScore += 5;
+
+    instinctScore = Math.max(0, Math.min(100, Math.round(instinctScore)));
+    const instinctGrade = instinctScore >= 70 ? '🟢 STRONG INSTINCT — conditions feel right'
+                        : instinctScore >= 55 ? '🟡 MODERATE INSTINCT — proceed with care'
+                        : instinctScore >= 40 ? '🟠 WEAK INSTINCT — conditions are borderline'
+                        : '🔴 POOR INSTINCT — market feels wrong, SKIP strongly advised';
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ELITE INDICATOR SUITE — 1M micro + 3M bridge + 5M swing context
+    // ═══════════════════════════════════════════════════════════════════
     const closes1m = klines1m.map(c => c.close);
     const closes5m = klines5m.map(c => c.close);
+    const closes3m = klines3m ? klines3m.map(c => c.close) : [];
 
-    const rsi1m  = atCalcRSI(closes1m, 9);   // Fast RSI on 1M
-    const rsi5m  = atCalcRSI(closes5m, 9);
-    const bb1m   = atCalcBollingerBands(closes1m, 20, 2);
-    const bb5m   = atCalcBollingerBands(closes5m, 20, 2);
-    const atr1m  = atCalcATR(klines1m, 9);
-    const atr5m  = atCalcATR(klines5m, 9);
-    const macd5m = atCalcMACD(closes5m);
-    const vwap5m = atCalcVWAP(klines5m.slice(-20));
-    const ema9_1m  = atCalcEMA(closes1m.slice(-9), 9);
-    const ema21_1m = atCalcEMA(closes1m.slice(-21), 21);
-    const ema9_5m  = atCalcEMA(closes5m.slice(-9), 9);
-    const ema21_5m = atCalcEMA(closes5m.slice(-21), 21);
-    const levels5m = atFindKeyLevels(klines5m);
-    const vol5m    = atAnalyseVolume(klines5m);
+    // ── 1M indicators ──
+    const rsi1m       = atCalcRSI(closes1m, 7);                    // Ultra-fast RSI(7)
+    const bb1m        = atCalcBollingerBands(closes1m, 20, 2);
+    const atr1m       = atCalcATR(klines1m, 7);
+    const ema5_1m     = atCalcEMA(closes1m.slice(-5),  5);          // EMA ribbon
+    const ema9_1m     = atCalcEMA(closes1m.slice(-9),  9);
+    const ema21_1m    = atCalcEMA(closes1m.slice(-21), 21);
+    const stochRsi1m  = scalpCalcStochRSI(closes1m, 5, 5, 3, 3);   // Fast StochRSI 5-5-3-3
+    const hma1m       = scalpCalcHMA(closes1m, 9);
+    const psar1m      = scalpCalcParabolicSAR(klines1m);
+    const kelt1m      = scalpCalcKeltner(klines1m, 20, 7, 1.5);
+    const div1m       = scalpDetectDivergence(closes1m, 7, 8);
+    const pa1m        = scalpAnalysePriceAction(klines1m);
+    const obv1m       = scalpCalcOBV(klines1m);
+    const bbSq1m      = scalpDetectBBSqueeze(closes1m, 20);
+
+    // ── 3M bridge indicators ──
+    const rsi3m       = closes3m.length > 20 ? atCalcRSI(closes3m, 9) : null;
+    const ema9_3m     = closes3m.length > 9  ? atCalcEMA(closes3m.slice(-9), 9) : null;
+    const ema21_3m    = closes3m.length > 21 ? atCalcEMA(closes3m.slice(-21), 21) : null;
+    const stochRsi3m  = closes3m.length > 30 ? scalpCalcStochRSI(closes3m, 9, 9, 3, 3) : null;
+    const pa3m        = klines3m ? scalpAnalysePriceAction(klines3m) : null;
+
+    // ── 5M swing context indicators ──
+    const rsi5m       = atCalcRSI(closes5m, 9);
+    const bb5m        = atCalcBollingerBands(closes5m, 20, 2);
+    const atr5m       = atCalcATR(klines5m, 9);
+    const macd5m      = atCalcMACD(closes5m);
+    const vwap5m      = atCalcVWAP(klines5m.slice(-30));            // 30-bar VWAP
+    const ema9_5m     = atCalcEMA(closes5m.slice(-9),  9);
+    const ema21_5m    = atCalcEMA(closes5m.slice(-21), 21);
+    const ema50_5m    = atCalcEMA(closes5m.slice(-50), 50);
+    const stochRsi5m  = scalpCalcStochRSI(closes5m, 14, 14, 3, 3); // Standard StochRSI
+    const adx5m       = scalpCalcADX(klines5m, 14);
+    const psar5m      = scalpCalcParabolicSAR(klines5m);
+    const kelt5m      = scalpCalcKeltner(klines5m, 20, 10, 2.0);
+    const mfi5m       = scalpCalcMFI(klines5m, 9);
+    const obv5m       = scalpCalcOBV(klines5m);
+    const div5m       = scalpDetectDivergence(closes5m, 9, 10);
+    const bbSq5m      = scalpDetectBBSqueeze(closes5m, 20);
+    const levels5m    = atFindKeyLevels(klines5m);
+    const vol5m       = atAnalyseVolume(klines5m);
+    const pa5m        = scalpAnalysePriceAction(klines5m);
 
     // ── Order book ──
     const ob = orderBook ? {
       ratio: orderBook.ratio,
-      pressure: orderBook.ratio > 0.55 ? 'BUY_PRESSURE' : orderBook.ratio < 0.45 ? 'SELL_PRESSURE' : 'BALANCED',
-      spread: orderBook.spread.toFixed(2)
+      pressure: orderBook.ratio > 0.58 ? 'STRONG_BUY' : orderBook.ratio > 0.52 ? 'MILD_BUY'
+              : orderBook.ratio < 0.42 ? 'STRONG_SELL' : orderBook.ratio < 0.48 ? 'MILD_SELL' : 'BALANCED',
+      spread: orderBook.spread.toFixed(2),
+      topBid: orderBook.topBid?.toFixed(2), topAsk: orderBook.topAsk?.toFixed(2)
     } : { pressure: 'UNKNOWN', ratio: 0.5 };
 
-    // ── Micro price action: recent candle patterns ──
-    const last3_1m = klines1m.slice(-3);
-    const last3_5m = klines5m.slice(-3);
-    const recentBullish1m = last3_1m.filter(c => c.close > c.open).length;
-    const recentBearish1m = last3_1m.filter(c => c.close < c.open).length;
-    const recentBullish5m = last3_5m.filter(c => c.close > c.open).length;
-    const recentBearish5m = last3_5m.filter(c => c.close < c.open).length;
+    // ── EMA Ribbon alignment score ──
+    const emaRibbon1m = (ema5_1m > ema9_1m ? 1 : 0) + (ema9_1m > ema21_1m ? 1 : 0);
+    const emaRibbon5m = (ema9_5m > ema21_5m ? 1 : 0) + (ema21_5m > ema50_5m ? 1 : 0);
 
-    // ── Recent scalp performance context ──
-    const recentScalps = scalpHistory.slice(0, 5).map(t =>
-      `${t.dir} ${t.lots}L | ${t.entryPrice?.toFixed(0)}→${t.closePrice?.toFixed(0)} | ${t.pnl>=0?'+':''}$${t.pnl?.toFixed(0)} | ${t.duration||'?'}m`
+    // ── Trend confluence scoring (bull / bear votes across all instruments) ──
+    let bullVotes = 0, bearVotes = 0;
+    // 1M signals
+    if (rsi1m !== null) { if (rsi1m > 50 && rsi1m < 70) bullVotes++; else if (rsi1m < 50 && rsi1m > 30) bearVotes++; }
+    if (stochRsi1m?.bullCross || stochRsi1m?.risingFromOversold) bullVotes++;
+    if (stochRsi1m?.bearCross || stochRsi1m?.fallingFromOverbought) bearVotes++;
+    if (hma1m?.rising) bullVotes++; else if (hma1m) bearVotes++;
+    if (psar1m?.bull) bullVotes++; else if (psar1m) bearVotes++;
+    if (emaRibbon1m === 2) bullVotes++; else if (emaRibbon1m === 0) bearVotes++;
+    if (obv1m?.momentum === 'BULLISH') bullVotes++; else if (obv1m) bearVotes++;
+    // 3M signals
+    if (rsi3m !== null) { if (rsi3m > 50) bullVotes++; else bearVotes++; }
+    if (stochRsi3m?.bullCross) bullVotes++;
+    if (stochRsi3m?.bearCross) bearVotes++;
+    // 5M signals
+    if (rsi5m !== null) { if (rsi5m > 50 && rsi5m < 70) bullVotes++; else if (rsi5m < 50 && rsi5m > 30) bearVotes++; }
+    if (macd5m?.histoRising) bullVotes++; else if (macd5m) bearVotes++;
+    if (price > (vwap5m||Infinity)) bullVotes++; else bearVotes++;
+    if (psar5m?.bull) bullVotes++; else if (psar5m) bearVotes++;
+    if (adx5m?.bullBias) bullVotes++; else if (adx5m) bearVotes++;
+    if (obv5m?.momentum === 'BULLISH') bullVotes++; else if (obv5m) bearVotes++;
+    if (mfi5m?.signal === 'BUYING_PRESSURE') bullVotes++; else if (mfi5m?.signal === 'SELLING_PRESSURE') bearVotes++;
+    if (emaRibbon5m === 2) bullVotes++; else if (emaRibbon5m === 0) bearVotes++;
+
+    const totalVotes  = bullVotes + bearVotes;
+    const bullPct     = totalVotes > 0 ? Math.round(bullVotes / totalVotes * 100) : 50;
+    const overallBias = bullVotes > bearVotes * 1.3 ? 'BULLISH' : bearVotes > bullVotes * 1.3 ? 'BEARISH' : 'MIXED';
+
+    // ── Recent scalp performance ──
+    const recentScalps = scalpHistory.filter(t => (t.inst||'BTCUSD') === inst).slice(0, 5).map(t =>
+      `${t.dir} ${t.lots}L | $${t.entryPrice?.toFixed(0)}→$${t.closePrice?.toFixed(0)} | ${t.pnl>=0?'+':''}$${t.pnl?.toFixed(0)} | ${t.duration||'?'}m`
     ).join('\n') || 'No recent scalps';
 
-    // ── Build brief for Claude ──
+    // Gold-specific pip value note
+    const instrNote = isXAU ? 'XAUUSD: $1 pip = $0.01 per lot | ATR-based stops in $ per oz | High volatility — 200-500 pip daily range' : 'BTCUSD: $1 per pip per lot | Binance live feed';
+
+    // ── Build elite scalp intelligence brief ──
     const scalpBrief = `
-=== SCALP INTELLIGENCE BRIEF — BTCUSD ===
-Live price: $${price.toFixed(2)}
-Scan time: ${scanTime}
+=== ⚡ ELITE SCALP INTELLIGENCE BRIEF — ${inst} ===
+Live price: $${price.toFixed(isXAU?2:2)} | Instrument: ${inst} | Scan time: ${scanTime}
+${instrNote}
+
+═══════════════════════════════════════════
+INSTINCT LAYER — QUANTIFIED GUT FEELING
+The dimension that separates elite humans from bots
+═══════════════════════════════════════════
+Composite Instinct Score: ${instinctScore}/100 — ${instinctGrade}
+
+Session alignment: ${isXAU ? (xauGoldenWindow ? '🟢 GOLD GOLDEN WINDOW ACTIVE (London/NY/Silver Bullet)' : xauDeadZone ? '🔴 DEAD ZONE — XAU illiquid now' : '🟡 Off-peak session') : (btcOptimal ? '🟢 BTC OPTIMAL (London+NY overlap)' : '🟡 Sub-optimal session')} | Day: ${session.day} | UTC: ${utcH}:${String(utcM).padStart(2,'0')}
+Volatility regime: ${volatilityRegime} (recent avg range ${avgRange.toFixed(isXAU?1:0)} vs median ${medianRange.toFixed(isXAU?1:0)})
+Market energy: ${marketEnergy} (price moved ${priceMoveAsPct.toFixed(3)}% in last 10×5M candles)
+Candle rhythm: ${candleRhythm} (recent body avg: ${avgBodyRecent.toFixed(isXAU?2:0)} vs prior: ${avgBodyPrev.toFixed(isXAU?2:0)})
+Range position: ${rangeContext} (${(rangePos*100).toFixed(0)}% of 20-bar range — bottom=$${low20.toFixed(0)} top=$${high20.toFixed(0)})
+Spread health: ${spreadHealth}
+Fear & Greed Index: ${fg ? `${fg.label} (${fg.value}/100) | Yesterday: ${fg.prevValue} | Delta: ${fg.delta>=0?'+':''}${fg.delta} | Momentum: ${fg.momentum} | Zone: ${fg.zone}` : 'Unavailable'}
+Engine mojo: ${engineMojo} | Last 5 scalp WR on ${inst}: ${recentScalpWR !== null ? recentScalpWR + '%' : 'no data'} | Recent P&L: ${recentPnl>=0?'+':''}$${recentPnl.toFixed(0)}
+${isXAU && xauMomentum ? `XAU micro-momentum since last check: ${xauMomentum}%` : ''}
+${inst === 'XAUUSD' ? `
+GOLD INSTINCT RULES (human trader knowledge):
+- XAU respects London open breakouts (7-9 UTC) and "Silver Bullet" 10-11 UTC more than any other window
+- Gold is a liquidity-seeking predator — it often sweeps equal highs/lows before reversing
+- Wicks on XAU can span $5-15 without changing the trend — stop must be structural, not fixed
+- If USD is strengthening (DXY up), gold faces headwind — bias to SELL in that environment
+- In extreme fear (FNG < 25), gold is a flight-to-safety asset — bias toward BUY in fear spikes
+- In extreme greed (FNG > 75), gold may sell off as risk appetite shifts to equities/crypto
+` : `
+BTC INSTINCT RULES (human trader knowledge):
+- BTC in extreme fear (FNG < 25) with volume surge = potential capitulation bounce — BUY signal
+- BTC in extreme greed (FNG > 75) = overextended — be cautious with BUY entries
+- Strong BTC dominance shifts often precede sharp moves — high conviction when dominance is stable
+- London-NY overlap is where 70%+ of institutional BTC volume flows — highest quality setups
+- Low ADX + BB squeeze in London opening = breakout imminent — wait for direction, then scalp the break
+`}
+
+=== MULTI-INDICATOR CONFLUENCE SCORE ===
+Bull votes: ${bullVotes} / Bear votes: ${bearVotes} / Total: ${totalVotes}
+Overall bias: ${overallBias} (${bullPct}% bull)
+ADX trend strength: ${adx5m ? `${adx5m.adx} (${adx5m.strong?'STRONG TREND':adx5m.trending?'TREND PRESENT':'RANGING/CHOPPY'})` : 'N/A'}
+BB Squeeze (1M): ${bbSq1m.squeeze ? '⚠️ SQUEEZE ACTIVE — coiled spring, wait for breakout direction' : bbSq1m.expanding ? 'EXPANDING — momentum building' : 'Normal'}
+BB Squeeze (5M): ${bbSq5m.squeeze ? '⚠️ SQUEEZE ACTIVE' : bbSq5m.expanding ? 'EXPANDING' : 'Normal'}
+RSI Divergence (1M): ${div1m.bullDiv ? '🟢 BULLISH DIVERGENCE (reversal signal)' : div1m.bearDiv ? '🔴 BEARISH DIVERGENCE (reversal signal)' : 'None detected'}
+RSI Divergence (5M): ${div5m.bullDiv ? '🟢 BULLISH DIVERGENCE' : div5m.bearDiv ? '🔴 BEARISH DIVERGENCE' : 'None detected'}
 
 === 1-MINUTE MICRO STRUCTURE ===
-RSI(9): ${rsi1m?.toFixed(1) || 'N/A'} ${rsi1m > 75 ? '⚠️ OVERBOUGHT' : rsi1m < 25 ? '⚠️ OVERSOLD' : ''}
-BB Upper: $${bb1m?.upper?.toFixed(2) || 'N/A'} | Mid: $${bb1m?.middle?.toFixed(2) || 'N/A'} | Lower: $${bb1m?.lower?.toFixed(2) || 'N/A'}
-Price vs BB: ${price > (bb1m?.upper||Infinity) ? 'ABOVE UPPER' : price < (bb1m?.lower||0) ? 'BELOW LOWER' : 'INSIDE BANDS'}
-EMA9: $${ema9_1m?.toFixed(2) || 'N/A'} | EMA21: $${ema21_1m?.toFixed(2) || 'N/A'} | EMA bias: ${ema9_1m > ema21_1m ? 'BULLISH' : 'BEARISH'}
-Price vs EMA9: ${price > ema9_1m ? 'ABOVE' : 'BELOW'}
-ATR(9): $${atr1m?.toFixed(2) || 'N/A'}
-Recent 1M candles (last 3): ${recentBullish1m} bullish, ${recentBearish1m} bearish
+RSI(7): ${rsi1m?.toFixed(1) || 'N/A'} ${rsi1m > 78 ? '🔴 EXTREME OVERBOUGHT' : rsi1m > 65 ? '⚠️ OVERBOUGHT' : rsi1m < 22 ? '🟢 EXTREME OVERSOLD' : rsi1m < 35 ? '⚠️ OVERSOLD' : '✅ NEUTRAL ZONE'}
+StochRSI(5-5-3-3) %K: ${stochRsi1m?.k?.toFixed(1)||'N/A'} | %D: ${stochRsi1m?.d?.toFixed(1)||'N/A'} | Signal: ${stochRsi1m?.bullCross ? '🟢 BULL CROSS' : stochRsi1m?.bearCross ? '🔴 BEAR CROSS' : stochRsi1m?.risingFromOversold ? '🟢 RISING FROM OVERSOLD' : stochRsi1m?.fallingFromOverbought ? '🔴 FALLING FROM OVERBOUGHT' : 'No cross'}
+Hull MA(9): $${hma1m?.value||'N/A'} | Direction: ${hma1m?.signal||'N/A'}
+Parabolic SAR: $${psar1m?.sar||'N/A'} | Signal: ${psar1m?.signal||'N/A'} | Price ${price > (psar1m?.sar||0) ? 'ABOVE SAR (bullish)' : 'BELOW SAR (bearish)'}
+EMA Ribbon (5/9/21): $${ema5_1m?.toFixed(0)||'N/A'} / $${ema9_1m?.toFixed(0)||'N/A'} / $${ema21_1m?.toFixed(0)||'N/A'} | Alignment: ${emaRibbon1m===2?'FULL BULL':emaRibbon1m===0?'FULL BEAR':'MIXED'}
+Bollinger Bands: U:$${bb1m?.upper?.toFixed(0)||'N/A'} M:$${bb1m?.middle?.toFixed(0)||'N/A'} L:$${bb1m?.lower?.toFixed(0)||'N/A'} | BW: ${bb1m?.bandwidth?.toFixed(2)||'N/A'}%
+Keltner Channel: U:$${kelt1m?.upper?.toFixed(0)||'N/A'} | L:$${kelt1m?.lower?.toFixed(0)||'N/A'} | Price: ${kelt1m?.position||'N/A'}
+OBV (1M): ${obv1m?.trend||'N/A'} | Momentum: ${obv1m?.momentum||'N/A'}
+ATR(7): $${atr1m?.toFixed(1)||'N/A'} (tight SL distance ref)
+Price Action: ${pa1m.bullEngulf?'🟢 BULLISH ENGULFING':pa1m.bearEngulf?'🔴 BEARISH ENGULFING':pa1m.bullPin?'🟢 BULLISH PIN BAR':pa1m.bearPin?'🔴 BEARISH PIN BAR':pa1m.bull3?'🟢 3 BULL CANDLES':pa1m.bear3?'🔴 3 BEAR CANDLES':'Neutral'} | Conviction: ${pa1m.conviction}
+
+=== 3-MINUTE BRIDGE (1M→5M) ===
+RSI(9): ${rsi3m?.toFixed(1)||'N/A'}
+EMA9/21: $${ema9_3m?.toFixed(0)||'N/A'} / $${ema21_3m?.toFixed(0)||'N/A'} | Bias: ${ema9_3m && ema21_3m ? (ema9_3m>ema21_3m?'BULLISH':'BEARISH') : 'N/A'}
+StochRSI(9-9-3-3): %K ${stochRsi3m?.k?.toFixed(1)||'N/A'} %D ${stochRsi3m?.d?.toFixed(1)||'N/A'} | ${stochRsi3m?.bullCross?'BULL CROSS':stochRsi3m?.bearCross?'BEAR CROSS':'No cross'}
+Price action (3M): ${pa3m?.bullEngulf?'BULLISH ENGULFING':pa3m?.bearEngulf?'BEARISH ENGULFING':pa3m?.bull3?'3 BULL CANDLES':pa3m?.bear3?'3 BEAR CANDLES':'Neutral'}
 
 === 5-MINUTE SWING CONTEXT ===
-RSI(9): ${rsi5m?.toFixed(1) || 'N/A'} ${rsi5m > 70 ? '⚠️ OVERBOUGHT' : rsi5m < 30 ? '⚠️ OVERSOLD' : ''}
-MACD: ${macd5m ? `Hist: ${macd5m.histogram.toFixed(1)} | ${macd5m.histogram > 0 ? 'BULLISH' : 'BEARISH'} | ${macd5m.histoRising ? 'RISING ▲' : 'FALLING ▼'}` : 'N/A'}
-BB Upper: $${bb5m?.upper?.toFixed(2) || 'N/A'} | Lower: $${bb5m?.lower?.toFixed(2) || 'N/A'} | BW: ${bb5m?.bandwidth?.toFixed(2) || 'N/A'}%
-EMA9: $${ema9_5m?.toFixed(2) || 'N/A'} | EMA21: $${ema21_5m?.toFixed(2) || 'N/A'} | Bias: ${ema9_5m > ema21_5m ? 'BULLISH' : 'BEARISH'}
-VWAP(5M, 20 bars): $${vwap5m?.toFixed(2) || 'N/A'} | Price: ${price > (vwap5m||0) ? 'ABOVE' : 'BELOW'}
-Volume: ${vol5m.trend} (${vol5m.ratio}x avg)
-ATR(9): $${atr5m?.toFixed(2) || 'N/A'}
-Recent 5M candles (last 3): ${recentBullish5m} bullish, ${recentBearish5m} bearish
-Key Resistance: ${levels5m.nearResistance?.slice(0,2).map(v=>'$'+v.toFixed(0)).join(', ') || 'N/A'}
-Key Support: ${levels5m.nearSupport?.slice(0,2).map(v=>'$'+v.toFixed(0)).join(', ') || 'N/A'}
-Dist to resistance: ${levels5m.distToRes?.toFixed(3) || 'N/A'}%
-Dist to support: ${levels5m.distToSup?.toFixed(3) || 'N/A'}%
+RSI(9): ${rsi5m?.toFixed(1)||'N/A'} ${rsi5m > 70 ? '⚠️ OVERBOUGHT' : rsi5m < 30 ? '⚠️ OVERSOLD' : ''}
+StochRSI(14-14-3-3): %K ${stochRsi5m?.k?.toFixed(1)||'N/A'} %D ${stochRsi5m?.d?.toFixed(1)||'N/A'} | ${stochRsi5m?.bullCross?'🟢 BULL CROSS':stochRsi5m?.bearCross?'🔴 BEAR CROSS':stochRsi5m?.oversold?'OVERSOLD ZONE':stochRsi5m?.overbought?'OVERBOUGHT ZONE':'Neutral'}
+MACD(12,26,9): Hist: ${macd5m?.histogram?.toFixed(1)||'N/A'} | ${macd5m?.histogram>0?'BULLISH':'BEARISH'} | ${macd5m?.histoRising?'RISING ▲':'FALLING ▼'}
+ADX(14): ${adx5m?.adx||'N/A'} | DI+: ${adx5m?.diPlus||'N/A'} | DI-: ${adx5m?.diMinus||'N/A'} | ${adx5m?.bullBias?'BULL BIAS':'BEAR BIAS'} | ${adx5m?.strong?'STRONG TREND':adx5m?.trending?'TREND ACTIVE':'RANGING'}
+EMA Ribbon (9/21/50): $${ema9_5m?.toFixed(0)||'N/A'} / $${ema21_5m?.toFixed(0)||'N/A'} / $${ema50_5m?.toFixed(0)||'N/A'} | Alignment: ${emaRibbon5m===2?'FULL BULL':emaRibbon5m===0?'FULL BEAR':'MIXED'}
+Parabolic SAR: $${psar5m?.sar||'N/A'} | ${psar5m?.signal||'N/A'}
+Keltner Channel: U:$${kelt5m?.upper?.toFixed(0)||'N/A'} L:$${kelt5m?.lower?.toFixed(0)||'N/A'} | Position: ${kelt5m?.position||'N/A'}
+Bollinger Bands: U:$${bb5m?.upper?.toFixed(0)||'N/A'} L:$${bb5m?.lower?.toFixed(0)||'N/A'} | BW: ${bb5m?.bandwidth?.toFixed(2)||'N/A'}%
+VWAP(30-bar): $${vwap5m?.toFixed(0)||'N/A'} | Price ${price>(vwap5m||0)?'ABOVE VWAP (inst. buy side)':'BELOW VWAP (inst. sell side)'}
+Money Flow Index(9): ${mfi5m?.value||'N/A'} | ${mfi5m?.signal||'N/A'} ${mfi5m?.overbought?'⚠️ MFI OVERBOUGHT':mfi5m?.oversold?'⚠️ MFI OVERSOLD':''}
+OBV (5M): ${obv5m?.trend||'N/A'} | Momentum: ${obv5m?.momentum||'N/A'}
+Volume: ${vol5m.trend} (${vol5m.ratio}x avg) — ${vol5m.ratio>1.4?'SURGE — strong conviction move':''}
+ATR(9): $${atr5m?.toFixed(1)||'N/A'}
+Price Action (5M): ${pa5m.bullEngulf?'🟢 BULLISH ENGULFING':pa5m.bearEngulf?'🔴 BEARISH ENGULFING':pa5m.bullPin?'🟢 BULL PIN':pa5m.bearPin?'🔴 BEAR PIN':pa5m.bull3?'3 BULL CANDLES':pa5m.bear3?'3 BEAR CANDLES':'Neutral'} | Conviction: ${pa5m.conviction}
+Key Resistance: ${levels5m.nearResistance?.slice(0,3).map(v=>'$'+v.toFixed(0)).join(', ')||'N/A'}
+Key Support: ${levels5m.nearSupport?.slice(0,3).map(v=>'$'+v.toFixed(0)).join(', ')||'N/A'}
+Distance to resistance: ${levels5m.distToRes?.toFixed(3)||'N/A'}% | Distance to support: ${levels5m.distToSup?.toFixed(3)||'N/A'}%
 
 === ORDER BOOK (REAL-TIME) ===
-Bid/Ask ratio: ${ob.ratio?.toFixed(3) || 'N/A'} | Pressure: ${ob.pressure}
-Spread: $${ob.spread}
+Bid/Ask ratio: ${ob.ratio?.toFixed(3)||'N/A'} | Pressure: ${ob.pressure}
+Top Bid: $${ob.topBid||'N/A'} | Top Ask: $${ob.topAsk||'N/A'} | Spread: $${ob.spread}
 
 === OPEN SCALP POSITIONS ===
 ${scalpPositions.length ? scalpPositions.map(p=>`${p.dir} ${p.lots}L @ $${p.entryPrice.toFixed(2)} | SL:${p.sl?.toFixed(2)||'none'} TP:${p.tp?.toFixed(2)||'none'} | ${Math.round((Date.now()-p.openTimestamp)/60000)}m open`).join('\n') : 'No open scalps'}
@@ -8237,65 +8920,111 @@ ${scalpPositions.length ? scalpPositions.map(p=>`${p.dir} ${p.lots}L @ $${p.entr
 === RECENT SCALP HISTORY ===
 ${recentScalps}`;
 
-    const scalpSystemPrompt = `You are Wingman's Scalp Engine — a precision algorithmic scalping AI specialising in 5–10 minute BTC/USD micro-trades.
+    // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
+    // WORLD-CLASS SCALP AI SYSTEM PROMPT — DUAL INSTRUMENT + INSTINCT LAYER
+    // The engine that thinks like a pro trader, not just a data processor
+    // ═══════════════════════════════════════════════════════════════════════
+    const scalpSystemPrompt = `You are WINGMAN APEX — the world's most advanced AI scalping intelligence for ${inst}.
 
-Your job is to identify high-probability micro-structure entries using 1M and 5M candle data, order book pressure, and real-time price action. You are fast, decisive, and disciplined.
+You are NOT a traditional trading bot. You combine:
+1. A 12-indicator technical suite (StochRSI, HMA, ADX, Parabolic SAR, OBV, MFI, Keltner, MACD, BB, EMA ribbon, ATR, divergence)
+2. THE INSTINCT LAYER — a quantified version of the gut feeling that separates elite human traders from algorithms
 
-SCALP DECISION FRAMEWORK:
+The Instinct Layer is NOT vague intuition. It is a calculated composite of:
+- Session energy (are the right institutions trading right now?)
+- Volatility regime (is the market awake or sleeping?)
+- Market energy fingerprint (is price moving with purpose or drifting aimlessly?)
+- Candle rhythm (is momentum building or exhausting?)
+- Crowd sentiment via Fear & Greed Index (what is the emotional temperature of the room?)
+- Range context (is price at a meaningful structural extreme or lost in the middle?)
+- Engine mojo (has this engine been hot or cold recently — and why does that matter?)
+${isXAU ? `- XAU-specific knowledge: Gold's Golden Window sessions, liquidity sweep patterns, DXY inverse relationship` : `- BTC-specific knowledge: London-NY overlap dominance, BTC dominance regime, crypto-specific fear/greed dynamics`}
 
-1. TIMEFRAME ALIGNMENT (both 1M and 5M must broadly agree):
-   - BUY: 5M trend bullish (EMA9 > EMA21, price above VWAP, RSI < 70) AND 1M showing bullish momentum (recent bullish candles, price above EMA9)
-   - SELL: Inverse conditions
-   - If 1M and 5M disagree: SKIP
+You weigh BOTH layers equally. A perfect technical setup in a dead market (low instinct score) is a B trade at best. A moderate technical setup in a perfectly aligned market regime (high instinct score) can be an A+ trade. Elite traders know the WHEN matters as much as the WHAT.
 
-2. ENTRY PRECISION:
-   - BUY: Price pulling back to 1M EMA9 or lower BB in a 5M uptrend. Or 1M RSI recovering from near-oversold (<35) with bullish candle sequence.
-   - SELL: Price rejecting from 1M EMA9 or upper BB in a 5M downtrend. Or 1M RSI rejecting from near-overbought (>65) with bearish candle sequence.
+=== TECHNICAL FRAMEWORK ===
 
-3. MOMENTUM CONFIRMATION (need at least 2):
-   - 5M MACD histogram rising (bullish) or falling (bearish)
-   - Order book BUY_PRESSURE for longs, SELL_PRESSURE for shorts
-   - Price above VWAP (long) or below VWAP (short)
-   - Recent 1M candle pattern majority bullish/bearish
+**TIER 1 — TREND FILTER (must pass before anything else):**
+- ADX(14) on 5M must be > 15 (choppy market = SKIP — noise, not signal)
+- BB Squeeze ACTIVE on both 1M AND 5M: SKIP — wait for the breakout, don't guess direction
+- RSI divergence AGAINST intended direction: SKIP — reversal warning, don't fight the signal
+- Confluence score must favour your direction by >55%
 
-4. KEY LEVEL AWARENESS:
-   - Do NOT buy within 0.15% of nearest resistance
-   - Do NOT sell within 0.15% of nearest support
-   - Best scalps come from bouncing off S/R with momentum
+**TIER 2 — ENTRY SIGNAL (minimum 2 of 4 required):**
+A) StochRSI 1M: %K crossing above %D from <20 = BUY | crossing below %D from >80 = SELL
+B) Hull MA(9): rising = BUY momentum | falling = SELL momentum (near-zero lag)
+C) Parabolic SAR: price above SAR = bullish | SAR flip is the strongest signal in the suite
+D) Price Action: Bullish/bearish engulfing or pin bar at structural S/R level
+${isXAU ? `E) GOLD BONUS: XAU Golden Window is active (London open / Silver Bullet) = entry signal weight ×1.5` : `E) BTC BONUS: London-NY overlap session + high volume = entry signal weight ×1.5`}
 
-5. SCALP RISK MANAGEMENT (NON-NEGOTIABLE):
-   - SL: 0.15%–0.4% from entry (ATR-based, tight because this is a scalp)
-   - TP: 1:1.5 minimum R:R. Prefer 1:2. Target is next micro S/R level.
-   - Lots: 3–6. Scale up (5–6) for very high conviction, lower (3) for moderate.
-   - Maximum 2 concurrent open scalp positions.
-   - Trade duration target: 5–10 minutes. The engine will auto-close at 10 min.
+**TIER 3 — MOMENTUM CONFIRMATION (minimum 3 of 5 required):**
+1. 5M MACD histogram rising + positive = BUY | falling + negative = SELL
+2. OBV rising = institutional accumulation | OBV falling = distribution
+3. MFI recovering from <35 = BUY signal | MFI falling from >65 = SELL signal
+4. ${isXAU ? 'In absence of order book: Volume surge + candle ACCELERATING rhythm = pressure confirmation' : 'Order book: STRONG_BUY or MILD_BUY = BUY confirmation | STRONG_SELL or MILD_SELL = SELL'}
+5. Price above VWAP (institutional buy side) for longs | below VWAP for shorts
 
-6. SKIP CONDITIONS:
-   - 1M and 5M disagree on direction
-   - Bollinger Bands are very narrow (low volatility, ATR compressed) — no momentum to scalp
-   - RSI > 70 for BUY or RSI < 30 for SELL on 5M
-   - Order book is BALANCED with no clear pressure
-   - Price is in the middle of BB with no directional momentum
-   - Already 2 open scalp positions
+**TIER 4 — PRECISION ENTRY:**
+- BUY: Pullback to 1M EMA9/EMA21 in 5M uptrend | Bounce off Keltner lower band | StochRSI rising from oversold
+- SELL: Rejection from 1M EMA9 in 5M downtrend | Rejection at Keltner upper band | StochRSI falling from overbought
+- ${isXAU ? 'GOLD: Do NOT buy within $3 of nearest resistance | Do NOT sell within $3 of nearest support (gold wicks are aggressive)' : 'BTC: Never buy within 0.12% of nearest resistance | Never sell within 0.12% of nearest support'}
 
-Be FAST and PRECISE. Scalping requires high selectivity — a SKIP is correct ~60–70% of the time. Only trade when micro-structure is crystal clear.
+**TIER 5 — RISK MANAGEMENT:**
+- ${isXAU ? 'XAU SL: 1.0–1.5× ATR(7) from entry (minimum $4, maximum $18 from entry — gold moves fast)' : 'BTC SL: 1× ATR(7) from entry, minimum 0.12%, maximum 0.45%'}
+- TP: 1:2 R:R for A+ setups, 1:1.5 for B+. In strong trend (ADX > 30): allow 1:3
+- Lots: 5–6 for A+, 3–4 for B+
+- Max 2 scalp positions open
 
-Respond ONLY with valid JSON, no prose.`;
+=== INSTINCT LAYER RULES ===
+
+**INSTINCT SCORE INTERPRETATION:**
+- Score 70–100 (STRONG): Market conditions are favourable. Technical signals carry FULL weight. A+ setups are valid.
+- Score 55–69 (MODERATE): Conditions are reasonable but not ideal. Require STRONGER technical confluence. Only A+ setups.
+- Score 40–54 (WEAK): Something feels off about the market. Raise confluence requirements to 3 Tier 2 + 4 Tier 3 signals.
+- Score 0–39 (POOR): The room feels wrong. SKIP unless the technical setup is absolutely unmistakable (confidence > 85%).
+
+**INSTINCT OVERRIDES (these can flip your decision regardless of technicals):**
+- DEAD_MARKET + LOW_VOLATILITY + STAGNANT: SKIP regardless of technical signals — bots get chopped apart in dead markets
+- ${isXAU ? 'GOLD DEAD ZONE (20:00–06:00 UTC) + low energy: SKIP unless unusual volatility spike detected' : 'BTC dead zone (22:00–06:00 UTC) + low session score: SKIP unless volume is 2×+ average'}
+- COLD_LOSING_STREAK (engine mojo): Raise confidence threshold to 80%. The market regime may have shifted — be defensive.
+- HOT_STREAK: Slightly lower threshold to 60%. Conditions are working in your favour — press the edge.
+- Fear & Greed EXTREME_FEAR (<25) for ${isXAU ? 'gold = flight-to-safety BUY bias — weight BUY signals +10%' : 'BTC with volume surge = potential capitulation bounce — BUY bias'}
+- Fear & Greed EXTREME_GREED (>75): Be more cautious with BUY entries — market may be extended
+- F&G momentum FALLING fast (delta < -10): Sentiment deteriorating — add urgency to SELL thesis
+- Candle rhythm ACCELERATING + HIGH_ENERGY: Markets are alive and moving — high-quality conditions
+- Candle rhythm DECELERATING + STAGNANT: Exhaustion setting in — avoid new entries, wait for next cycle
+
+**COMBINED REASONING (what elite traders actually think):**
+When you analyse the brief, think like a professional trader at their desk: "Do conditions FEEL right? Is this the kind of market where I want to be active? Does the technical picture MATCH the energy I'm sensing in the market right now?" If the answer to all three is yes — that's your trade. If any answer is no — reassess.
+
+Be ruthlessly selective. The best scalpers SKIP 65–75% of scans. A high SKIP rate is intelligent, not passive.
+
+Respond ONLY with valid JSON. No markdown, no prose outside JSON.`;
 
     const scalpUserPrompt = `${scalpBrief}
 
-Make your scalp trading decision. Return ONLY this exact JSON:
+Based on ALL of the above — technical indicators AND the Instinct Layer — make your ${inst} scalp trading decision.
+Remember: weigh BOTH the technical suite AND the Instinct Score equally. A great setup in wrong conditions is a B trade. A good setup in perfect conditions can be your best trade.
+
+Return ONLY this exact JSON object:
 {
   "action": "BUY" | "SELL" | "SKIP",
+  "instrument": "${inst}",
   "lots": <number, 3–6>,
-  "sl": <stop loss price, null if SKIP>,
-  "tp": <take profit price, null if SKIP>,
+  "sl": <stop loss price as precise number, null if SKIP>,
+  "tp": <take profit price as precise number, null if SKIP>,
   "confidence": <integer 0–100>,
-  "entry_logic": "<1–2 sentence micro-structure rationale for the entry>",
-  "skip_reason": "<if SKIP: which conditions failed — otherwise null>"
+  "grade": "A+" | "B+" | "SKIP",
+  "instinct_reading": "<1 sentence: what does your gut say about the current market conditions — cite instinct score and key factors>",
+  "tier2_signals": ["<list of Tier 2 entry signals that fired>"],
+  "tier3_confirmations": ["<list of Tier 3 momentum confirmations>"],
+  "entry_logic": "<2–3 sentence professional scalp rationale — cite specific indicator values, key levels, and instinct alignment>",
+  "key_risk": "<what would immediately invalidate this trade>",
+  "skip_reason": "<if SKIP: cite both technical AND instinct reasons that failed — otherwise null>"
 }`;
 
-    scalpAddLog('scan', `🤖 Scalp brief compiled (${scalpBrief.length} chars) — sending to Claude…`);
+    scalpAddLog('scan', `🧠 APEX brief (${scalpBrief.length} chars) | ${inst} | Instinct: ${instinctScore}/100 — sending…`);
 
     const res = await fetch(`${WORKER_URL}/claude`, {
       method: 'POST',
@@ -8319,15 +9048,17 @@ Make your scalp trading decision. Return ONLY this exact JSON:
     }
 
     if (decision.action === 'SKIP') {
-      scalpAddLog('skip', `⏭️ SCALP SKIP — ${decision.confidence}%\n${decision.skip_reason || 'No clear micro-structure'}`);
+      scalpAddLog('skip', `⏭️ SCALP SKIP — ${decision.confidence}%\n${decision.skip_reason || 'Conditions not met'}`);
     } else if (decision.action === 'BUY' || decision.action === 'SELL') {
       if (scalpPositions.length >= 2) {
         scalpAddLog('skip', `⏭️ Max 2 scalp positions open — blocked.`);
       } else {
         const lots = Math.max(SCALP_MIN_LOTS, Math.min(6, parseFloat(decision.lots) || SCALP_MIN_LOTS));
+        const t2   = (decision.tier2_signals || []).join(', ');
+        const t3   = (decision.tier3_confirmations || []).join(', ');
         const pos = {
           id:             Date.now(),
-          inst:           'BTCUSD',
+          inst:           inst,
           dir:            decision.action,
           lots,
           entryPrice:     price,
@@ -8339,6 +9070,7 @@ Make your scalp trading decision. Return ONLY this exact JSON:
           openTimestamp:  Date.now(),
           status:         'open',
           confidence:     decision.confidence || 0,
+          instinctScore,
           source:         'SCALP'
         };
         scalpPositions.push(pos);
@@ -8349,9 +9081,14 @@ Make your scalp trading decision. Return ONLY this exact JSON:
         const slStr = decision.sl ? `SL $${decision.sl.toFixed(2)}` : 'no SL';
         const tpStr = decision.tp ? `TP $${decision.tp.toFixed(2)}` : 'no TP';
         scalpAddLog('open',
-          `⚡ SCALP ${decision.action} ${lots}L @ $${price.toFixed(2)}\n${slStr} | ${tpStr} | ${decision.confidence}%\n${decision.entry_logic || ''}`
+          `⚡ ${inst} SCALP ${decision.action} ${lots}L @ $${price.toFixed(2)} [${decision.grade || 'B+'}]\n` +
+          `${slStr} | ${tpStr} | Confidence: ${decision.confidence}% | Instinct: ${instinctScore}/100\n` +
+          `🧠 Instinct: ${decision.instinct_reading || instinctGrade}\n` +
+          `Entry: ${decision.entry_logic || ''}\n` +
+          `Tier 2: ${t2 || 'N/A'} | Tier 3: ${t3 || 'N/A'}\n` +
+          `Risk: ${decision.key_risk || 'N/A'}`
         );
-        toast(`⚡ SCALP ${decision.action} ${lots}L @ $${price.toFixed(2)}`);
+        toast(`⚡ ${inst} SCALP ${decision.action} ${lots}L @ $${price.toFixed(2)} [${decision.grade || 'B+'}] 🧠${instinctScore}`);
 
         // Switch to scalp panel so user sees it
         const scalpBtn = document.getElementById('apt-scalp');
@@ -9477,6 +10214,11 @@ function initAutoTrader() {
   scalpRenderPositions();
   scalpRenderHistory();
   scalpRenderLog();
+  // Restore instrument selector button visual state
+  setTimeout(() => {
+    scalpSetInstrument(scalpInstrument, null);
+    scalpUpdateFearGreedDisplay();
+  }, 50);
 
   if (!atChartLoaded) {
     atChartLoaded = true;
