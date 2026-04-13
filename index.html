@@ -2187,13 +2187,23 @@ select.input option { background:#111116; color:#E8E8F0; }
                 <span id="scalp-pulse-dot" style="width:6px;height:6px;border-radius:50%;background:var(--purple);flex-shrink:0;animation:none;display:inline-block;"></span>
                 <span id="scalp-engine-label">SCALP IDLE</span>
               </div>
-              <!-- Instrument selector -->
-              <div style="display:flex;gap:4px;align-items:center;">
-                <span style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1px;">INSTRUMENT</span>
-                <button onclick="scalpSetInstrument('BTCUSD',this)" id="scalp-inst-btc" style="background:var(--gold-dim);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-family:var(--font-mono);font-size:8px;padding:3px 8px;cursor:pointer;font-weight:700;">BTC</button>
-                <button onclick="scalpSetInstrument('XAUUSD',this)" id="scalp-inst-xau" style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:3px 8px;cursor:pointer;font-weight:700;">XAU</button>
-              </div>
               <button onclick="scalpClearAll()" style="background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:2px 8px;cursor:pointer;">Clear All</button>
+            </div>
+            <!-- Multi-instrument selector -->
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:8px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1px;">SELECT INSTRUMENTS (MAX 5)</span>
+                <span id="scalp-inst-count" style="font-family:var(--font-mono);font-size:7px;color:var(--purple);font-weight:700;">1/5 selected</span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                <button onclick="scalpToggleInstrument('BTCUSD')" id="scalp-inst-BTCUSD" style="background:rgba(168,85,247,0.18);border:1px solid var(--purple);border-radius:5px;color:var(--purple);font-family:var(--font-mono);font-size:8px;padding:4px 9px;cursor:pointer;font-weight:800;transition:all 0.15s;">BTC</button>
+                <button onclick="scalpToggleInstrument('ETHUSD')" id="scalp-inst-ETHUSD" style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:4px 9px;cursor:pointer;font-weight:600;transition:all 0.15s;">ETH</button>
+                <button onclick="scalpToggleInstrument('XAUUSD')" id="scalp-inst-XAUUSD" style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:4px 9px;cursor:pointer;font-weight:600;transition:all 0.15s;">XAU</button>
+                <button onclick="scalpToggleInstrument('XAGUSD')" id="scalp-inst-XAGUSD" style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:4px 9px;cursor:pointer;font-weight:600;transition:all 0.15s;">SILVER</button>
+                <button onclick="scalpToggleInstrument('EURUSD')" id="scalp-inst-EURUSD" style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:4px 9px;cursor:pointer;font-weight:600;transition:all 0.15s;">EUR</button>
+                <button onclick="scalpToggleInstrument('GBPUSD')" id="scalp-inst-GBPUSD" style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:4px 9px;cursor:pointer;font-weight:600;transition:all 0.15s;">GBP</button>
+                <button onclick="scalpToggleInstrument('SOLUSD')" id="scalp-inst-SOLUSD" style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text3);font-family:var(--font-mono);font-size:8px;padding:4px 9px;cursor:pointer;font-weight:600;transition:all 0.15s;">SOL</button>
+              </div>
             </div>
             <!-- Fear & Greed display -->
             <div id="scalp-fng-bar" style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:8px;">
@@ -7936,8 +7946,22 @@ const SCALP_MIN_LOTS = 3;
 // Random interval between 5 and 10 minutes (ms)
 function scalpNextInterval() { return (Math.floor(Math.random() * 6) + 5) * 60 * 1000; }
 
-// ── Scalp instrument — BTCUSD or XAUUSD ──────────────────────────────────────
-let scalpInstrument = localStorage.getItem('wm_scalp_inst') || 'BTCUSD';
+// ── Scalp instruments — up to 5 selectable ───────────────────────────────────
+const SCALP_AVAILABLE = [
+  { id:'BTCUSD', label:'BTC',   pipVal:1,    dp:2 },
+  { id:'ETHUSD', label:'ETH',   pipVal:0.1,  dp:2 },
+  { id:'XAUUSD', label:'XAU',   pipVal:0.01, dp:2 },
+  { id:'XAGUSD', label:'SILVER',pipVal:0.01, dp:3 },
+  { id:'EURUSD', label:'EUR',   pipVal:10,   dp:5 },
+  { id:'GBPUSD', label:'GBP',   pipVal:10,   dp:5 },
+  { id:'SOLUSD', label:'SOL',   pipVal:0.01, dp:3 },
+];
+let scalpSelectedInstruments = (() => {
+  try {
+    const s = JSON.parse(localStorage.getItem('wm_scalp_insts') || 'null');
+    return Array.isArray(s) && s.length ? s : ['BTCUSD'];
+  } catch { return ['BTCUSD']; }
+})();
 let scalpFearGreed  = null;   // Cached Fear & Greed data { value, label, btcDominance }
 let scalpXauPrice   = null;   // Latest XAUUSD live price
 let scalpXauPrev    = null;   // Previous XAUUSD price for change calc
@@ -8004,6 +8028,33 @@ async function scalpFetchKlinesXAU(interval, limit = 100) {
   }
 }
 
+// ── Generic candle fetcher — routes to Binance (crypto) or TwelveData (everything else) ──
+async function scalpFetchKlinesGeneric(instId, interval, limit = 100) {
+  const bSym = BINANCE_SYMBOLS[instId];
+  if (bSym) {
+    try {
+      const url = `https://api.binance.com/api/v3/klines?symbol=${bSym}&interval=${interval}&limit=${limit}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) return null;
+      const raw = await res.json();
+      return raw.map(k => ({ t:k[0], open:parseFloat(k[1]), high:parseFloat(k[2]), low:parseFloat(k[3]), close:parseFloat(k[4]), volume:parseFloat(k[5]) }));
+    } catch { return null; }
+  }
+  const tdSym = TD_SYMBOLS[instId];
+  if (!tdSym) return null;
+  const tdMap = { '1m':'1min', '3m':'3min', '5m':'5min' };
+  const tdInterval = tdMap[interval] || interval;
+  try {
+    const url = `${WORKER_URL}/candles?symbol=${encodeURIComponent(tdSym)}&interval=${tdInterval}&outputsize=${limit}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const values = data.values || data;
+    if (!Array.isArray(values) || values.length < 10) return null;
+    return values.reverse().map(k => ({ t:new Date(k.datetime).getTime(), open:parseFloat(k.open), high:parseFloat(k.high), low:parseFloat(k.low), close:parseFloat(k.close), volume:parseFloat(k.volume||1) }));
+  } catch { return null; }
+}
+
 function scalpSave() {
   localStorage.setItem('wm_scalp_positions', JSON.stringify(scalpPositions));
   localStorage.setItem('wm_scalp_history',   JSON.stringify(scalpHistory));
@@ -8017,15 +8068,32 @@ function scalpSave() {
 // ════════════════════════════════════════════════════════════════════════════
 
 // ── Instrument selector ───────────────────────────────────────────────────────
-function scalpSetInstrument(inst, btn) {
-  scalpInstrument = inst;
-  localStorage.setItem('wm_scalp_inst', inst);
-  // Update button styles
-  const btcBtn = document.getElementById('scalp-inst-btc');
-  const xauBtn = document.getElementById('scalp-inst-xau');
-  if (btcBtn) { btcBtn.style.background = inst==='BTCUSD'?'var(--gold-dim)':'var(--bg3)'; btcBtn.style.borderColor = inst==='BTCUSD'?'var(--gold)':'var(--border2)'; btcBtn.style.color = inst==='BTCUSD'?'var(--gold)':'var(--text3)'; }
-  if (xauBtn) { xauBtn.style.background = inst==='XAUUSD'?'rgba(255,215,0,0.12)':'var(--bg3)'; xauBtn.style.borderColor = inst==='XAUUSD'?'#FFD700':'var(--border2)'; xauBtn.style.color = inst==='XAUUSD'?'#FFD700':'var(--text3)'; }
-  scalpAddLog('scan', `⚡ Scalp instrument switched to ${inst}`);
+function scalpToggleInstrument(instId) {
+  if (scalpEngineRunning) { toast('⚠️ Stop the scalp engine before changing instruments'); return; }
+  const idx = scalpSelectedInstruments.indexOf(instId);
+  if (idx >= 0) {
+    if (scalpSelectedInstruments.length <= 1) { toast('Select at least 1 instrument'); return; }
+    scalpSelectedInstruments.splice(idx, 1);
+  } else {
+    if (scalpSelectedInstruments.length >= 5) { toast('⚠️ Max 5 instruments selected'); return; }
+    scalpSelectedInstruments.push(instId);
+  }
+  localStorage.setItem('wm_scalp_insts', JSON.stringify(scalpSelectedInstruments));
+  scalpRenderInstrumentPicker();
+}
+
+function scalpRenderInstrumentPicker() {
+  SCALP_AVAILABLE.forEach(({ id }) => {
+    const btn = document.getElementById('scalp-inst-' + id);
+    if (!btn) return;
+    const active = scalpSelectedInstruments.includes(id);
+    btn.style.background   = active ? 'rgba(168,85,247,0.18)' : 'var(--bg3)';
+    btn.style.borderColor  = active ? 'var(--purple)' : 'var(--border2)';
+    btn.style.color        = active ? 'var(--purple)' : 'var(--text3)';
+    btn.style.fontWeight   = active ? '800' : '600';
+  });
+  const c = document.getElementById('scalp-inst-count');
+  if (c) c.textContent = `${scalpSelectedInstruments.length}/5 selected`;
 }
 
 // ── Fear & Greed display ──────────────────────────────────────────────────────
@@ -8072,11 +8140,16 @@ function scalpRenderPositions() {
     return;
   }
   el.innerHTML = scalpPositions.map(p => {
-    const price     = atCurrentPrice || p.entryPrice;
+    const meta      = SCALP_AVAILABLE.find(x => x.id === p.inst) || { pipVal: 1, dp: 2 };
+    const price     = livePriceCache[p.inst]
+                    || (p.inst === 'XAUUSD' ? scalpXauPrice : null)
+                    || (p.inst === 'BTCUSD' ? atCurrentPrice : null)
+                    || p.entryPrice;
     const priceDiff = p.dir === 'BUY' ? price - p.entryPrice : p.entryPrice - price;
-    const pnl       = priceDiff * (p.pipVal || 1) * p.lots;
+    const pnl       = priceDiff * (p.pipVal || meta.pipVal || 1) * p.lots;
     const col       = pnl >= 0 ? 'var(--green)' : 'var(--red)';
     const elapsed   = Math.round((Date.now() - p.openTimestamp) / 60000);
+    const dp        = meta.dp;
     return `<div style="background:var(--bg2);border-radius:7px;padding:8px 10px;margin-bottom:6px;border-left:2px solid var(--purple);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div style="display:flex;align-items:center;gap:5px;">
@@ -8089,13 +8162,13 @@ function scalpRenderPositions() {
         <span style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:${col};">${pnl>=0?'+':''}$${pnl.toFixed(2)}</span>
       </div>
       <div style="display:flex;gap:7px;font-family:var(--font-mono);font-size:8px;color:var(--text3);margin-bottom:5px;flex-wrap:wrap;">
-        <span>In: <strong style="color:var(--text2);">${p.entryPrice.toFixed(2)}</strong></span>
-        <span>Now: <strong style="color:var(--text2);">${price.toFixed(2)}</strong></span>
-        ${p.sl ? `<span style="color:var(--red);">SL:${p.sl.toFixed(2)}</span>` : ''}
-        ${p.tp ? `<span style="color:var(--green);">TP:${p.tp.toFixed(2)}</span>` : ''}
+        <span>In: <strong style="color:var(--text2);">${p.entryPrice.toFixed(dp)}</strong></span>
+        <span>Now: <strong style="color:var(--text2);">${price.toFixed(dp)}</strong></span>
+        ${p.sl ? `<span style="color:var(--red);">SL:${p.sl.toFixed(dp)}</span>` : ''}
+        ${p.tp ? `<span style="color:var(--green);">TP:${p.tp.toFixed(dp)}</span>` : ''}
         <span style="color:var(--text4);">${elapsed}m open</span>
       </div>
-      <button onclick="scalpClosePosition(${p.id})" style="width:100%;background:var(--red-dim);border:1px solid var(--red);border-radius:5px;color:var(--red);font-family:var(--font-mono);font-size:8px;padding:3px;cursor:pointer;font-weight:700;">✕ Close Scalp</button>
+      <button onclick="scalpClosePosition(${p.id})" style="width:100%;background:var(--red-dim);border:1px solid var(--red);border-radius:5px;color:var(--red);font-family:var(--font-mono);font-size:8px;padding:3px;cursor:pointer;font-weight:700;">✕ Close Trade</button>
     </div>`;
   }).join('');
 }
@@ -8133,9 +8206,9 @@ function scalpCheckSLTP() {
   if (!scalpPositions.length) return;
   const toClose = [];
   scalpPositions.forEach(pos => {
-    const price = (pos.inst === 'XAUUSD')
-      ? (scalpXauPrice || livePriceCache['XAUUSD'])
-      : atCurrentPrice;
+    const price = livePriceCache[pos.inst]
+      || (pos.inst === 'XAUUSD' ? scalpXauPrice : null)
+      || (pos.inst === 'BTCUSD' ? atCurrentPrice : null);
     if (!price) return;
     let hit = null;
     if (pos.dir === 'BUY') {
@@ -8189,10 +8262,12 @@ function scalpCloseInternal(id, closePrice, reason) {
 function scalpClosePosition(id) {
   const pos   = scalpPositions.find(p => p.id === id);
   if (!pos) return;
-  const price = (pos.inst === 'XAUUSD')
-    ? (scalpXauPrice || livePriceCache['XAUUSD'] || pos.entryPrice)
-    : (atCurrentPrice || pos.entryPrice);
-  scalpCloseInternal(id, price, 'Manual close at $' + price.toFixed(2));
+  const price = livePriceCache[pos.inst]
+    || (pos.inst === 'XAUUSD' ? scalpXauPrice : null)
+    || (pos.inst === 'BTCUSD' ? atCurrentPrice : null)
+    || pos.entryPrice;
+  const dp = (SCALP_AVAILABLE.find(x => x.id === pos.inst) || { dp: 2 }).dp;
+  scalpCloseInternal(id, price, 'Manual close at $' + price.toFixed(dp));
 }
 
 function scalpClearAll() {
@@ -8228,13 +8303,13 @@ function scalpStartEngine() {
   if (dot)   { dot.style.background = 'var(--green)'; dot.style.animation = 'atPulse 1.4s ease-in-out infinite'; }
   if (label) label.textContent = 'SCALP RUNNING';
 
-  // Make sure Binance WS is active for BTC price feed
+  // Connect price feeds for all selected instruments
   atConnectBinance();
-
-  // For XAUUSD, kick off a price fetch immediately
-  if (scalpInstrument === 'XAUUSD') {
-    scalpFetchXAUPrice();
+  for (const id of scalpSelectedInstruments) {
+    if (BINANCE_SYMBOLS[id] && id !== 'BTCUSD') connectBinancePair(id);
+    if (!BINANCE_SYMBOLS[id]) fetchPriceForInstrument(id);
   }
+  if (scalpSelectedInstruments.includes('XAUUSD')) scalpFetchXAUPrice();
 
   // Fetch Fear & Greed index on start and refresh every 15 min
   scalpFetchFearGreed().then(fg => {
@@ -8244,13 +8319,24 @@ function scalpStartEngine() {
   const fgRefresh = setInterval(() => {
     if (!scalpEngineRunning) { clearInterval(fgRefresh); return; }
     scalpFetchFearGreed().then(fg => { scalpFearGreed = fg; scalpUpdateFearGreedDisplay(); });
-    if (scalpInstrument === 'XAUUSD') scalpFetchXAUPrice();
+    if (scalpSelectedInstruments.includes('XAUUSD')) scalpFetchXAUPrice();
   }, 15 * 60 * 1000);
 
-  scalpAddLog('scan', `⚡ Scalp engine started. Instrument: ${scalpInstrument} | 5–10 min precision scalps | Instinct Layer: ACTIVE`);
+  scalpAddLog('scan', `⚡ Scalp engine started. Instruments: ${scalpSelectedInstruments.join(', ')} | 5–10 min precision scalps | Instinct Layer: ACTIVE`);
 
-  // Immediate first scalp scan
-  scalpRunScan();
+  // Scan all selected instruments sequentially, 2s gap between each
+  async function scalpRunAllInstruments() {
+    for (let i = 0; i < scalpSelectedInstruments.length; i++) {
+      if (!scalpEngineRunning) break;
+      await scalpRunScan(scalpSelectedInstruments[i]);
+      if (i < scalpSelectedInstruments.length - 1) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+  }
+
+  // Immediate first scan across all instruments
+  scalpRunAllInstruments();
 
   // Schedule subsequent scans at random 5–10 min intervals
   function scheduleNext() {
@@ -8258,7 +8344,7 @@ function scalpStartEngine() {
     const interval = scalpNextInterval();
     scalpNextScanMs = Date.now() + interval;
     scalpScanTimer  = setTimeout(() => {
-      scalpRunScan();
+      scalpRunAllInstruments();
       scheduleNext();
     }, interval);
   }
@@ -8266,7 +8352,7 @@ function scalpStartEngine() {
 
   // Countdown refresh every second
   scalpUiTimer = setInterval(scalpUpdateCountdown, 1000);
-  toast('⚡ Scalp engine started');
+  toast(`⚡ Scalp engine started — scanning ${scalpSelectedInstruments.length} instrument${scalpSelectedInstruments.length > 1 ? 's' : ''}`);
 }
 
 function scalpStopEngine() {
@@ -8563,22 +8649,28 @@ function scalpAnalysePriceAction(candles) {
 }
 
 // ── SCALP ENGINE — MAIN SCAN ─────────────────────────────────────────────────
-async function scalpRunScan() {
+async function scalpRunScan(instId) {
   if (scalpScanInProgress) return;
   scalpScanInProgress = true;
 
-  const inst    = scalpInstrument || 'BTCUSD';
+  const inst    = instId || 'BTCUSD';
   const isBTC   = inst === 'BTCUSD';
   const isXAU   = inst === 'XAUUSD';
+  const isCrypto = !!BINANCE_SYMBOLS[inst];
   const scanTime = new Date().toLocaleTimeString();
   scalpAddLog('scan', `⚡ [${scanTime}] Scalp scan — ${inst} | fetching 1M + 3M + 5M + Instinct Layer…`);
 
   try {
     // ── Resolve live price ──
-    let price = isBTC ? (atCurrentPrice || livePriceCache['BTCUSD']) : null;
-    if (isXAU) {
+    let price = null;
+    if (isBTC) {
+      price = atCurrentPrice || livePriceCache['BTCUSD'];
+    } else if (isXAU) {
       await scalpFetchXAUPrice();
       price = scalpXauPrice || livePriceCache['XAUUSD'];
+    } else {
+      await fetchPriceForInstrument(inst);
+      price = livePriceCache[inst];
     }
     if (!price) {
       scalpAddLog('skip', `⏳ No live price for ${inst} — scalp scan skipped.`);
@@ -8586,9 +8678,14 @@ async function scalpRunScan() {
       return;
     }
 
-    // Max 2 concurrent scalp positions
-    if (scalpPositions.length >= 2) {
-      scalpAddLog('skip', `⏭️ Max 2 scalp positions open (${scalpPositions.length}/2) — scan skipped.`);
+    // Max 5 concurrent scalp positions total, max 1 per instrument
+    if (scalpPositions.length >= 5) {
+      scalpAddLog('skip', `⏭️ Max 5 scalp positions open — scan skipped for ${inst}.`);
+      scalpScanInProgress = false;
+      return;
+    }
+    if (scalpPositions.some(p => p.inst === inst)) {
+      scalpAddLog('skip', `⏭️ Already have an open scalp on ${inst} — skipping.`);
       scalpScanInProgress = false;
       return;
     }
@@ -8596,22 +8693,29 @@ async function scalpRunScan() {
     // ── Fetch candle data (instrument-aware) ──
     let klines1m, klines3m, klines5m, orderBook;
     if (isBTC) {
-      // BTC: use Binance REST API directly
+      // BTC: use Binance REST API directly + order book
       [klines1m, klines3m, klines5m, orderBook] = await Promise.allSettled([
         atFetchKlines('1m', 100),
         atFetchKlines('3m', 80),
         atFetchKlines('5m', 100),
         atFetchOrderBook()
       ]).then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
-    } else {
-      // XAU: use WORKER candles proxy (Twelve Data) for 1M, 5M (3M not always available)
-      const xauIntervalMap = { '1m': '1min', '5m': '5min', '15m': '15min' };
-      [klines1m, klines5m] = await Promise.allSettled([
-        scalpFetchKlinesXAU(xauIntervalMap['1m'], 100),
-        scalpFetchKlinesXAU(xauIntervalMap['5m'], 100)
+    } else if (isCrypto) {
+      // Other crypto (ETH, SOL, XRP…): Binance klines, no order book proxy
+      [klines1m, klines3m, klines5m] = await Promise.allSettled([
+        scalpFetchKlinesGeneric(inst, '1m', 100),
+        scalpFetchKlinesGeneric(inst, '3m', 80),
+        scalpFetchKlinesGeneric(inst, '5m', 100)
       ]).then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
-      klines3m  = null; // not available for XAU via this endpoint
-      orderBook = null; // no order book for XAU in this setup
+      orderBook = null;
+    } else {
+      // Non-crypto (XAU, XAG, EUR, GBP…): TwelveData via worker
+      [klines1m, klines5m] = await Promise.allSettled([
+        scalpFetchKlinesGeneric(inst, '1m', 100),
+        scalpFetchKlinesGeneric(inst, '5m', 100)
+      ]).then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
+      klines3m  = null;
+      orderBook = null;
     }
 
     if (!klines1m || !klines5m) {
@@ -8823,8 +8927,13 @@ async function scalpRunScan() {
       `${t.dir} ${t.lots}L | $${t.entryPrice?.toFixed(0)}→$${t.closePrice?.toFixed(0)} | ${t.pnl>=0?'+':''}$${t.pnl?.toFixed(0)} | ${t.duration||'?'}m`
     ).join('\n') || 'No recent scalps';
 
-    // Gold-specific pip value note
-    const instrNote = isXAU ? 'XAUUSD: $1 pip = $0.01 per lot | ATR-based stops in $ per oz | High volatility — 200-500 pip daily range' : 'BTCUSD: $1 per pip per lot | Binance live feed';
+    // Instrument-specific pip value note
+    const instrMeta = SCALP_AVAILABLE.find(x => x.id === inst) || { pipVal: 1, dp: 2 };
+    const instrNote = isXAU     ? 'XAUUSD: $1 pip = $0.01 per lot | ATR-based stops in $/oz | 200-500 pip daily range'
+                    : inst === 'XAGUSD' ? 'XAGUSD: Silver | ATR-based stops | High volatility'
+                    : isBTC    ? 'BTCUSD: $1 per pip per lot | Binance live feed'
+                    : isCrypto ? `${inst}: Binance live feed | pip value ~$${instrMeta.pipVal}`
+                    : `${inst}: TwelveData feed | forex/metal pip value ~$${instrMeta.pipVal} per lot`;
 
     // ── Build elite scalp intelligence brief ──
     const scalpBrief = `
@@ -9054,12 +9163,14 @@ Return ONLY this exact JSON object:
     if (decision.action === 'SKIP') {
       scalpAddLog('skip', `⏭️ SCALP SKIP — ${decision.confidence}%\n${decision.skip_reason || 'Conditions not met'}`);
     } else if (decision.action === 'BUY' || decision.action === 'SELL') {
-      if (scalpPositions.length >= 2) {
-        scalpAddLog('skip', `⏭️ Max 2 scalp positions open — blocked.`);
+      if (scalpPositions.length >= 5 || scalpPositions.some(p => p.inst === inst)) {
+        scalpAddLog('skip', `⏭️ Position limit reached for ${inst} — blocked.`);
       } else {
         const lots = Math.max(SCALP_MIN_LOTS, Math.min(6, parseFloat(decision.lots) || SCALP_MIN_LOTS));
         const t2   = (decision.tier2_signals || []).join(', ');
         const t3   = (decision.tier3_confirmations || []).join(', ');
+        const instPipVal = (SCALP_AVAILABLE.find(x => x.id === inst) || { pipVal: 1 }).pipVal;
+        const instDp     = (SCALP_AVAILABLE.find(x => x.id === inst) || { dp: 2 }).dp;
         const pos = {
           id:             Date.now(),
           inst:           inst,
@@ -9069,7 +9180,7 @@ Return ONLY this exact JSON object:
           sl:             decision.sl   || null,
           tp:             decision.tp   || null,
           leverage:       AT_LEVERAGE,
-          pipVal:         1,
+          pipVal:         instPipVal,
           openTime:       new Date().toLocaleString(),
           openTimestamp:  Date.now(),
           status:         'open',
@@ -9082,17 +9193,17 @@ Return ONLY this exact JSON object:
         scalpRenderPositions();
         atUpdateAccount();
 
-        const slStr = decision.sl ? `SL $${decision.sl.toFixed(2)}` : 'no SL';
-        const tpStr = decision.tp ? `TP $${decision.tp.toFixed(2)}` : 'no TP';
+        const slStr = decision.sl ? `SL $${decision.sl.toFixed(instDp)}` : 'no SL';
+        const tpStr = decision.tp ? `TP $${decision.tp.toFixed(instDp)}` : 'no TP';
         scalpAddLog('open',
-          `⚡ ${inst} SCALP ${decision.action} ${lots}L @ $${price.toFixed(2)} [${decision.grade || 'B+'}]\n` +
+          `⚡ ${inst} SCALP ${decision.action} ${lots}L @ $${price.toFixed(instDp)} [${decision.grade || 'B+'}]\n` +
           `${slStr} | ${tpStr} | Confidence: ${decision.confidence}% | Instinct: ${instinctScore}/100\n` +
           `🧠 Instinct: ${decision.instinct_reading || instinctGrade}\n` +
           `Entry: ${decision.entry_logic || ''}\n` +
           `Tier 2: ${t2 || 'N/A'} | Tier 3: ${t3 || 'N/A'}\n` +
           `Risk: ${decision.key_risk || 'N/A'}`
         );
-        toast(`⚡ ${inst} SCALP ${decision.action} ${lots}L @ $${price.toFixed(2)} [${decision.grade || 'B+'}] 🧠${instinctScore}`);
+        toast(`⚡ ${inst} SCALP ${decision.action} ${lots}L @ $${price.toFixed(instDp)} [${decision.grade || 'B+'}] 🧠${instinctScore}`);
 
         // Switch to scalp panel so user sees it
         const scalpBtn = document.getElementById('apt-scalp');
@@ -10218,9 +10329,9 @@ function initAutoTrader() {
   scalpRenderPositions();
   scalpRenderHistory();
   scalpRenderLog();
-  // Restore instrument selector button visual state
+  // Restore instrument picker visual state
   setTimeout(() => {
-    scalpSetInstrument(scalpInstrument, null);
+    scalpRenderInstrumentPicker();
     scalpUpdateFearGreedDisplay();
   }, 50);
 
