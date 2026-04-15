@@ -1,0 +1,191 @@
+    <div class="tab-panel" id="tab-calc">
+      <div style="max-width:720px;">
+
+        <!-- Header -->
+        <div style="margin-bottom:16px;">
+          <div style="font-family:var(--font-display);font-size:20px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;">Trade Intention Analyser</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;">RISK CALCULATOR · POSITION SIZING · AI SANITY CHECK</div>
+        </div>
+
+        <!-- Row 1: Account + Instrument -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div class="card" style="margin:0;">
+            <div class="card-label">Account</div>
+            <div style="margin-bottom:8px;">
+              <label class="input-label">BALANCE ($)</label>
+              <input type="number" class="input" id="calc-balance" placeholder="10000" oninput="calcRisk()" style="color:var(--green);">
+            </div>
+            <div>
+              <label class="input-label">RISK PER TRADE (%)</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="number" class="input" id="calc-risk" value="1" step="0.5" min="0.1" max="100" oninput="calcRisk()" style="color:var(--gold);">
+                <div id="calc-risk-usd" style="font-family:var(--font-mono);font-size:11px;color:var(--gold);white-space:nowrap;min-width:48px;">$0</div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin:0;">
+            <div class="card-label">Leverage & Direction</div>
+            <div style="margin-bottom:8px;">
+              <label class="input-label">LEVERAGE</label>
+              <select class="input" id="calc-leverage" onchange="calcRisk()">
+                <option value="1">1:1 (No leverage)</option>
+                <option value="2">1:2</option>
+                <option value="5">1:5</option>
+                <option value="10">1:10</option>
+                <option value="20">1:20</option>
+                <option value="30">1:30 (FCA retail max (forex))</option>
+                <option value="50">1:50</option>
+                <option value="100" selected>1:100</option>
+                <option value="200">1:200</option>
+                <option value="500">1:500</option>
+                <option value="1000">1:1000</option>
+                <option value="2000">1:2000</option>
+                <option value="5000">1:5000 (Ultra high risk)</option>
+                <option value="999999">Unlimited (No margin limit)</option>
+              </select>
+            </div>
+            <div>
+              <label class="input-label">DIRECTION</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                <button id="calc-buy-btn" onclick="setCalcDir('BUY')" style="padding:8px;border-radius:6px;border:1px solid var(--green);background:var(--green-dim);color:var(--green);font-family:var(--font-mono);font-size:11px;font-weight:700;cursor:pointer;">▲ BUY</button>
+                <button id="calc-sell-btn" onclick="setCalcDir('SELL')" style="padding:8px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-family:var(--font-mono);font-size:11px;font-weight:700;cursor:pointer;">▼ SELL</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: Instrument + Prices -->
+        <div class="card" style="margin-bottom:10px;">
+          <div class="card-label">Instrument & Prices</div>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;">
+            <div>
+              <label class="input-label">INSTRUMENT</label>
+              <select class="input" id="calc-instrument" onchange="calcRisk();autoFillLivePrice()">
+                <optgroup label="Metals">
+                  <option value="XAUUSD">XAU/USD: Gold</option>
+                  <option value="XAGUSD">XAG/USD: Silver</option>
+                  <option value="XPTUSD">XPT/USD: Platinum</option>
+                  <option value="XCUUSD">XCU/USD: Copper</option>
+                </optgroup>
+                <optgroup label="Forex Majors">
+                  <option value="EURUSD">EUR/USD</option>
+                  <option value="GBPUSD">GBP/USD</option>
+                  <option value="USDJPY">USD/JPY</option>
+                  <option value="USDCHF">USD/CHF</option>
+                  <option value="AUDUSD">AUD/USD</option>
+                  <option value="USDCAD">USD/CAD</option>
+                  <option value="NZDUSD">NZD/USD</option>
+                </optgroup>
+                <optgroup label="Forex Minors">
+                  <option value="EURGBP">EUR/GBP</option>
+                  <option value="EURJPY">EUR/JPY</option>
+                  <option value="GBPJPY">GBP/JPY</option>
+                  <option value="AUDJPY">AUD/JPY</option>
+                  <option value="CADJPY">CAD/JPY</option>
+                </optgroup>
+                <optgroup label="Crypto">
+                  <option value="BTCUSD">BTC/USD: Bitcoin</option>
+                  <option value="ETHUSD">ETH/USD: Ethereum</option>
+                  <option value="SOLUSD">SOL/USD</option>
+                </optgroup>
+                <optgroup label="Indices">
+                  <option value="US30">US30: Dow Jones</option>
+                  <option value="SPX500">SPX500, S&P 500</option>
+                  <option value="NAS100">NAS100: Nasdaq</option>
+                  <option value="UK100">UK100: FTSE</option>
+                  <option value="GER40">GER40: DAX</option>
+                </optgroup>
+                <optgroup label="Energy">
+                  <option value="WTIUSD">WTI Crude Oil</option>
+                  <option value="BRTUSD">Brent Crude</option>
+                  <option value="NATGAS">Natural Gas</option>
+                </optgroup>
+              </select>
+            </div>
+            <div>
+              <label class="input-label">ENTRY PRICE <span id="calc-live-badge" style="color:var(--green);font-size:7px;margin-left:4px;"></span></label>
+              <input type="number" class="input" id="calc-entry" placeholder="0.00" oninput="calcRisk()" step="0.00001">
+            </div>
+            <div>
+              <label class="input-label">STOP LOSS</label>
+              <input type="number" class="input" id="calc-sl" placeholder="0.00" oninput="calcRisk()" step="0.00001" style="border-color:var(--red-dim);">
+            </div>
+            <div>
+              <label class="input-label">TAKE PROFIT</label>
+              <input type="number" class="input" id="calc-tp" placeholder="0.00" oninput="calcRisk()" step="0.00001" style="border-color:var(--green-dim);">
+            </div>
+          </div>
+        </div>
+
+        <!-- Results grid -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;">
+          <div class="stat-box">
+            <div class="stat-box-val" id="calc-lot-result" style="color:var(--blue);font-size:22px;">—</div>
+            <div class="stat-box-label">LOT SIZE</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-val" id="calc-margin-req" style="color:var(--purple);font-size:22px;">—</div>
+            <div class="stat-box-label">MARGIN REQ</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-val" id="calc-rr-ratio" style="color:var(--gold);font-size:22px;">—</div>
+            <div class="stat-box-label">RISK:REWARD</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-val" id="calc-max-loss" style="color:var(--red);font-size:22px;">—</div>
+            <div class="stat-box-label">MAX LOSS</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+          <div class="stat-box">
+            <div class="stat-box-val" id="calc-sl-dist" style="font-size:18px;">—</div>
+            <div class="stat-box-label">SL DISTANCE</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-val" id="calc-tp-dist" style="color:var(--green);font-size:18px;">—</div>
+            <div class="stat-box-label">TP DISTANCE</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-val" id="calc-pipval" style="font-size:18px;">—</div>
+            <div class="stat-box-label">PIP VALUE</div>
+          </div>
+        </div>
+
+        <!-- Sanity / warning strip -->
+        <div id="calc-sanity-strip" style="display:none;margin-bottom:10px;"></div>
+
+        <!-- Drawdown Protection Tier strip -->
+        <div id="calc-drawdown-strip" style="display:none;margin-bottom:10px;"></div>
+
+        <!-- AI Analyse button -->
+        <button class="btn btn-primary" id="calc-ai-btn" onclick="runTradeIntentionAnalysis()" style="margin-bottom:10px;width:100%;padding:13px;">
+          Analyse This Trade
+        </button>
+
+        <!-- AI result -->
+        <div id="calc-ai-result" style="margin-bottom:10px;"></div>
+
+        <!-- Behaviour Review -->
+        <div class="card" id="trade-behaviour-card">
+          <div class="card-label">Trade Behaviour Review</div>
+          <div id="trade-behaviour-content">
+            <div style="font-size:12px;color:var(--text3);line-height:1.6;">No trades logged yet. Use Sim Trader or log trades in your journal to get a behavioural analysis here.</div>
+          </div>
+          <button onclick="refreshTradeBehaviourReview()" id="behaviour-refresh-btn" style="margin-top:10px;background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text3);font-family:var(--font-mono);font-size:9px;padding:5px 12px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">↻ Refresh Analysis</button>
+        </div>
+
+        <!-- LEGAL FOOTER -->
+        <div style="margin-top:24px;padding:12px 16px;background:var(--bg1);border-top:1px solid var(--border);font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:0.3px;">
+          <div style="margin-bottom:8px;line-height:1.6;">Wingman is a trading education platform provided by Aperintel. Not financial advice. Simulated performance does not represent real trading results. Wingman does not provide financial, investment, or trading advice and is not regulated by any financial authority.</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+            <button onclick="openLegalModal('privacy')" style="background:none;border:none;color:var(--teal);cursor:pointer;text-decoration:underline;padding:0;font-family:var(--font-mono);font-size:7px;">Privacy Policy</button>
+            <span style="color:var(--border);">·</span>
+            <button onclick="openLegalModal('terms')" style="background:none;border:none;color:var(--teal);cursor:pointer;text-decoration:underline;padding:0;font-family:var(--font-mono);font-size:7px;">Terms of Use</button>
+            <span style="color:var(--border);margin-left:auto;">Copyright 2026 Aperintel</span>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /tab-calc -->
+
+    <!-- ── LIVE CHART TAB ── -->

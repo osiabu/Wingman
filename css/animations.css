@@ -1,0 +1,45 @@
+/* ═══════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════ */
+@keyframes spin { to { transform:rotate(360deg); } }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+@keyframes shimmer { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
+/* Ticker: scroll exactly one full copy-width then reset — true seamless loop */
+@keyframes ticker-scroll {
+  0%   { transform:translateX(0); }
+  100% { transform:translateX(-50%); }
+}
+/* Loading bar: slim teal bar slides left to right on API-dependent panels */
+@keyframes load-bar {
+  0%   { transform:translateX(-100%); }
+  100% { transform:translateX(200%); }
+}
+.fade-up { animation:fadeUp 0.35s ease forwards; }
+.pulse { animation:pulse 1.5s ease-in-out infinite; }
+.spinner {
+  width:16px; height:16px; border:2px solid transparent;
+  border-top-color:currentColor; border-radius:50%;
+  animation:spin 0.7s linear infinite; flex-shrink:0;
+}
+/* Panel loading bar */
+.panel-loading-bar {
+  position:relative; overflow:hidden;
+  height:2px; background:var(--border2); border-radius:1px;
+  margin-bottom:12px; flex-shrink:0;
+}
+.panel-loading-bar::after {
+  content:''; position:absolute; top:0; left:0;
+  width:45%; height:100%; background:var(--teal);
+  animation:load-bar 1.2s ease-in-out infinite;
+  border-radius:1px;
+}
+/* WS status dot */
+.ws-dot {
+  width:7px; height:7px; border-radius:50%; flex-shrink:0;
+  transition:background 0.3s, box-shadow 0.3s;
+  cursor:pointer;
+}
+.ws-dot.connected   { background:var(--green); box-shadow:0 0 5px var(--green); animation:pulse 2s infinite; }
+.ws-dot.reconnecting{ background:var(--gold);  box-shadow:0 0 5px var(--gold);  animation:pulse 0.8s infinite; }
+.ws-dot.disconnected{ background:var(--red);   box-shadow:0 0 5px var(--red);   animation:none; }

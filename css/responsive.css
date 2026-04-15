@@ -1,0 +1,135 @@
+/* ═══════════════════════════════════════════
+   RESPONSIVE — MOBILE AUDIT
+   Primary breakpoint: 375px (iPhone SE / small Android)
+═══════════════════════════════════════════ */
+
+/* ─── Markets: sub-tabs scroll horizontally on small screens ─── */
+@media (max-width: 767px) {
+  .markets-subtab-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    gap: 0;
+  }
+  .markets-subtab-bar::-webkit-scrollbar { display: none; }
+  .markets-subtab { flex-shrink: 0; white-space: nowrap; }
+
+  /* ─── Academy stage map: smaller nodes at 375px ─── */
+  .academy-stage {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+  }
+  .academy-stage-num { font-size: 11px !important; }
+  .academy-stage-line { min-width: 8px !important; }
+
+  /* ─── Home tab: prevent horizontal overflow ─── */
+  #tab-home { overflow-x: hidden; }
+  #home-hero-bar { padding: 8px 10px; gap: 4px !important; }
+  #home-hero-bar > div { padding: 0 8px !important; }
+  .home-action-btn { font-size: 10px !important; padding: 8px 10px !important; }
+
+  /* ─── Autotrader: single-column, mobile tab bar ─── */
+  #tab-autotrader { display: flex !important; flex-direction: column; }
+  #at-topbar { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  #at-topbar::-webkit-scrollbar { display: none; }
+  #at-body {
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+  }
+  /* Chart pane: takes fixed height */
+  #at-body > div:first-child {
+    flex: none !important;
+    height: 52vw;
+    min-height: 200px;
+    max-height: 280px;
+  }
+  /* Log and positions panels: absolute fill, hidden by default */
+  #at-mid-panel,
+  #at-right-panel {
+    position: absolute !important;
+    inset: 0;
+    width: 100% !important;
+    z-index: 10;
+    display: none !important;
+  }
+  #at-mid-panel.at-mob-active,
+  #at-right-panel.at-mob-active {
+    display: flex !important;
+  }
+
+  /* ─── Autotrader mobile tab bar ─── */
+  .at-mobile-tabbar {
+    display: flex;
+    background: var(--bg1);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .at-mobile-tab {
+    flex: 1;
+    padding: 9px 0;
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 1px;
+    background: none;
+    border: none;
+    border-top: 2px solid transparent;
+    color: var(--text3);
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .at-mobile-tab.active { color: var(--gold); border-top-color: var(--gold); }
+
+  /* ─── Markets scan results: stack on mobile ─── */
+  .scan-result-grid { flex-direction: column !important; }
+
+  /* ─── General: prevent tables and wide elements from scrolling out ─── */
+  .card { overflow-x: hidden; }
+  .tab-panel { overflow-x: hidden; }
+
+  /* ─── Simtrader: stack order entry ─── */
+  #sim-entry-grid { grid-template-columns: 1fr 1fr !important; }
+}
+
+/* Hide AT mobile tabbar on tablet+ */
+@media (min-width: 768px) {
+  .at-mobile-tabbar { display: none !important; }
+}
+
+/* ─── Extra-small: 375px and below ─── */
+@media (max-width: 375px) {
+  .mobile-topbar { padding-top: 44px; }
+  .tab-panel { padding: 10px 10px 80px; }
+
+  /* Hero bar: stack items vertically */
+  #home-hero-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  #home-hero-bar > div[style*="border-right"] {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border2);
+    padding-bottom: 6px !important;
+    margin-bottom: 2px;
+    width: 100%;
+  }
+
+  /* Academy stage nodes: smallest size */
+  .academy-stage { width: 32px !important; height: 32px !important; min-width: 32px !important; }
+  .academy-stage-num { font-size: 10px !important; }
+
+  /* Ticker strip compact */
+  #mobile-price-tiles { max-height: 38px; }
+
+  /* Markets sub-tab bar smaller text */
+  .markets-subtab { font-size: 10px !important; padding: 8px 10px !important; }
+
+  /* Scan instrument selector full width */
+  .inst-trigger { width: 100%; }
+
+  /* Cards full width */
+  .card { border-radius: 8px; }
+}

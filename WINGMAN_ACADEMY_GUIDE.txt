@@ -1,0 +1,1582 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                  WINGMAN TRADING ACADEMY                                   ║
+║           Full Content + Build Guide — From Zero to Trader Passport        ║
+║                                                                            ║
+║  This document contains two things:                                        ║
+║  1. The complete curriculum content for all 7 Academy stages               ║
+║  2. The technical build instructions for each stage                        ║
+║                                                                            ║
+║  Read Section A before Section B.                                          ║
+║  Section A is what users learn. Section B is how you build it.             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHART INFRASTRUCTURE DECISION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  RECOMMENDATION: Use TradingView Lightweight Charts (open source library)
+  NOT the TradingView iframe widget, and NOT a chart built from scratch.
+
+  Why Lightweight Charts wins:
+
+    ✓ Free and open source (Apache 2.0 licence)
+    ✓ Runs entirely in your own code — no iframe, no third-party DOM
+    ✓ You control every pixel — overlay AI signals, behaviour flags,
+      Academy annotations directly on the chart
+    ✓ Supports: Candlestick, Line, Area, Bar, Histogram series
+    ✓ Supports: Custom price lines, markers, time scale control
+    ✓ Fast — designed for financial data, handles thousands of candles
+    ✓ You can add your own indicators as overlay series
+    ✓ Works on mobile
+
+  What you can add on top:
+    - Moving averages (calculated in JS, rendered as line series)
+    - RSI, MACD, Bollinger Bands (calculate with technicalindicators npm)
+    - Your own behaviour annotation markers (e.g. red dot = revenge trade)
+    - AI signal markers (green/red arrows at entry/exit points)
+    - Session shading (background colours for London/NY/Tokyo hours)
+    - Academy challenge overlays (e.g. "your entry" vs "ideal entry")
+
+  Import via CDN (no build step needed):
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
+  Data source: Your existing Deriv WebSocket and Binance WebSocket feeds
+  already provide OHLCV candle data. Wire them directly into the chart.
+
+  The Academy chart (used in Stage lessons and Sim Trader) should be
+  this library. The Autotrader reference chart can stay as TradingView
+  iframe for now — it is less important.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION A — THE FULL CURRICULUM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ACADEMY PHILOSOPHY
+  ──────────────────
+  Most trading courses teach theory. Wingman Academy teaches through doing.
+  Every stage ends with a real sim trade challenge. The AI grades the trade,
+  not a quiz. Knowledge is demonstrated by execution, not by correct answers.
+
+  This means a student who reads every lesson but trades badly does not pass.
+  A student who trades well demonstrates they have internalised the lesson.
+  That is the difference between a certificate and a credential.
+
+  STAGE STRUCTURE (all 7 stages follow this pattern):
+    1. LEARN    — Lesson content (text, visuals, interactive examples)
+    2. TOOLS    — Relevant tools introduced and practised on the Wingman chart
+    3. CHALLENGE — Specific sim trade criteria that must be met to pass
+    4. DEBRIEF  — AI feedback on the trade submitted for grading
+    5. UNLOCK   — Next stage unlocks after debrief acknowledged
+
+  PASS CONDITIONS (universal across all stages):
+    - Student must complete the LEARN section (scroll to bottom)
+    - Student must submit at least one qualifying sim trade
+    - The sim trade must meet the stage-specific criteria
+    - If the trade fails grading: 24-hour cooldown before retry
+    - Three consecutive failures triggers an AI intervention session
+      before any further attempts are allowed
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STAGE 1 — THE LANGUAGE OF MARKETS
+Subtitle: "Before you can trade, you must learn to read."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  LEARN — LESSON CONTENT
+  ───────────────────────
+
+  1.1 What Is a Financial Market?
+      A financial market is simply a place — physical or digital — where
+      buyers and sellers agree on a price for an asset. When more people
+      want to buy than sell, price rises. When more want to sell than buy,
+      price falls. Everything in trading flows from this one truth.
+
+      Markets you will encounter in Wingman:
+      - Forex (foreign exchange): Currency pairs. EUR/USD means the price
+        of one Euro in US Dollars. The forex market trades $7.5 trillion
+        per day — the largest and most liquid market on Earth.
+      - Commodities: Physical goods. Gold (XAUUSD), Silver (XAGUSD),
+        Oil (USOIL). Prices move on supply, demand, and geopolitics.
+      - Indices: Baskets of stocks. US30 (Dow Jones), SPX500 (S&P 500),
+        NAS100 (Nasdaq). They represent the health of an economy.
+      - Crypto: Digital assets. Bitcoin (BTCUSD), Ethereum (ETHUSD).
+        Highly volatile, 24/7 trading, no central authority.
+
+  1.2 Reading a Price: Bid, Ask, and Spread
+      Every market has two prices at all times:
+      - BID:  The price a buyer will pay (you sell at this price)
+      - ASK:  The price a seller wants (you buy at this price)
+      - SPREAD: The difference between them. This is the broker's fee.
+
+      Example: EUR/USD Bid 1.08450 | Ask 1.08465
+      Spread = 1.5 pips. If you buy, you immediately start 1.5 pips
+      in the negative. The market must move 1.5 pips in your favour
+      before you break even. This is why small spreads matter.
+
+      Rule: Always check the spread before trading.
+      Spreads widen during low liquidity (weekends, news events).
+
+  1.3 Pips, Points, and Lot Sizes
+      PIP (Price Interest Point):
+        The smallest standard price movement.
+        For EUR/USD: 0.0001 = 1 pip
+        For USD/JPY: 0.01 = 1 pip
+        For XAUUSD (Gold): 0.01 = 1 pip (often called a point)
+
+      LOT SIZE — how much you are trading:
+        Standard Lot:  100,000 units. 1 pip = $10 profit/loss
+        Mini Lot:       10,000 units. 1 pip = $1 profit/loss
+        Micro Lot:       1,000 units. 1 pip = $0.10 profit/loss
+        Nano Lot:          100 units. 1 pip = $0.01 profit/loss
+
+      In the Wingman Sim Trader, you always trade micro lots unless
+      you specifically increase size. This protects your sim balance
+      while you learn.
+
+  1.4 Long vs Short
+      GOING LONG = Buying. You believe price will rise.
+        You buy EUR/USD at 1.0845. Price rises to 1.0865.
+        You made 20 pips profit.
+
+      GOING SHORT = Selling. You believe price will fall.
+        You sell (short) XAUUSD at 2350.00. Price falls to 2340.00.
+        You made 10 points profit.
+
+      Critical insight: In forex and CFDs, you can profit from falling
+      prices just as easily as rising prices. Direction does not matter.
+      Being right about direction does.
+
+  1.5 What Is a CFD?
+      Contract for Difference. You do not own the underlying asset.
+      You speculate on whether the price will rise or fall.
+      Profits and losses are settled in cash.
+      This is what Wingman Sim Trader uses. You never own the currency
+      or commodity — you hold a position on its price movement.
+
+  1.6 Market Hours and Sessions
+      Unlike stocks, forex trades 24 hours a day, 5 days a week.
+      It is divided into four main sessions:
+
+      Sydney Session:    10pm – 7am UTC     (low volatility)
+      Tokyo Session:     midnight – 9am UTC (JPY pairs active)
+      London Session:    8am – 5pm UTC      (highest volume, EUR/GBP)
+      New York Session:  1pm – 10pm UTC     (USD pairs active)
+      London+NY Overlap: 1pm – 5pm UTC      ← GOLDEN WINDOW
+        This 4-hour overlap has the highest liquidity and tightest
+        spreads. Most professional traders focus here.
+
+      Rule: Know which session you are in. Trading EURUSD at 3am UTC
+      when Tokyo is the only active session means wide spreads and
+      choppy, unpredictable moves.
+
+  1.7 Reading a Candlestick Chart
+      The candlestick is the most important visual tool in trading.
+      Each candle represents one time period (1 minute, 1 hour, 1 day).
+
+      A single candle contains four prices:
+        OPEN:  Where price was at the start of the period
+        HIGH:  The highest price reached during the period
+        LOW:   The lowest price reached during the period
+        CLOSE: Where price was at the end of the period
+
+      BULLISH candle (green/white): Close > Open. Price rose.
+      BEARISH candle (red/black):   Close < Open. Price fell.
+
+      The BODY is the rectangle between open and close.
+      The WICKS (shadows) are the thin lines above and below.
+
+      What wicks tell you:
+        Long upper wick: Price tried to go higher but was rejected.
+                         Sellers pushed back.
+        Long lower wick: Price tried to go lower but was rejected.
+                         Buyers pushed back.
+        Small wicks:     Strong directional move. Little resistance.
+
+      Key patterns (memorise these — they appear in every stage):
+        DOJI:         Open ≈ Close. Tiny body, long wicks. Indecision.
+                      Often signals a reversal when it appears at a high
+                      or low after a strong move.
+        HAMMER:       Small body at top, long lower wick. Found at lows.
+                      Buyers rejected a move down. Potential reversal up.
+        SHOOTING STAR: Small body at bottom, long upper wick. Found at highs.
+                      Sellers rejected a move up. Potential reversal down.
+        ENGULFING:    One candle's body completely contains the previous
+                      candle's body. Strong reversal signal.
+                      Bullish engulfing (green swallows red) = buy signal.
+                      Bearish engulfing (red swallows green) = sell signal.
+        MARUBOZU:     No wicks. Pure body. Extreme directional conviction.
+
+  TOOLS INTRODUCED IN STAGE 1
+  ─────────────────────────────
+    - Wingman Chart (Lightweight Charts): Candlestick view
+    - Timeframe selector: 1M, 5M, 15M, 1H, 4H, 1D
+    - Crosshair + OHLCV readout
+    - Zoom and pan
+
+  STAGE 1 CHALLENGE
+  ──────────────────
+    Submit a sim trade that meets ALL of the following:
+    1. Trade is in the correct direction of the current session
+       (check the session indicator before entering)
+    2. Trade is held for at least 5 minutes (no instant close)
+    3. Trade has a Stop Loss set (any value — just must be set)
+    4. Trade has a Take Profit set (any value — just must be set)
+
+    AI grading criteria:
+    - Did the student set both SL and TP? (mandatory pass condition)
+    - Was the entry during a reasonable session for the instrument?
+    - Did the student avoid entering during a spread spike?
+    - Was the trade held long enough to show patience?
+
+    Failing this stage means: the student does not yet demonstrate
+    basic trade discipline. Most common reason for failure: no SL/TP.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STAGE 2 — SUPPORT, RESISTANCE, AND STRUCTURE
+Subtitle: "The market has a memory. Learn to read it."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  LEARN — LESSON CONTENT
+  ───────────────────────
+
+  2.1 Why Price Respects Levels
+      Markets are driven by human decisions. Humans remember prices.
+      When EUR/USD bounced off 1.0800 three times in the last year,
+      traders remember that level. They place orders there again.
+      That collective memory creates what we call Support and Resistance.
+
+      SUPPORT: A price level where buying pressure has historically
+               been strong enough to stop price falling further.
+               Think of it as a floor.
+
+      RESISTANCE: A price level where selling pressure has historically
+                  been strong enough to stop price rising further.
+                  Think of it as a ceiling.
+
+  2.2 How to Draw Support and Resistance
+      Rules for valid S/R levels:
+      - Price must have touched the level at least twice
+      - The more touches, the stronger the level
+      - Levels from higher timeframes (4H, Daily) are more significant
+        than levels from lower timeframes (1M, 5M)
+      - Round numbers (1.0800, 2000.00, 50000) often act as S/R
+        because humans naturally cluster orders around them
+
+      The process:
+      1. Open the 1D or 4H chart
+      2. Look for obvious turning points — places price clearly
+         reversed direction
+      3. Draw a horizontal line through the wicks of those turns
+      4. Switch to the 1H chart and refine
+      5. Note levels that appear on multiple timeframes — those are
+         the most important
+
+  2.3 Role Reversal
+      One of the most powerful concepts in technical analysis:
+      When price breaks through a resistance level and closes above it,
+      that old resistance often becomes the new support.
+      When price breaks through a support level and closes below it,
+      that old support often becomes the new resistance.
+
+      Why it happens: Traders who were "wrong" at the old level now
+      want to exit at breakeven when price returns to that level.
+      Their orders create the reversal that confirms role reversal.
+
+  2.4 Trend Structure: Higher Highs and Lower Lows
+      A trend is not just "price going up." A trend has structure.
+
+      UPTREND:     Higher Highs (HH) + Higher Lows (HL)
+                   Each rally exceeds the last. Each pullback holds
+                   above the last pullback low.
+
+      DOWNTREND:   Lower Highs (LH) + Lower Lows (LL)
+                   Each sell-off goes lower. Each bounce fails to
+                   reach the previous high.
+
+      RANGING:     No clear HH/HL or LH/LL sequence.
+                   Price oscillates between a support and resistance.
+                   Many beginners lose money trading ranges as trends.
+
+      The most dangerous mistake: entering a "trend" trade when
+      the structure has already broken. Always check the last 3
+      swing highs and lows before calling a direction.
+
+  2.5 Zones vs Lines
+      In practice, support and resistance are not precise lines.
+      They are zones — areas where price tends to react.
+      Drawing them as narrow rectangles (zones) rather than single
+      lines gives you more realistic expectations.
+
+      A price entering a zone should make you alert.
+      A price closing clearly through a zone is a breakout signal.
+      A price touching a zone and reversing is a bounce signal.
+
+  2.6 Key Market Structures
+      SWING HIGH: A candle with a lower high on both sides of it.
+                  The highest point of a recent move.
+      SWING LOW:  A candle with a higher low on both sides of it.
+                  The lowest point of a recent move.
+
+      BREAK OF STRUCTURE (BOS): Price closes beyond a previous swing
+      high (bullish BOS) or swing low (bearish BOS). This is the
+      earliest signal that a trend may be changing.
+
+      CHANGE OF CHARACTER (CHoCH): After a series of HH/HL in an
+      uptrend, price makes a lower low for the first time. This is
+      a stronger signal — the trend may be reversing, not just
+      pausing.
+
+  2.7 Trading With the Trend
+      "The trend is your friend until it bends."
+
+      In an uptrend: Look to buy pullbacks to support or previous
+      resistance that has flipped to support. Do not sell just
+      because price looks "high."
+
+      In a downtrend: Look to sell bounces to resistance or previous
+      support that has flipped to resistance. Do not buy just because
+      price looks "cheap."
+
+      In a range: Buy the support zone, sell the resistance zone.
+      Use tighter stops and smaller targets. Ranges break — and when
+      they do, they move fast.
+
+  TOOLS INTRODUCED IN STAGE 2
+  ─────────────────────────────
+    - Horizontal line drawing tool on Wingman Chart
+    - Zone (rectangle) drawing tool
+    - Swing high/low markers
+    - Multi-timeframe toggle (view 4H structure, drop to 1H for entry)
+
+  STAGE 2 CHALLENGE
+  ──────────────────
+    Submit a sim trade that meets ALL of the following:
+    1. Before entering, student must draw at least one support or
+       resistance level on the chart (drawing must be saved)
+    2. Entry must be within 10 pips/points of a drawn S/R level
+    3. Stop Loss must be placed on the OTHER SIDE of the S/R level
+       (not between price and the level)
+    4. Risk/Reward ratio must be at least 1:1.5
+       (if risking 20 pips, target must be at least 30 pips)
+
+    AI grading criteria:
+    - Was a level drawn before entry?
+    - Was the entry logically near the level?
+    - Is the SL placement logical (beyond the level, not random)?
+    - Is the R/R ratio at least 1:1.5?
+    - Did the student enter with the trend or against it?
+      (Counter-trend trades are penalised in this stage)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STAGE 3 — TECHNICAL INDICATORS
+Subtitle: "Indicators don't predict. They describe. Know the difference."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  LEARN — LESSON CONTENT
+  ───────────────────────
+
+  3.1 What Indicators Actually Are
+      Every indicator is a mathematical formula applied to historical
+      price data. They do not predict the future. They describe the
+      past in a way that helps you assess the present.
+
+      Common mistake: Using indicators as entry signals in isolation.
+      Correct use: Using indicators to confirm what price structure
+      and S/R levels already suggest.
+
+      Indicators are divided into two categories:
+      LAGGING (trend-following): Based on past data. Confirm trend.
+        Examples: Moving Averages, MACD, Bollinger Bands
+      LEADING (momentum): Try to anticipate reversals. Often oscillate.
+        Examples: RSI, Stochastic, CCI
+
+  3.2 Moving Averages (MA)
+      The most widely used indicator in existence.
+      A moving average smooths price by averaging the last N candles.
+
+      SIMPLE MOVING AVERAGE (SMA):
+        SMA(20) = sum of last 20 closing prices ÷ 20
+        All 20 periods are weighted equally.
+        Slower to react. Cleaner on higher timeframes.
+
+      EXPONENTIAL MOVING AVERAGE (EMA):
+        Gives more weight to recent prices.
+        Faster to react to new price moves.
+        EMA(9) and EMA(21) are popular for short-term traders.
+        EMA(50) and EMA(200) are popular for trend identification.
+
+      KEY USES:
+        Trend direction:  Price above MA = uptrend bias
+                          Price below MA = downtrend bias
+        Dynamic S/R:      Price often bounces off the 20 EMA or 50 EMA
+                          in trending markets
+        MA crossover:     When the fast MA crosses above the slow MA,
+                          bullish signal (Golden Cross at 50/200)
+                          When fast crosses below slow,
+                          bearish signal (Death Cross at 50/200)
+
+      IMPORTANT LIMITATION: Moving averages lag. By the time the
+      crossover happens, the move has often already started. Use them
+      for confirmation, not prediction.
+
+  3.3 RSI — Relative Strength Index
+      Measures the speed and magnitude of recent price changes.
+      Oscillates between 0 and 100.
+      Default period: 14.
+
+      Traditional interpretation:
+        RSI above 70: Overbought (price may be due for a pullback)
+        RSI below 30: Oversold (price may be due for a bounce)
+        RSI at 50:    Neutral / transition zone
+
+      PROFESSIONAL USE (this is what actually works):
+        Overbought/oversold signals alone are not enough. Price can
+        stay "overbought" for weeks in a strong trend.
+
+        RSI DIVERGENCE is the real power:
+          Regular Bullish Divergence:
+            Price makes a lower low, RSI makes a higher low.
+            Downside momentum is weakening. Potential reversal up.
+          Regular Bearish Divergence:
+            Price makes a higher high, RSI makes a lower high.
+            Upside momentum is weakening. Potential reversal down.
+          Hidden Bullish Divergence:
+            Price makes a higher low, RSI makes a lower low.
+            Trend continuation signal in an uptrend.
+
+  3.4 MACD — Moving Average Convergence Divergence
+      Consists of three components:
+        MACD Line:   EMA(12) minus EMA(26)
+        Signal Line: EMA(9) of the MACD Line
+        Histogram:   MACD Line minus Signal Line (visualises distance)
+
+      Default settings: 12, 26, 9
+
+      KEY USES:
+        Crossover signal:
+          MACD Line crosses above Signal Line: bullish momentum
+          MACD Line crosses below Signal Line: bearish momentum
+        Zero line cross:
+          MACD crossing above zero: uptrend confirmation
+          MACD crossing below zero: downtrend confirmation
+        Histogram shrinking: Momentum is fading. Possible reversal.
+        Divergence: Same principle as RSI divergence. Very powerful
+          when MACD histogram diverges from price.
+
+  3.5 Bollinger Bands
+      Consists of three lines:
+        Middle Band:  20-period SMA
+        Upper Band:   Middle + 2 standard deviations
+        Lower Band:   Middle − 2 standard deviations
+
+      Statistical principle: ~95% of price action falls within the bands.
+      When price touches or exceeds a band, it is statistically unusual.
+
+      KEY USES:
+        SQUEEZE: When the bands narrow, volatility is low.
+          A breakout often follows. Direction is unknown — wait for
+          the candle close to confirm which way.
+        WALK THE BAND: In a strong trend, price can "walk" along the
+          upper or lower band for extended periods. Do not fade it.
+        MEAN REVERSION: In ranging markets, price touching the upper
+          band and returning to the middle is a reliable pattern.
+          Same for the lower band.
+        WIDTH: Expanding bands = increasing volatility.
+               Contracting bands = decreasing volatility.
+
+  3.6 Stochastic Oscillator
+      Compares a closing price to its price range over N periods.
+      Outputs two lines: %K (fast) and %D (slow).
+      Range: 0 to 100.
+
+      Traditional zones: above 80 = overbought, below 20 = oversold.
+      The CROSSOVER of %K and %D within these zones is the signal:
+        %K crosses above %D below 20: buy signal
+        %K crosses below %D above 80: sell signal
+
+      Stochastic works best in ranging/sideways markets.
+      In strong trends, it gives false signals constantly.
+      Always check the trend before using it.
+
+  3.7 ATR — Average True Range
+      Measures market volatility. Not a directional indicator.
+      ATR tells you how much price TYPICALLY moves in one period.
+
+      KEY USES:
+        Stop Loss sizing:
+          If XAUUSD ATR(14) on the 1H chart is 8 points,
+          a stop of 8–12 points gives price room to breathe.
+          A stop of 2 points will almost certainly be hit by noise.
+        Position sizing:
+          Wider ATR = smaller position size (more risk per pip)
+          Narrow ATR = larger position size (less risk per pip)
+        Trend assessment:
+          Rising ATR = volatility increasing. Could be a breakout.
+          Falling ATR = volatility decreasing. Could be a squeeze.
+
+  3.8 Volume
+      Volume represents the number of trades executed in a period.
+      Higher volume = more conviction behind the move.
+      Lower volume = less conviction. Move may not sustain.
+
+      KEY RULES:
+        Breakout on high volume: More likely to sustain.
+        Breakout on low volume: More likely to fail (fake breakout).
+        Price rising but volume falling: Trend weakening.
+        Price falling but volume falling: Sellers losing conviction.
+
+      Note: In forex, true volume data is not available
+      (it's a decentralised market). Tick volume (number of price
+      changes) is used as a proxy and is generally reliable.
+
+  3.9 Combining Indicators: The Confluence Approach
+      No single indicator is reliable alone. Professional traders
+      look for CONFLUENCE — multiple independent signals agreeing.
+
+      Example of a high-confluence long setup:
+        1. Price is above the 50 EMA (trend filter: bullish)
+        2. Price has pulled back to a key support zone
+        3. RSI is at 35 and showing bullish divergence
+        4. MACD histogram is starting to rise from negative territory
+        5. A bullish engulfing candle forms at the support zone
+        6. ATR shows normal volatility (not an extreme spike)
+
+      Six independent signals all pointing the same way.
+      That is a high-confidence trade. One signal alone is noise.
+
+  3.10 What Indicators Cannot Do
+       - They cannot predict the future
+       - They cannot account for sudden news events
+       - They cannot tell you position size
+       - They lag behind the market (especially lagging indicators)
+       - They are all derived from the same thing: price
+
+       The trader who relies only on indicators will eventually be
+       destroyed by a strong trend that makes every oscillator
+       "overbought" for months. Price structure always comes first.
+       Indicators confirm. They do not lead.
+
+  TOOLS INTRODUCED IN STAGE 3
+  ─────────────────────────────
+    The Wingman Chart should display these as toggle-able overlays:
+    - EMA 9, EMA 21, EMA 50, EMA 200 (coloured lines on main chart)
+    - Bollinger Bands (on main chart)
+    - RSI panel (below main chart, with 70/30 lines)
+    - MACD panel (below RSI, with histogram, zero line)
+    - Stochastic panel (below MACD, with 80/20 lines)
+    - ATR panel (below Stochastic)
+    - Volume histogram (at bottom of main chart or separate panel)
+
+    Student must turn each one on and off individually.
+    Each indicator toggle should show a brief description tooltip.
+
+  STAGE 3 CHALLENGE
+  ──────────────────
+    Submit a sim trade that meets ALL of the following:
+    1. Student must select and apply at least TWO indicators
+       (the selection must be logged before trade entry)
+    2. Entry must be supported by at least 2 indicator signals
+       (student types a brief justification in a text field before entry)
+    3. Risk/Reward ratio must be at least 1:2
+    4. Stop Loss must be ATR-based (SL distance ≥ 1× ATR value)
+    5. Trade must be in the direction of the 50 EMA
+
+    AI grading criteria:
+    - Were indicators selected before entry?
+    - Is the written justification logically consistent with the
+      indicators chosen?
+    - Is the R/R at least 1:2?
+    - Is the SL at least 1× ATR from entry?
+    - Is the trade in the direction of the 50 EMA?
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STAGE 4 — RISK MANAGEMENT AND PSYCHOLOGY
+Subtitle: "Every professional trader's actual edge is here."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  LEARN — LESSON CONTENT
+  ───────────────────────
+
+  4.1 Why Risk Management Is the Actual Edge
+      Most beginners believe their edge comes from finding better entries.
+      Professional traders know the real edge is in how you manage loss.
+
+      Mathematical reality:
+        A trader who wins 40% of trades with 1:3 R/R is profitable.
+        A trader who wins 70% of trades with 1:0.5 R/R is not.
+
+        40% win rate × 3R gain = 1.2R average
+        60% loss rate × 1R loss = 0.6R average
+        Net: +0.6R per trade. Profitable.
+
+        70% win rate × 0.5R gain = 0.35R average
+        30% loss rate × 1R loss = 0.3R average
+        Net: +0.05R per trade. Barely profitable — and fragile.
+
+      The implication: You do not need to be right most of the time.
+      You need to lose small when wrong and win big when right.
+
+  4.2 The 1% Rule
+      Never risk more than 1–2% of your trading account on a single trade.
+
+      Why: If you risk 1% per trade and have 10 consecutive losses
+      (unlikely but possible), you have lost 10% of your account.
+      That is recoverable. If you risk 10% per trade and lose 10 in a
+      row, you have lost your entire account.
+
+      How to calculate:
+        Account: $10,000
+        Risk per trade: 1% = $100
+        Stop Loss: 20 pips on EUR/USD
+        Pip value (micro lot): $0.10
+        Position size: $100 ÷ (20 × $0.10) = 50 micro lots = 0.05 lots
+
+      This calculation is built into the Wingman Risk Calculator.
+      Students should use it on every trade — not guess the size.
+
+  4.3 Risk/Reward Ratios Explained
+      R/R = (Take Profit distance) ÷ (Stop Loss distance)
+
+        R/R of 1:1 — For every $1 risked, you gain $1. 
+                     You need >50% win rate to be profitable.
+        R/R of 1:2 — For every $1 risked, you gain $2.
+                     You need >33% win rate to be profitable.
+        R/R of 1:3 — For every $1 risked, you gain $3.
+                     You need >25% win rate to be profitable.
+
+      Minimum acceptable R/R in Wingman Academy: 1:1.5
+      Recommended for consistent profitability: 1:2 or above.
+
+      Note: Higher R/R ratios are harder to achieve. A 1:5 R/R trade
+      often means the target is so far away it is never reached.
+      Find the balance between realistic targets and good ratios.
+
+  4.4 Drawdown and Recovery
+      DRAWDOWN: The decline from a peak in your account balance.
+      Maximum Drawdown: The largest peak-to-trough decline ever.
+
+      The brutal mathematics of recovery:
+        10% loss requires 11% gain to recover
+        20% loss requires 25% gain to recover
+        30% loss requires 43% gain to recover
+        50% loss requires 100% gain to recover
+        80% loss requires 400% gain to recover
+
+      This is why preserving capital is everything in trading.
+      It is easier to not lose money than to make it back.
+
+  4.5 The Six Trading Psychology Traps
+      These are the Wingman Behaviour Detectors. Know them by name.
+
+      1. REVENGE TRADING
+         After a losing trade, immediately entering another trade to
+         "make the money back." The new trade is driven by emotion,
+         not analysis. It almost always loses too.
+         Rule: After any loss, take a 15-minute break. Minimum.
+
+      2. FOMO — Fear of Missing Out
+         Entering a trade because price has already moved strongly
+         and you don't want to miss the rest of the move.
+         You are entering late, into an extended move, with a poor
+         entry, a wide SL, and a small remaining target.
+         Rule: If you missed the setup, you missed it. The market
+               will give you another opportunity.
+
+      3. EARLY EXIT
+         Closing a winning trade before it reaches Take Profit because
+         you are afraid it will turn around. This systematically
+         destroys your R/R ratio. A 1:2 R/R trade exited at 1:0.8 is
+         a losing strategy long-term even if the trade was "profitable."
+         Rule: If your analysis was correct for the entry, trust it
+               for the exit. Move your SL to breakeven instead.
+
+      4. STOP WIDENING
+         Moving your Stop Loss further away when price approaches it,
+         hoping the trade will recover.
+         Rule: Never move a Stop Loss against your position.
+               You can move it in your favour (trailing). Never away.
+
+      5. OVERTRADING
+         Taking too many trades in a single session. Each trade taken
+         without a clear setup reduces your overall edge. Decision
+         fatigue sets in. Quality drops.
+         Rule: Set a maximum trade limit per session. Two or three
+               quality setups are better than ten mediocre ones.
+
+      6. TILT PATTERN
+         A cascade of emotional decisions following a losing period.
+         Increasing position sizes, abandoning your strategy, trading
+         instruments you don't understand. The spiral before the
+         account blowup.
+         Rule: If you catch yourself in tilt, close the platform.
+               Return tomorrow. The market will always be there.
+
+  4.6 Building a Trading Plan
+      The most successful traders are boring. They do the same thing,
+      the same way, every session. Their plan answers:
+        1. Which instruments will I trade?
+        2. Which timeframe is my primary analysis chart?
+        3. Which timeframe is my entry chart?
+        4. What is my maximum risk per trade?
+        5. What is my maximum daily loss before I stop?
+        6. What constitutes a valid entry signal for me?
+        7. What constitutes a valid exit signal (other than SL/TP)?
+        8. What sessions will I trade?
+
+      Without a plan, you are gambling. With a plan, you are testing
+      a systematic approach that can be refined over time.
+
+  4.7 Journalling — The Professional Habit
+      Every professional trader keeps a trading journal. Not to track
+      wins and losses, but to identify patterns in their own behaviour.
+
+      After every trade, record:
+        Entry price, direction, instrument, session
+        Why you entered (setup description)
+        SL and TP levels and reasoning
+        Result (profit/loss in R, not dollars — dollars mislead)
+        Emotion before entry (calm / excited / anxious / frustrated)
+        What you would do differently
+
+      After 50 trades, patterns emerge. You will see which setups
+      work for you, which sessions you trade best, and which emotional
+      states lead to poor decisions. The journal is your feedback loop.
+
+      Wingman's Sim Trader auto-populates the journal. Your job is to
+      add the emotional state and post-trade reflection.
+
+  TOOLS INTRODUCED IN STAGE 4
+  ─────────────────────────────
+    - Risk Calculator (built in, slide-out panel in Sim Trader)
+    - Position size calculator integrated into order entry
+    - Trade journal emotional state field (dropdown: Calm / Anxious /
+      Frustrated / Excited / Neutral)
+    - Daily max loss tracker (student sets a limit in Settings,
+      Wingman warns when it is approached)
+
+  STAGE 4 CHALLENGE
+  ──────────────────
+    Submit THREE sim trades across at least two different sessions.
+    All three trades must meet:
+    1. Position size calculated using the Risk Calculator (logged)
+    2. Risk per trade ≤ 2% of current sim balance
+    3. R/R ratio ≥ 1:2 on all three trades
+    4. Emotional state logged before each trade
+    5. No trades opened within 15 minutes of a previous losing trade
+       (Wingman enforces this lockout)
+    6. Post-trade reflection written for each trade (minimum 20 words)
+
+    AI grading criteria:
+    - Were all position sizes calculated correctly?
+    - Were all R/R ratios ≥ 1:2?
+    - Were all emotional states logged?
+    - Were the post-trade reflections substantive?
+    - Were there any revenge trades, FOMO entries, or early exits?
+      (These are detected automatically and count against the grade)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STAGE 5 — ADVANCED TOOLS AND MARKET CONTEXT
+Subtitle: "See what the majority cannot."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  LEARN — LESSON CONTENT
+  ───────────────────────
+
+  5.1 Fibonacci Retracements and Extensions
+      Based on the Fibonacci sequence (each number is the sum of the
+      previous two: 1, 1, 2, 3, 5, 8, 13, 21...).
+      The key ratios are: 23.6%, 38.2%, 50%, 61.8%, 78.6%, 100%
+
+      RETRACEMENTS: Used to find potential reversal areas within
+      a move. When price makes a strong move (swing low to swing high),
+      it often retraces to a Fibonacci level before continuing.
+
+      How to draw:
+        In an uptrend: Click from the swing LOW to the swing HIGH.
+          The Fibonacci levels draw between those two points.
+          Price often retraces to the 38.2%, 50%, or 61.8% level
+          before continuing upward.
+        In a downtrend: Click from the swing HIGH to the swing LOW.
+
+      The 61.8% level (the "Golden Ratio") is the most powerful.
+      When the 61.8% level coincides with a key S/R zone, it is a
+      very high-confidence reversal area.
+
+      EXTENSIONS: Project where price may go AFTER the retracement.
+      Common targets: 127.2%, 161.8%, 261.8% of the initial move.
+      These are used to set Take Profit targets.
+
+  5.2 Trendlines and Channels
+      A trendline connects successive swing lows (in an uptrend)
+      or successive swing highs (in a downtrend).
+
+      Rules for a valid trendline:
+        - Minimum two touch points to draw it
+        - Three touch points makes it significant
+        - Four or more touch points makes it very significant
+
+      CHANNELS: Draw a parallel line to the trendline on the other
+      side. Price often oscillates between the two lines.
+        Ascending channel: Both lines sloping up. Bullish.
+        Descending channel: Both lines sloping down. Bearish.
+        Horizontal channel: Both lines flat. Ranging market.
+
+      Trendline BREAKS are among the most reliable signals:
+      When price closes clearly through a major trendline with
+      momentum and high volume (or tick volume in forex), the
+      structure has changed.
+
+  5.3 Chart Patterns
+      Patterns that repeat across all markets and timeframes because
+      human psychology is consistent. These are high-probability setups
+      when combined with confluence.
+
+      CONTINUATION PATTERNS (trend continues after):
+        Flag:        A sharp move (the pole) followed by a tight
+                     consolidation (the flag). Entry on the break
+                     of the flag in the direction of the pole.
+        Pennant:     Similar to a flag but the consolidation forms
+                     a symmetrical triangle shape.
+        Wedge:       Price moves in converging lines in the same
+                     direction. A falling wedge in a downtrend often
+                     resolves bullishly. A rising wedge in an uptrend
+                     often resolves bearishly.
+
+      REVERSAL PATTERNS (trend changes after):
+        Head and Shoulders (H&S):
+          Three peaks: left shoulder, higher head, right shoulder.
+          A neckline connects the two troughs between the peaks.
+          Break of the neckline = bearish reversal signal.
+          Target: measure the height of the head above the neckline
+          and project it downward from the break.
+
+        Inverse H&S: Same pattern upside down. Bullish reversal.
+
+        Double Top: Price reaches a high, pulls back, rallies to
+          approximately the same high, fails. Break of the
+          pullback low (the "neck") is the sell signal.
+
+        Double Bottom: Inverse. Two similar lows. Break of the
+          pullback high is the buy signal.
+
+        Cup and Handle: A rounded bottom (the cup) followed by a
+          small consolidation (the handle). Breakout above the
+          rim of the cup is a strong bullish signal.
+
+  5.4 Market Context: The Tools Beyond Price
+      Individual candles and indicators tell you about price.
+      Broader context tells you about the forces driving price.
+
+      ECONOMIC CALENDAR:
+        Scheduled news events that move markets. Categories:
+        High impact (red):  Central bank decisions, NFP, CPI, GDP.
+                            Can move a pair 50-200+ pips in minutes.
+        Medium impact (orange): PMI, retail sales, employment data.
+        Low impact (yellow): Minor data releases. Usually ignored.
+
+        Professional rule: Do not hold trades through high-impact news
+        unless you understand exactly what the release means and have
+        widened your SL to account for the spike. Most professionals
+        either close positions before news or sit out.
+
+      COMMITMENT OF TRADERS (COT) REPORT:
+        Published weekly by the CFTC (Commodity Futures Trading Commission).
+        Shows the net positions of three groups:
+          Commercials: Hedgers (producers, manufacturers). They often
+                       hold opposite positions to the market — when they
+                       are heavily short, they are hedging, not speculating.
+          Non-commercials (Large Specs): Hedge funds and institutional
+                       traders. These are the "smart money." When they
+                       are heavily long, the trend is likely to continue.
+          Retail (Small Specs): Often wrong at extremes.
+
+        How to use it:
+          Look for extremes in non-commercial positioning.
+          When large specs are at a multi-year high in long positions,
+          the trend they are riding is likely well-established.
+          When they begin cutting positions, watch for a reversal.
+          Do not use COT as a short-term entry signal — it is a
+          3-day delayed report and a context indicator, not a trigger.
+
+      RETAIL SENTIMENT:
+        Shows what percentage of retail traders are long vs short.
+        Source: Brokers like OANDA report their client book.
+        The contrarian principle: retail traders are often wrong
+        at extremes. If 80% of retail traders are long on a pair,
+        consider whether the smart money is on the other side.
+        Used as context, not as a trigger.
+
+      FEAR AND GREED INDEX:
+        Composite index for crypto/risk sentiment.
+        Extreme Fear: Markets have sold off heavily. Potential buying
+                      opportunity for patient traders.
+        Extreme Greed: Markets are euphoric. Risk of a correction.
+        Used as a background filter, not a precise entry signal.
+
+  5.5 Expert Advisors (EAs) and Algorithmic Trading
+      An Expert Advisor is an automated trading program that runs on
+      a platform (typically MetaTrader 4 or 5) and executes trades
+      automatically based on programmed rules.
+
+      What EAs can do:
+        - Execute entries and exits without human intervention
+        - Manage multiple trades simultaneously
+        - Never experience fear, greed, or fatigue
+        - Backtest strategies on historical data
+
+      What EAs cannot do:
+        - Adapt to changing market regimes without being reprogrammed
+        - Understand context (news, sentiment, structural change)
+        - Know when the market has fundamentally changed
+        - Replace human judgment in complex situations
+
+      Types of EAs:
+        TREND-FOLLOWING: Buy when MA crosses, sell on opposite cross.
+                         Works well in trending markets. Loses in ranges.
+        SCALPING:        Very short-term trades, small targets.
+                         Sensitive to spread and slippage.
+        GRID:            Places trades at regular price intervals.
+                         Extremely dangerous in trending markets.
+        MARTINGALE:      Doubles position size after every loss.
+                         Guaranteed to blow the account eventually.
+                         Avoid completely.
+        MEAN REVERSION:  Bets price will return to an average.
+                         Works in ranges. Catastrophic in trends.
+
+      The Wingman Autotrader Intelligence Engine uses rule-based AI
+      to observe market conditions — it is conceptually similar to
+      an EA but uses a large language model for pattern recognition
+      rather than fixed mathematical rules.
+
+      EA SCAMS: The retail trading world is full of EAs sold for
+      $200-$2,000 with "guaranteed" returns. They nearly all fail.
+      Any EA claiming consistent high returns without drawdown is
+      fraudulent. Real professional algorithmic systems are not
+      sold to retail traders on websites.
+
+  5.6 Order Types Beyond Market Orders
+      Market Order: Execute immediately at current price. Subject to
+                    slippage during fast markets.
+
+      Limit Order:  Execute only at a specific price or better.
+                    BUY LIMIT: Execute at or below specified price.
+                    SELL LIMIT: Execute at or above specified price.
+                    Used to enter at a specific level without watching
+                    the screen. Risk: price may never reach your level.
+
+      Stop Order:   Execute when price reaches a specified level.
+                    BUY STOP: Execute when price rises to specified level
+                               (used to trade breakouts upward).
+                    SELL STOP: Execute when price falls to specified level
+                                (used to trade breakouts downward).
+
+      Stop-Limit:   A stop order that becomes a limit order once triggered.
+                    Protects against excessive slippage on breakouts.
+
+      Trailing Stop: A stop loss that moves with the price as the trade
+                     profits. If price rises 50 pips and your trailing
+                     stop is 20 pips, your stop rises with it, locking in
+                     30 pips of profit while leaving room for more.
+
+  TOOLS INTRODUCED IN STAGE 5
+  ─────────────────────────────
+    - Fibonacci retracement tool on Wingman Chart
+    - Trendline tool (with angle display)
+    - Channel tool
+    - Pattern recognition labels (manual — student draws and labels)
+    - COT data panel (in Markets tab, introduced in lesson)
+    - Retail sentiment panel (in Markets tab)
+    - Order type selector in Sim Trader (limit, stop, market)
+    - Trailing stop option in position management
+
+  STAGE 5 CHALLENGE
+  ──────────────────
+    Submit a sim trade that meets ALL of the following:
+    1. Entry must use a LIMIT ORDER (not a market order)
+    2. Entry level must be at a Fibonacci retracement level
+       (38.2%, 50%, or 61.8%) — Fibonacci must be drawn and saved
+    3. Take Profit must be at a Fibonacci extension level
+       (127.2% or 161.8%)
+    4. A trendline must be drawn and saved showing the trend direction
+    5. Student must write a pre-trade plan (minimum 40 words) covering:
+       trend direction, Fibonacci level rationale, and one broader
+       context factor (session, COT, sentiment, or news avoidance)
+    6. R/R must be at least 1:2
+
+    AI grading criteria:
+    - Was a limit order used?
+    - Are the Fibonacci levels drawn correctly?
+    - Is the entry logically at the Fibonacci level?
+    - Is the TP at a logical extension level?
+    - Is the pre-trade plan substantive and consistent with the setup?
+    - Was any broader context factor genuinely incorporated?
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STAGE 6 — TRADING STRATEGIES AND SYSTEMS
+Subtitle: "Find your edge. Test it. Repeat it."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  LEARN — LESSON CONTENT
+  ───────────────────────
+
+  6.1 What Makes a Strategy a Strategy
+      A strategy is a repeatable, rule-based approach to entering and
+      exiting the market. It must be specific enough that two different
+      traders following it would take the same trade.
+
+      "I buy when price looks good" is not a strategy.
+      "I buy when price breaks above a 20-period high on the 4H chart,
+       with RSI above 50, and the 50 EMA pointing up, risking 1% of
+       my account with a 1:2 R/R" is a strategy.
+
+      A strategy has six components:
+        1. Market/instrument (what you trade)
+        2. Timeframe (where you analyse and enter)
+        3. Entry criteria (exactly what triggers entry)
+        4. Stop Loss rule (exactly how you calculate it)
+        5. Take Profit rule (exactly how you calculate it)
+        6. Trade management (what you do while in the trade)
+
+  6.2 The Main Strategy Categories
+
+      TREND FOLLOWING:
+        Buy in uptrends, sell in downtrends.
+        Enter on pullbacks, not at peaks.
+        Hold until the trend structure breaks.
+        Best instruments: Forex majors, Gold, indices.
+        Best timeframes: 4H, Daily.
+        Tools: EMAs, MACD, Fibonacci retracements for entries.
+        Risk: Choppy, ranging markets destroy trend systems.
+
+      BREAKOUT TRADING:
+        Enter when price breaks through a key level with momentum.
+        Anticipate the level, wait for the close, enter on confirmation.
+        Set SL just below the broken level (now acting as support).
+        Target: projection of the range that contained price.
+        Risk: False breakouts. Price breaks the level, looks like
+        a setup, then reverses back. Always wait for candle close.
+
+      MEAN REVERSION (Fade Trading):
+        Bet that price will return to average after an extreme move.
+        Buy when price is far below a moving average in a range.
+        Sell when price is far above a moving average in a range.
+        Tools: Bollinger Bands, RSI overbought/oversold, stochastic.
+        Risk: In a trending market, "extreme" can become "more extreme."
+        This strategy has the highest failure rate for beginners
+        who apply it without checking the broader trend context.
+
+      SCALPING:
+        Very short-term trades. Seconds to minutes.
+        Target: 5–15 pips / points.
+        Stop Loss: 5–10 pips / points.
+        Requires: Fast execution, low spreads, high concentration.
+        Time commitment: Requires full attention during the session.
+        Best in: London/NY overlap (highest liquidity, tightest spreads).
+        Risk: Spread as a percentage of target is very high. If you
+        target 5 pips and the spread is 1.5 pips, you immediately start
+        30% in the negative on every trade.
+
+      SWING TRADING:
+        Holds trades for hours to days. Catches "swings" in price.
+        Less time-intensive than scalping. Works around a full-time job.
+        Best for: Retail traders who cannot watch screens all day.
+        Tools: 4H and Daily chart analysis, Fibonacci, S/R, trendlines.
+        Risk: Holds through news events and weekend gaps.
+
+      POSITION TRADING:
+        Holds trades for weeks to months. Based on fundamental analysis
+        and major trend direction.
+        Best for: Highly capitalised accounts.
+        Least suitable for: Small accounts where drawdown tolerance is low.
+
+  6.3 The ICT / Smart Money Concepts Framework
+      Increasingly popular methodology among retail traders.
+      Based on the idea that institutional traders (banks, funds)
+      create liquidity by manipulating retail stop levels.
+
+      Key concepts:
+        ORDER BLOCKS: Areas where institutional orders were placed.
+          Often appear as the last bullish candle before a strong
+          bearish move, or the last bearish candle before a strong
+          bullish move. Price often returns to these zones.
+
+        FAIR VALUE GAPS (FVG / Imbalance):
+          When price moves so fast that a candle leaves a "gap" in
+          the market (the high of the candle before it does not touch
+          the low of the candle after it). Price tends to return to
+          fill this gap before continuing.
+
+        LIQUIDITY SWEEPS:
+          Price moves just beyond a previous high or low (where stops
+          are clustered), then reverses. The sweep "collected" the
+          stop orders to fill institutional positions.
+
+        DISPLACEMENT:
+          A strong, impulsive move away from a level. Usually indicates
+          institutional participation.
+
+      This framework is powerful but complex. It requires significant
+      screen time and practice to apply reliably. Wingman Academy uses
+      elements of it in Stage 6 and 7.
+
+  6.4 Backtesting — Testing Your Strategy on History
+      Before trading any strategy live (even in the Sim Trader with
+      real-time data), test it on historical data first.
+
+      Manual backtesting process:
+        1. Open a chart on the timeframe you intend to trade
+        2. Cover the right side of the chart (the future)
+        3. Reveal one candle at a time
+        4. Apply your strategy rules exactly
+        5. Record every trade you would have taken
+        6. After 50–100 trades, calculate:
+             Win rate, Average R, Maximum drawdown,
+             Longest losing streak, Profit factor
+
+      What backtesting tells you:
+        - Whether the strategy has positive expectancy
+        - How it performs in trending vs ranging conditions
+        - Your maximum drawdown to set realistic expectations
+
+      What backtesting does not tell you:
+        - Whether it will work in the future
+        - How you will emotionally handle the losing streaks
+        - The psychological challenge of live (or real-time sim) trading
+
+      Forward testing (paper trading in real time) bridges the gap.
+      That is what the Wingman Sim Trader is for.
+
+  6.5 Building Your Personal Trading Plan
+      By Stage 6, students have the knowledge to build a proper plan.
+      This is the deliverable for Stage 6.
+
+      The plan must cover:
+        Instruments:       List the 1-3 instruments you will specialise in
+        Sessions:          Which session(s) you will trade
+        Primary timeframe: Your analysis chart
+        Entry timeframe:   Your execution chart (usually 1–2 steps lower)
+        Entry criteria:    Specific rules. What must be true to enter?
+        Invalid setups:    What conditions make you NOT enter?
+        Stop Loss method:  ATR-based? Behind structure? Fixed?
+        TP method:         Fixed target? Fibonacci extension? Trailing?
+        Max risk per trade: As % of account
+        Daily stop:        Maximum loss before you stop for the day
+        Weekly review:     When you will review your journal
+
+  TOOLS INTRODUCED IN STAGE 6
+  ─────────────────────────────
+    - Strategy template (fillable form saved to localStorage as
+      wm_trading_plan)
+    - Backtesting mode on Wingman Chart: hide candles to the right
+      of a selected date, reveal one at a time with keyboard shortcut
+    - Strategy performance calculator (input trade log, get stats)
+
+  STAGE 6 CHALLENGE
+  ──────────────────
+    Submit FIVE sim trades all following the SAME stated strategy.
+    Before any trade:
+    1. Student must complete and save their Trading Plan
+       (wm_trading_plan in localStorage, with all 10 fields filled)
+    All five trades must:
+    2. Match the criteria in the saved Trading Plan exactly
+    3. Have R/R ≥ 1:2
+    4. Have position size calculated to ≤ stated max risk %
+    5. Include pre-trade justification written in terms of the strategy
+    6. Include post-trade reflection
+
+    AI grading criteria:
+    - Is the Trading Plan complete and internally consistent?
+    - Are all five trades consistent with the stated plan?
+    - Did the student deviate from the plan at any point?
+    - Were all five trades logged with justification?
+    - Were any of the six behaviour traps detected?
+    - Did the student demonstrate patience (no FOMO entries)?
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STAGE 7 — THE PROFESSIONAL STANDARD
+Subtitle: "Consistency is the only proof of competence."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  LEARN — LESSON CONTENT
+  ───────────────────────
+
+  7.1 What Professional Traders Actually Do
+      Professional traders at funds and banks do not trade
+      on instinct. They follow process, risk frameworks, and
+      structured evaluation. They are judged not on individual
+      trades but on risk-adjusted returns over time.
+
+      The metrics that matter professionally:
+        PROFIT FACTOR: Gross profit ÷ Gross loss.
+                        Below 1.0 = losing system.
+                        1.0–1.5 = marginal.
+                        1.5–2.0 = decent.
+                        Above 2.0 = strong.
+        SHARPE RATIO:   Return relative to volatility/risk.
+                        Higher is better. Above 1.0 is acceptable.
+        MAX DRAWDOWN:   Maximum peak-to-trough decline.
+                        Professional funds rarely tolerate above 20%.
+        WIN RATE:       Less important than profit factor, but matters
+                        for psychological sustainability. Below 30%
+                        is very hard to maintain psychologically even if
+                        mathematically positive.
+        AVERAGE R:      Average return in units of risk.
+                        Positive average R + consistent application = profit.
+
+  7.2 Prop Firm Trading and Funded Accounts
+      Proprietary trading firms give traders access to institutional
+      capital in exchange for a share of the profits.
+      Popular firms: FTMO, MyForexFunds, The Funded Trader.
+
+      The evaluation process (a "challenge"):
+        Phase 1: Hit a profit target (e.g. 10%) without exceeding
+                 drawdown limits (e.g. 5% daily, 10% overall)
+        Phase 2: Repeat with a smaller target to confirm consistency
+        Funded: Trade the firm's money. Keep 70-90% of profits.
+
+      The Wingman Academy Stage 7 challenge is designed to simulate
+      a prop firm evaluation — demonstrating that you can trade
+      consistently within strict risk parameters.
+
+      Rules that prop firms universally apply:
+        - Maximum daily loss (usually 4-5% of account)
+        - Maximum overall drawdown (usually 8-12%)
+        - Minimum trading days (usually 4+)
+        - No trading during major news events (some firms)
+        - Consistent strategy (no random switching)
+
+  7.3 Institutional Market Mechanics
+      How markets actually move at the macro level:
+
+      SMART MONEY CYCLE:
+        1. Accumulation: Institutions quietly build positions.
+           Price ranges. Retail traders are bored and leave.
+        2. Markup: Institutions begin to drive price in their direction.
+           Trend begins. Retail traders notice and start entering.
+        3. Distribution: Institutions quietly exit positions into the
+           retail buying/selling frenzy at the top/bottom.
+        4. Markdown/Re-accumulation: Price reverses. Retail traders
+           are now holding losing positions.
+
+      Understanding this cycle explains why trends end when "everyone"
+      is talking about them, and why the best entries often feel
+      uncomfortable.
+
+  7.4 Fundamental Analysis — The Macro Layer
+      Technical analysis describes what price is doing.
+      Fundamental analysis explains WHY it might continue or reverse.
+
+      KEY FUNDAMENTALS FOR FOREX:
+        Interest rates: The most powerful driver of currency strength.
+          Higher rates attract foreign capital. The currency strengthens.
+          Central banks (Fed, ECB, BoE, BoJ) set rates.
+          Follow: FOMC meetings, ECB meetings, BoE meetings.
+
+        Inflation (CPI): Central banks raise rates to fight inflation.
+          Rising CPI often leads to rate hike expectations.
+          Rate hike expectations strengthen the currency.
+
+        Employment (NFP, jobs data): Strong employment → strong economy
+          → potential rate rises → stronger currency.
+          NFP (US Non-Farm Payrolls) is the most market-moving
+          monthly data point in forex.
+
+        GDP: Measures economic growth. Strong growth = stronger currency.
+             Recession fears = weaker currency.
+
+        Geopolitics: Wars, elections, trade disputes all move markets.
+             Cannot be predicted. Can only be managed with risk controls.
+
+      The practical approach for retail traders:
+        Know the direction of interest rate expectations.
+        Trade currencies where rate expectations are diverging
+        (one central bank hiking, another on hold or cutting).
+        Use fundamental context as a background filter.
+        Use technical analysis for precise entries and exits.
+
+  7.5 The Final Review: Self-Assessment Framework
+      Before claiming professional readiness, honestly answer:
+
+        □ Can I describe my strategy in under 60 seconds?
+        □ Do I follow my trading plan on 90%+ of trades?
+        □ Has my behaviour score improved since Stage 1?
+        □ Have I had zero stop widening instances in my last 20 trades?
+        □ Have I had zero revenge trades in my last 20 trades?
+        □ Do I understand why I take every trade I take?
+        □ Do I have a daily and weekly review habit?
+        □ Could I pass a prop firm evaluation on my current performance?
+
+      If the answer to any of these is "no," Stage 7 is not about
+      learning more content. It is about doing the work to make
+      the answer "yes."
+
+  TOOLS INTRODUCED IN STAGE 7
+  ─────────────────────────────
+    - Full performance analytics dashboard (win rate, profit factor,
+      average R, maximum drawdown across all sim trades)
+    - Prop firm simulation mode (Wingman enforces daily/overall drawdown
+      limits and daily minimum trade time requirements)
+    - Fundamental calendar (economic events with expected vs actual)
+    - Behaviour score historical chart (score over time since Stage 1)
+
+  STAGE 7 CHALLENGE — THE GRADUATION ASSESSMENT
+  ───────────────────────────────────────────────
+    Complete a 10-trade sim session following prop firm rules:
+    All 10 trades must:
+    1. Follow the Trading Plan saved in Stage 6 (or an updated version)
+    2. R/R ≥ 1:2 on every trade
+    3. Max risk per trade: 1% of current sim balance
+    4. Maximum daily drawdown: 4% of sim balance (Wingman enforces this)
+    5. Overall drawdown must not exceed 8% during the 10-trade period
+    6. Minimum 5 separate trading sessions (not all 10 in one day)
+    7. No behaviour flags on more than 2 of the 10 trades
+    8. Behaviour score at end of 10 trades must be ≥ 65
+
+    The 10 trades are submitted as a complete "evaluation."
+    AI provides a comprehensive debrief covering:
+      - Strategy consistency score
+      - Behaviour score progression
+      - Performance metrics vs prop firm standards
+      - Three specific strengths
+      - Three specific development areas
+      - One personalised coaching observation
+
+    On passing: Trader Passport unlocks immediately.
+    On failing: Full debrief provided. 48-hour cooldown.
+                Student may resubmit from trade 1.
+                No limit on total attempts, but each failure
+                requires acknowledging the AI debrief first.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION B — TECHNICAL BUILD INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ACADEMY BUILD — STAGE BY STAGE
+  ────────────────────────────────
+
+  ACADEMY BUILD STAGE A — The Wingman Chart (Foundation)
+  ────────────────────────────────────────────────────────
+  Implement before any Academy content. All Academy lessons and the
+  Sim Trader use this chart.
+
+  What to tell Claude:
+    "Build a Wingman Chart component using the TradingView Lightweight
+     Charts library (import from CDN:
+     https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js).
+
+     Requirements:
+     - Candlestick chart as the main series
+     - Timeframe selector: 1M, 5M, 15M, 1H, 4H, 1D buttons
+     - OHLCV crosshair tooltip (shows on hover)
+     - Toggleable indicator overlays:
+         EMA 9 (cyan), EMA 21 (orange), EMA 50 (blue), EMA 200 (red)
+         Bollinger Bands (purple, middle band dashed)
+         All EMAs and BBands calculated in JS from candle close data
+     - Sub-panels below the main chart:
+         RSI (14) panel with 70/30 horizontal lines
+         MACD (12,26,9) panel with histogram and signal line
+         Volume histogram on the main chart
+     - Drawing tools: Horizontal line, Trendline, Rectangle (zone),
+       Fibonacci retracement
+     - Colour scheme: matches Wingman design system
+       (background #07090F, teal/purple accents)
+     - Session shading: Tokyo (blue-tint), London (green-tint),
+       NY (amber-tint) background bands on the chart
+     - Data: accept OHLCV candle array as input parameter
+     - ID: wm-chart-container
+     - Export function: wmChartGetDrawings() returns saved drawing data
+     - The chart should be a reusable component used in both the
+       Academy lessons and the Sim Trader
+
+     Use the technicalindicators calculations implemented in plain JS
+     (no external library needed for EMA, RSI, MACD — implement the
+     formulas directly). Do not use TradingView's hosted chart widget."
+
+  Test:
+    ✓ Chart renders with candle data
+    ✓ All 4 EMAs toggle on/off independently
+    ✓ Bollinger Bands toggle on/off
+    ✓ RSI and MACD panels show below main chart
+    ✓ Drawing tools save and persist on the chart
+    ✓ Session shading visible on intraday timeframes
+
+  ACADEMY BUILD STAGE B — Content Renderer
+  ──────────────────────────────────────────
+  A content rendering system that displays the lesson text, tools
+  introduction, and challenge specification for each stage.
+
+  What to tell Claude:
+    "Build an Academy content renderer for the Wingman Academy tab.
+
+     The content is stored as a JS object (ACADEMY_STAGES) with keys
+     1–7. Each key contains: title, subtitle, learn (HTML string),
+     tools (array of tool names), challenge (HTML string).
+
+     The renderer should:
+     - Display LEARN content in a scrollable panel
+     - Track scroll position — the 'Mark as Read' button only activates
+       when the user has scrolled to within 100px of the bottom
+     - Show a TOOLS section after Learn with a checklist that the user
+       must interact with (click each tool to 'try it') — each tool
+       click opens a tooltip or brief demo on the Wingman Chart
+     - Show the CHALLENGE specification clearly, with a tick-list of
+       criteria the trade must meet
+     - Show the current stage status:
+         LOCKED / IN PROGRESS / AWAITING GRADE / PASSED
+     - Show a 24-hour cooldown timer if in cooldown state
+     - The renderer reads from localStorage:
+         wm_academy_stage: current unlocked stage (int)
+         wm_stage_[N]_status: 'locked'|'active'|'cooldown'|'passed'
+         wm_stage_[N]_cooldown_until: timestamp
+     - Stage 1 starts as 'active'. All others start as 'locked'.
+     - Do not include the lesson text content itself in this prompt —
+       the ACADEMY_STAGES object will be populated in a separate session"
+
+  Test:
+    ✓ Stage map shows correct locked/unlocked states
+    ✓ Mark as Read activates only after full scroll
+    ✓ Cooldown timer counts down correctly
+    ✓ Stage unlocks when previous stage passes
+
+  ACADEMY BUILD STAGE C — AI Grading System
+  ──────────────────────────────────────────
+  The core of the Academy. Grades submitted sim trades against the
+  criteria for the current stage.
+
+  What to tell Claude:
+    "Build the Academy AI grading system for Wingman.
+
+     When a student submits a trade for Academy grading:
+     1. Collect the trade data from the most recently closed sim trade:
+        { instrument, direction, entryPrice, exitPrice, sl, tp,
+          entryTime, exitTime, lots, pnl, rr, behaviourFlags,
+          preTradeJustification, emotionalState, postTradeReflection,
+          drawingsAtEntry (from wmChartGetDrawings()),
+          indicatorsActive (array of active indicator names) }
+
+     2. Build a compact grading prompt (under 400 tokens) that includes:
+        - The stage number and its pass criteria (from ACADEMY_STAGES)
+        - The trade data object (JSON, compact)
+        - The behaviour flags detected
+        - Instruction: 'Grade this trade. Return JSON only:
+          { passed: bool, score: 0-100, grade: A/B/C/D/F,
+            criteriaResults: [{criterion, passed, comment}],
+            strengths: [string, string],
+            improvements: [string, string],
+            coachingNote: string (one sentence, direct, specific) }'
+
+     3. Call the Claude API (claude-sonnet-4-20250514, max_tokens 400)
+
+     4. Parse the response and display:
+        - Pass/Fail prominently
+        - Grade letter (A-F)
+        - Score (0-100)
+        - Each criterion: green tick or red cross + comment
+        - Two strengths
+        - Two improvements
+        - Coaching note in Playfair italic
+
+     5. On PASS:
+        - Set wm_stage_[N]_status = 'passed'
+        - Set wm_academy_stage = N+1 (unlock next stage)
+        - Trigger Academy progress bar update on Home tab
+        - Show celebration animation (brief, not excessive)
+
+     6. On FAIL:
+        - Set wm_stage_[N]_status = 'cooldown'
+        - Set wm_stage_[N]_cooldown_until = Date.now() + 86400000 (24hr)
+        - Show full debrief with specific improvements required
+        - After 3 consecutive fails: show intervention modal before
+          allowing retry (intervention modal explains the pattern
+          and asks student to confirm they have understood the debrief)
+
+     Store all grading results in localStorage as wm_grade_history
+     (array, max 100 entries, newest first).
+
+     The grading API call must be the ONLY AI call in this system.
+     Do not make additional calls for explanations or summaries."
+
+  Test:
+    ✓ Grade returned within 5 seconds
+    ✓ JSON parsed correctly
+    ✓ Pass unlocks next stage
+    ✓ Fail triggers cooldown timer
+    ✓ 3 consecutive fails trigger intervention modal
+
+  ACADEMY BUILD STAGE D — Lesson Content Population
+  ───────────────────────────────────────────────────
+  Populate the ACADEMY_STAGES object with all lesson content.
+  This is a large content-only session.
+
+  What to tell Claude:
+    "Populate the ACADEMY_STAGES JavaScript object for the Wingman
+     Academy. The object has keys 1–7. For each stage, add:
+       title: (from the Academy Guide)
+       subtitle: (from the Academy Guide)
+       learn: (full lesson content as formatted HTML, using the content
+               from the Academy Guide — use <h3>, <p>, <ul>, <li>,
+               <strong>, <em> tags, styled consistently with the
+               Wingman design system — dark theme, teal headings,
+               mono font for code/numbers, serif for callout quotes)
+       tools: (array of tool names introduced in this stage)
+       challenge: (challenge criteria as HTML — use a checklist format)
+
+     Start with Stage 1 only. Each stage will be added in separate
+     sessions to manage token usage. The object should use this format:
+       const ACADEMY_STAGES = {
+         1: { title: '...', subtitle: '...', learn: '...', 
+              tools: [...], challenge: '...' },
+         // stages 2-7 to be added in subsequent sessions
+       };"
+
+  Note: Do stages 2 and 3 in the next session, 4 and 5 in the next,
+  and 6 and 7 in the final content session. Four sessions total for
+  all content.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPLEMENTATION ORDER (Token-Efficient Sequence)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Session 1:  Academy Build Stage A — Wingman Chart component
+  Session 2:  Academy Build Stage B — Content renderer + stage state
+  Session 3:  Academy Build Stage C — AI grading system
+  Session 4:  Academy Build Stage D part 1 — Lesson content stages 1-2
+  Session 5:  Academy Build Stage D part 2 — Lesson content stages 3-4
+  Session 6:  Academy Build Stage D part 3 — Lesson content stages 5-6
+  Session 7:  Academy Build Stage D part 4 — Lesson content stage 7
+  Session 8:  Integration pass — wire chart into Sim Trader, wire
+              grading into trade close flow, wire behaviour log into
+              Academy behaviour flags panel
+
+  This is 8 focused sessions. Each session is a single clear task.
+  No session tries to do more than one stage.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUALITY STANDARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  The Academy must meet this bar before any stage goes live:
+
+  □ A person with zero trading knowledge can complete Stage 1
+    without external help
+  □ A person with Stage 3 knowledge could pass a basic trading
+    course at a traditional training academy
+  □ A person with all 7 stages completed has the foundational
+    knowledge to attempt a prop firm evaluation
+  □ The AI grading never passes a trade that violates the stated
+    criteria, regardless of how good the result was
+  □ Every lesson ends with a single clear principle the student
+    can state in their own words
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+END OF ACADEMY GUIDE  |  ♞ WINGMAN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

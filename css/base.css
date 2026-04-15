@@ -1,0 +1,26 @@
+  html { font-synthesis:none; text-rendering:optimizeLegibility; -webkit-text-size-adjust:100%; }
+
+/* ═══════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════ */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { background:#060608; height:100%; }
+body {
+  background:#060608; color:var(--text);
+  font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size:14px; font-weight:400;
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+  overflow-x:hidden;
+}
+input, select, button { font-family:inherit; }
+
+/* ─── INTER HEADING STYLE (matches aperintel.com) ─── */
+h1,h2,h3,h4,h5,h6 { font-family:'Inter',sans-serif; letter-spacing:-0.03em; font-weight:700; }
+.display-heading { font-family:'Inter',sans-serif; letter-spacing:-0.04em; font-weight:800; }
+/* All elements using font-display get Inter-style tight tracking */
+[style*="font-display"] { -webkit-font-smoothing:antialiased; }
+a { color:var(--gold); text-decoration:none; }
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:var(--bg1); }
+::-webkit-scrollbar-thumb { background:var(--border3); border-radius:2px; }
+

@@ -1,0 +1,123 @@
+/* ─── CHART PAGE PAIR SELECTOR (searchable dropdown) ─── */
+.chart-inst-wrap { position:relative; flex:1; min-width:200px; }
+.chart-inst-trigger {
+  background:#111116; border:1px solid #252530; border-radius:6px;
+  padding:6px 30px 6px 10px; color:var(--text);
+  font-family:var(--font-mono); font-size:11px; cursor:pointer;
+  display:flex; align-items:center; gap:8px; transition:border-color 0.2s;
+  white-space:nowrap; min-width:180px;
+}
+.chart-inst-trigger:hover { border-color:var(--gold); }
+.chart-inst-badge {
+  background:var(--gold-dim); border:1px solid var(--gold);
+  border-radius:4px; padding:1px 6px;
+  font-family:var(--font-mono); font-size:9px; color:var(--gold); font-weight:700;
+}
+.chart-inst-panel {
+  display:none; position:absolute; top:calc(100% + 4px); left:0;
+  width:320px; background:#0E0E14; border:1px solid #252530;
+  border-radius:var(--r); z-index:300; max-height:380px;
+  overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,0.7);
+}
+.chart-inst-panel.open { display:block; }
+.corr-badge {
+  font-family:var(--font-mono); font-size:8px; color:var(--blue);
+  background:var(--blue-dim); border-radius:3px; padding:1px 5px;
+}
+
+/* ─── CHART PAGE LAYOUT ─── */
+#tab-chart { padding:0 !important; display:none; height:100%; overflow:hidden; }
+#tab-chart.active { display:flex; flex-direction:column; height:100%; }
+.chart-page-header {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 16px; background:var(--bg1);
+  border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:wrap;
+}
+.chart-pair-btn {
+  font-family:var(--font-mono); font-size:10px; padding:5px 10px;
+  border-radius:6px; cursor:pointer; border:1px solid var(--border2);
+  background:var(--bg2); color:var(--text3); transition:all 0.15s;
+}
+.chart-pair-btn.active { border-color:var(--gold); background:var(--gold-dim); color:var(--gold); font-weight:700; }
+.chart-tf-btn {
+  font-family:var(--font-mono); font-size:9px; padding:4px 9px;
+  border-radius:5px; cursor:pointer; border:1px solid var(--border2);
+  background:var(--bg3); color:var(--text3); transition:all 0.15s;
+}
+.chart-tf-btn.active { border-color:var(--gold); background:var(--gold-dim); color:var(--gold); }
+.chart-frame-wrap { flex:1; position:relative; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.chart-frame-wrap iframe { width:100%; flex:1; border:none; display:block; background:#060608; }
+.chart-side-panel {
+  display:none;
+  width:280px; flex-shrink:0;
+  background:var(--bg1); border-left:1px solid var(--border);
+  overflow-y:auto; padding:14px;
+  flex-direction:column; gap:10px;
+}
+.chart-info-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); }
+.chart-info-label { font-family:var(--font-mono); font-size:9px; color:var(--text3); letter-spacing:1px; }
+.chart-info-val { font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--text); }
+@media(min-width:1200px) {
+  .chart-page-body { display:flex; flex:1; min-height:0; overflow:hidden; }
+  .chart-side-panel { display:flex; }
+  /* When chart tab active, remove main-content padding */
+  .main-content:has(#tab-chart.active) { padding:0; overflow:hidden; }
+}
+@media(max-width:1199px) {
+  .chart-page-body { display:flex; flex:1; flex-direction:column; min-height:0; }
+  .chart-page-bottom-strip { display:block; background:var(--bg1); border-top:1px solid var(--border); padding:10px 14px; flex-shrink:0; }
+  .main-content:has(#tab-chart.active) { padding:0; overflow:hidden; }
+}
+@media(max-width:767px) {
+  #tab-chart.active { height:calc(100vh - 110px); }
+  .chart-page-body { flex:1; min-height:0; }
+}
+.chart-page-bottom-strip { display:none; }
+
+/* ─── WINGMAN CHART COMPONENT ─── */
+.wc-chart-wrap {
+  flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden;
+}
+.wc-toolbar {
+  display:flex; align-items:center; gap:4px; flex-shrink:0;
+  padding:6px 10px; background:var(--bg1);
+  border-bottom:1px solid var(--border); flex-wrap:wrap; row-gap:4px;
+}
+.wc-toolbar-group { display:flex; gap:3px; align-items:center; }
+.wc-toolbar-sep {
+  width:1px; height:14px; background:var(--border2);
+  margin:0 4px; flex-shrink:0;
+}
+.wc-ind-btn {
+  font-family:var(--font-mono); font-size:8px; letter-spacing:0.5px;
+  padding:4px 8px; border-radius:5px; cursor:pointer;
+  background:var(--bg2); border:1px solid var(--border2);
+  color:var(--text3); transition:all 0.15s; white-space:nowrap;
+}
+.wc-ind-btn:hover  { border-color:var(--border3); color:var(--text2); }
+.wc-ind-btn.active { background:var(--gold-dim); border-color:var(--gold); color:var(--gold); }
+.wc-tool-btn {
+  font-family:var(--font-mono); font-size:8px; letter-spacing:0.5px;
+  padding:4px 8px; border-radius:5px; cursor:pointer;
+  background:var(--bg2); border:1px solid var(--border2);
+  color:var(--text3); transition:all 0.15s; white-space:nowrap;
+}
+.wc-tool-btn:hover  { border-color:#00C9B1; color:#00C9B1; }
+.wc-tool-btn.active { background:#00C9B115; border-color:#00C9B1; color:#00C9B1; }
+.wc-tool-clear:hover { border-color:var(--red); color:var(--red); }
+.wc-main-container { flex:1; min-height:0; }
+.wc-subpanel-wrap  {
+  height:80px; flex-shrink:0; position:relative;
+  border-top:1px solid var(--border);
+}
+.wc-subpanel-label {
+  position:absolute; top:4px; left:8px; z-index:2; pointer-events:none;
+  font-family:var(--font-mono); font-size:7px; color:var(--text4); letter-spacing:1px;
+}
+.wc-subpanel-container { width:100%; height:100%; }
+.wc-loading {
+  font-family:var(--font-mono); font-size:8px; color:#00C9B1;
+  letter-spacing:1.5px;
+  animation:wc-blink 1s ease-in-out infinite;
+}
+@keyframes wc-blink { 0%,100%{opacity:0.35;} 50%{opacity:1;} }

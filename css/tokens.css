@@ -1,0 +1,16 @@
+:root {
+  --gold: #F0B429; --gold-dim: #F0B42922; --gold-glow: #F0B42912;
+  --green: #00E87A; --green-dim: #00E87A18;
+  --red: #FF3D5A; --red-dim: #FF3D5A18;
+  --blue: #00C8FF; --blue-dim: #00C8FF18;
+  --purple: #A855F7; --purple-dim: #A855F718;
+  --bg: #060608; --bg1: #0C0C10; --bg2: #111116; --bg3: #17171E; --bg4: #1C1C25;
+  --border: #1E1E28; --border2: #252530; --border3: #2E2E3C;
+  --text: #FFFFFF; --text2: #CFCFE8; --text3: #A0A0B8; --text4: #6B6B85;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --r: 14px; --r-sm: 8px; --r-lg: 20px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-gold: 0 4px 20px #F0B42925;
+}

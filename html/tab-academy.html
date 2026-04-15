@@ -1,0 +1,131 @@
+    <div class="tab-panel" id="tab-academy">
+
+      <!-- ── STAGE MAP ─────────────────────────────────────────────────── -->
+      <div id="acad-map-wrap">
+        <div class="acad-map-header">
+          <img src="icons/icon-academy.svg" width="16" height="16" alt="" style="opacity:0.7;">
+          <span class="acad-map-label">ACADEMY JOURNEY</span>
+          <span id="acad-map-stage-count" class="acad-map-count"></span>
+        </div>
+        <div id="acad-map-nodes"></div>
+      </div>
+
+      <!-- ── BEHAVIOUR FLAGS STRIP ─────────────────────────────────────── -->
+      <div id="acad-flags-strip">
+        <span class="acad-flags-label">RECENT BEHAVIOUR FLAGS</span>
+        <div id="acad-flags-list"></div>
+      </div>
+
+      <!-- ── CONTENT AREA ──────────────────────────────────────────────── -->
+      <div id="acad-content-wrap">
+
+        <!-- Stage heading -->
+        <div id="acad-stage-heading"></div>
+
+        <!-- Tab bar -->
+        <div id="acad-tab-bar">
+          <button class="acad-tab active" data-tab="learn"      onclick="acadSwitchTab('learn')">LEARN</button>
+          <button class="acad-tab"        data-tab="tools"      onclick="acadSwitchTab('tools')">TOOLS</button>
+          <button class="acad-tab"        data-tab="challenge"  onclick="acadSwitchTab('challenge')">CHALLENGE</button>
+          <button class="acad-tab"        data-tab="debrief"    onclick="acadSwitchTab('debrief')">DEBRIEF</button>
+        </div>
+
+        <!-- Read progress bar (sticky, learn tab only) -->
+        <div id="acad-read-progress">
+          <div id="acad-read-bar"></div>
+        </div>
+
+        <!-- Content panes -->
+        <div id="acad-pane-learn"     class="acad-pane"></div>
+        <div id="acad-pane-tools"     class="acad-pane" style="display:none;"></div>
+        <div id="acad-pane-challenge" class="acad-pane" style="display:none;"></div>
+        <div id="acad-pane-debrief"   class="acad-pane" style="display:none;"></div>
+
+      </div>
+
+      <!-- ── TRADER PASSPORT TEASER ─────────────────────────────────────── -->
+      <div id="acad-passport-teaser"></div>
+
+      <!-- ── PASS ANIMATION ────────────────────────────────────────────── -->
+      <div id="acad-pass-anim" style="display:none;">
+        <div id="acad-pass-anim-inner">
+          <img src="icons/icon-pass.svg" width="56" height="56" alt="">
+          <div class="acad-pass-label">Stage passed.</div>
+          <div class="acad-pass-sub">Your debrief is ready.</div>
+        </div>
+      </div>
+
+      <!-- ── INTERVENTION MODAL ─────────────────────────────────────────── -->
+      <div id="acad-intervention" style="display:none;">
+        <div id="acad-intervention-box">
+          <div class="acad-intervention-icon">
+            <img src="icons/icon-star.svg" width="28" height="28" alt="">
+          </div>
+          <div class="acad-intervention-title">Pattern Detected</div>
+          <div class="acad-intervention-body">
+            You have attempted Stage <strong id="acad-intervention-stage"></strong> three or more times without passing.
+            Before continuing, please review your debrief carefully.
+            The grading engine has identified specific areas where your approach needs to change.
+            Confirm below that you have read and understood the feedback before submitting again.
+          </div>
+          <div class="acad-intervention-actions">
+            <button class="acad-btn-ghost" onclick="acadDismissIntervention(false)">Go back and review</button>
+            <button class="acad-btn-primary" onclick="acadDismissIntervention(true)">I have read the debrief and understand</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── WEEKLY BEHAVIOUR REPORT MODAL ────────────────────────────── -->
+      <div id="weekly-report-modal" style="display:none;">
+        <div id="weekly-report-box">
+          <div class="wr-header">
+            <div class="wr-title">Your Weekly Behaviour Report</div>
+            <button class="wr-close" onclick="closeWeeklyReport()">&#x2715;</button>
+          </div>
+          <div id="weekly-report-body"></div>
+          <div class="wr-footer">
+            <button class="acad-btn-primary" onclick="closeWeeklyReport()">Close report</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── LEGACY QUIZ OVERLAY (stage 1 knowledge check) ─────────────── -->
+      <div id="academy-overlay">
+        <div style="max-width:720px;margin:0 auto;padding-bottom:40px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <button onclick="closeAcademyOverlay()" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:6px 12px;color:var(--text3);font-family:var(--font-mono);font-size:9px;cursor:pointer;letter-spacing:1px;">
+              <img src="icons/icon-back.svg" width="12" height="12" alt=""> BACK
+            </button>
+            <div>
+              <div id="overlay-stage-title" style="font-family:var(--font-display);font-size:18px;font-weight:800;"></div>
+              <div id="overlay-stage-sub" style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1px;"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:20px;">
+            <button class="academy-tab-btn active" onclick="switchAcademyTab(this,'learn')">LEARN</button>
+            <button class="academy-tab-btn" onclick="switchAcademyTab(this,'activity')">ACTIVITY</button>
+            <button class="academy-tab-btn" onclick="switchAcademyTab(this,'quiz')">QUIZ</button>
+          </div>
+          <div id="academy-content-learn"    class="academy-content-tab active"><div id="overlay-learn-content"></div></div>
+          <div id="academy-content-activity" class="academy-content-tab"><div id="overlay-activity-content"></div></div>
+          <div id="academy-content-quiz"     class="academy-content-tab">
+            <div id="overlay-quiz-content"></div>
+            <div id="quiz-result" style="display:none;margin-top:12px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEGAL FOOTER -->
+      <div style="margin-top:24px;padding:12px 16px;background:var(--bg1);border-top:1px solid var(--border);font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:0.3px;">
+        <div style="margin-bottom:8px;line-height:1.6;">Wingman is a trading education platform provided by Aperintel. Not financial advice. Simulated performance does not represent real trading results. Wingman does not provide financial, investment, or trading advice and is not regulated by any financial authority.</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+          <button onclick="openLegalModal('privacy')" style="background:none;border:none;color:var(--teal);cursor:pointer;text-decoration:underline;padding:0;font-family:var(--font-mono);font-size:7px;">Privacy Policy</button>
+          <span style="color:var(--border);">·</span>
+          <button onclick="openLegalModal('terms')" style="background:none;border:none;color:var(--teal);cursor:pointer;text-decoration:underline;padding:0;font-family:var(--font-mono);font-size:7px;">Terms of Use</button>
+          <span style="color:var(--border);margin-left:auto;">Copyright 2026 Aperintel</span>
+        </div>
+      </div>
+
+    </div><!-- /tab-academy -->
+
+    <!-- ── PRIVACY POLICY TAB ──

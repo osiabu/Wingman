@@ -1,0 +1,56 @@
+/* ── HOME COMMAND CENTRE ─────────────────────────────────────────── */
+#tab-scan {
+  animation: homeBgPulse 8s ease-in-out infinite;
+}
+@keyframes homeBgPulse {
+  0%,100% { background-color: #07090F; }
+  50%      { background-color: #0D1117; }
+}
+.home-action-btn {
+  display: block;
+  width: 100%;
+  padding: 11px 14px;
+  background: rgba(13,17,23,0.75);
+  border: 1px solid rgba(0,201,177,0.25);
+  border-radius: 50px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.home-action-btn:hover {
+  border-color: var(--teal);
+  box-shadow: 0 0 14px rgba(0,201,177,0.25);
+  background: rgba(0,201,177,0.07);
+  color: var(--teal);
+}
+.home-opp-card {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-bottom: 7px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  transition: border-color 0.2s;
+}
+.home-opp-card.buy  { border-left: 3px solid var(--teal); }
+.home-opp-card.sell { border-left: 3px solid var(--red); }
+.home-opp-card.skip { border-left: 3px solid var(--border2); opacity: 0.7; }
+.home-opp-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.home-opp-badge.buy  { background: rgba(0,201,177,0.15); color: var(--teal); }
+.home-opp-badge.sell { background: rgba(239,68,68,0.15);  color: var(--red);  }
+.home-opp-badge.skip { background: var(--bg3);             color: var(--text4);}

@@ -129,7 +129,7 @@ html,body { margin:0; padding:0; background:#060608; color:#FFFFFF; height:100%;
   <!-- CHART AREA -->
   <div id="chart-area">
     <div id="topbar">
-      <a href="index.html" class="back-btn">⚡ Wingman Home</a>
+      <a href="index.html" class="back-btn">Wingman Home</a>
 
       <!-- Instrument selector -->
       <div class="inst-wrap">
@@ -392,8 +392,8 @@ function startClock() {
     if (utcH >= 22 || utcH < 8)  { session = 'Sydney Open';   isOpen = true; }
     if (utcH >= 7  && utcH < 16) { session = 'London Open';   isOpen = true; }
     if (utcH >= 13 && utcH < 22) { session = 'New York Open'; isOpen = true; }
-    if (utcH >= 8  && utcH < 10) session = '🔥 London + Tokyo';
-    if (utcH >= 13 && utcH < 17) session = '🔥 London + NY Overlap';
+    if (utcH >= 8  && utcH < 10) session = 'London + Tokyo Overlap';
+    if (utcH >= 13 && utcH < 17) session = 'London + NY Overlap';
     const dot = document.getElementById('sess-dot');
     const lbl = document.getElementById('sess-label');
     if (dot) { dot.className = 'sess-dot ' + (isOpen ? 'sess-open' : 'sess-closed'); }

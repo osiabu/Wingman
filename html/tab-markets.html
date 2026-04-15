@@ -1,0 +1,445 @@
+    <div class="tab-panel" id="tab-markets">
+
+      <!-- ── MARKETS SUB-TAB BAR ── -->
+      <div class="markets-subtab-bar" id="markets-subtab-bar">
+        <button class="markets-subtab active" onclick="marketSubTab('live',this)">Live</button>
+        <button class="markets-subtab" onclick="marketSubTab('scan',this)">Scan</button>
+        <button class="markets-subtab" onclick="marketSubTab('calendar',this)">Calendar</button>
+        <button class="markets-subtab" onclick="marketSubTab('sentiment',this)">Sentiment</button>
+        <button class="markets-subtab" onclick="marketSubTab('session',this)">Session</button>
+        <button class="markets-subtab" onclick="marketSubTab('flow',this)">Flow</button>
+        <button class="markets-subtab" onclick="marketSubTab('news',this)">News</button>
+      </div>
+
+      <!-- ── MARKETS: LIVE ── -->
+      <div class="markets-subpanel active" id="markets-live">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:800;">Live Prices</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="depth-timestamp" id="depth-timestamp">Not loaded</span>
+            <button class="btn btn-ghost" onclick="refreshAllDepth()" id="depth-refresh-btn" style="padding:7px 14px;font-size:11px;">Refresh</button>
+          </div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text4);margin-bottom:14px;letter-spacing:0.5px;">
+          Prices update in real time via live data feeds.
+        </div>
+
+        <!-- Live price table -->
+        <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden;">
+          <div id="live-price-table">
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:16px;" class="pulse">Loading prices...</div>
+          </div>
+        </div>
+
+        <!-- Crypto Order Book -->
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div class="depth-section-title">
+              <div class="depth-live-dot" id="ob-dot"></div>
+              Crypto Order Book
+            </div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">SOURCE: BINANCE. REAL TIME</div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5;">
+            Live bid/ask depth from Binance. Large walls signal strong support or resistance.
+            Watch for sudden wall removal: institutions often pull orders before a big move.
+          </div>
+          <div class="depth-pair-row">
+            <button class="depth-pair-btn active" data-sym="BTCUSDT" onclick="selectObPair(this,'BTCUSDT')">BTC/USDT</button>
+            <button class="depth-pair-btn" data-sym="ETHUSDT" onclick="selectObPair(this,'ETHUSDT')">ETH/USDT</button>
+            <button class="depth-pair-btn" data-sym="SOLUSDT" onclick="selectObPair(this,'SOLUSDT')">SOL/USDT</button>
+            <button class="depth-pair-btn" data-sym="XRPUSDT" onclick="selectObPair(this,'XRPUSDT')">XRP/USDT</button>
+            <button class="depth-pair-btn" data-sym="BNBUSDT" onclick="selectObPair(this,'BNBUSDT')">BNB/USDT</button>
+          </div>
+          <div id="ob-body">
+            <div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Loading order book...</div>
+          </div>
+        </div>
+
+        <!-- Price Alerts -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:800;">Price Alerts</div>
+          <button class="btn btn-ghost" onclick="requestNotifPermission()" style="padding:6px 12px;font-size:11px;" id="notif-perm-btn">Enable Notifications</button>
+        </div>
+        <div class="card" style="margin-bottom:10px;">
+          <div class="card-label">Add Alert</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <label class="input-label">INSTRUMENT</label>
+              <select class="input" id="alert-pair" style="font-size:12px;padding:8px 10px;">
+                <option value="XAUUSD">XAUUSD: Gold</option>
+                <option value="BTCUSD">BTCUSD</option>
+                <option value="EURUSD">EURUSD</option>
+                <option value="GBPUSD">GBPUSD</option>
+                <option value="GBPJPY">GBPJPY</option>
+                <option value="XAGUSD">XAGUSD: Silver</option>
+                <option value="USOIL">WTI Oil</option>
+                <option value="SPX500">SPX500</option>
+                <option value="NAS100">NAS100</option>
+                <option value="US30">US30</option>
+              </select>
+            </div>
+            <div>
+              <label class="input-label">CONDITION</label>
+              <select class="input" id="alert-condition" style="font-size:12px;padding:8px 10px;">
+                <option value="above">Price goes above</option>
+                <option value="below">Price goes below</option>
+              </select>
+            </div>
+            <div>
+              <label class="input-label">PRICE LEVEL</label>
+              <input type="number" class="input" id="alert-price" placeholder="3050.00" step="0.01" style="font-size:12px;">
+            </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label class="input-label">NOTE (optional)</label>
+            <input type="text" class="input" id="alert-note" placeholder="Key support: watch for bounce" style="font-size:12px;">
+          </div>
+          <button class="btn btn-primary" onclick="addAlert()" style="padding:11px;">Set Alert</button>
+        </div>
+        <div class="card">
+          <div class="card-label">Active Alerts</div>
+          <div id="alerts-list">
+            <div class="empty"><div class="empty-text">No alerts set yet.</div></div>
+          </div>
+        </div>
+
+      </div><!-- /markets-live -->
+
+      <!-- ── MARKETS: SCAN ── -->
+      <div class="markets-subpanel" id="markets-scan">
+
+        <!-- Chart screenshot analysis -->
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div class="card-label" style="margin:0;">Chart Analysis</div>
+            <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">UPLOAD A CHART SCREENSHOT</span>
+          </div>
+          <div class="screenshot-drop" id="screenshot-drop" onclick="document.getElementById('screenshot-file').click()" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+            <input type="file" id="screenshot-file" accept="image/*" onchange="handleScreenshotFile(event)">
+            <div id="screenshot-preview" style="display:none;margin-bottom:12px;">
+              <img id="screenshot-img" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--border2);">
+            </div>
+            <div id="screenshot-placeholder">
+              <div style="font-size:13px;color:var(--text2);margin-bottom:4px;">Drop chart screenshot here or click to upload</div>
+              <div style="font-size:11px;color:var(--text3);">PNG, JPG, WebP. Any chart from any platform.</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;">
+            <label class="input-label">ADDITIONAL CONTEXT (optional)</label>
+            <input type="text" class="input" id="screenshot-context" placeholder="XAUUSD 15M: looking for buy entry" style="font-size:12px;">
+          </div>
+          <button class="btn btn-primary" id="screenshot-btn" onclick="analyseScreenshot()" style="margin-top:10px;" disabled>
+            Analyse Chart
+          </button>
+          <div id="screenshot-result"></div>
+        </div>
+
+        <div id="scan-layout">
+          <div class="card" style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <div class="card-label" style="margin:0;">Instruments to Scan</div>
+              <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);">
+                <span id="scan-pair-count" style="color:var(--gold);font-weight:700;">0</span> selected
+              </div>
+            </div>
+            <div class="inst-dropdown-wrap" style="margin-bottom:10px;">
+              <button class="inst-trigger" onclick="toggleInstPanel()" id="inst-trigger-btn">
+                <span class="inst-trigger-label" id="inst-trigger-label" style="color:var(--text3);">Select instruments to scan...</span>
+                <span class="inst-trigger-arrow">▼</span>
+              </button>
+              <div class="inst-panel" id="inst-panel">
+                <div class="inst-search">
+                  <input type="text" placeholder="Search instruments..." id="inst-search-input" oninput="filterInstruments(this.value)" onclick="event.stopPropagation()">
+                </div>
+                <div id="inst-panel-body"></div>
+                <div class="inst-footer">
+                  <span><span class="inst-footer-count" id="inst-footer-count">1</span> selected</span>
+                  <div style="display:flex;gap:6px;">
+                    <button class="inst-clear-btn" onclick="clearAllInstruments()">Clear</button>
+                    <button class="inst-clear-btn" onclick="document.getElementById('inst-panel').classList.remove('open')" style="border-color:var(--gold);color:var(--gold);">Done</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="inst-selected-chips" id="inst-selected-chips"></div>
+            <div id="corr-hint" style="display:none;background:var(--blue-dim);border:1px solid var(--blue-dim);border-radius:6px;padding:8px 10px;margin-top:8px;font-size:11px;color:var(--text2);line-height:1.5;"></div>
+            <div style="height:12px;"></div>
+            <button class="btn btn-primary" id="scan-btn" onclick="runScan()">
+              Run Market Scan
+            </button>
+          </div>
+
+          <div style="display:none;" id="pair-chips"></div>
+
+          <div id="scan-error" style="display:none;background:var(--red-dim);border:1px solid var(--red);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:12px;font-size:13px;color:#ff9999;line-height:1.5;"></div>
+          <div id="scan-results"></div>
+          <div id="scan-voice-row" style="display:none;margin-bottom:10px;">
+            <button class="voice-btn" onclick="speakScanResult()" id="voice-scan-btn">
+              <span class="voice-icon"></span> Voice Briefing
+            </button>
+          </div>
+          <div id="scan-empty" class="empty">
+            <div class="empty-text">Select pairs and run the scan to see analysis.</div>
+          </div>
+        </div>
+
+      </div><!-- /markets-scan -->
+
+      <!-- ── MARKETS: CALENDAR ── -->
+      <div class="markets-subpanel" id="markets-calendar">
+
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text4);margin-bottom:14px;letter-spacing:0.5px;line-height:1.6;">
+          Economic calendar sourced from TradingView and Finnhub. All times shown in your selected timezone. High impact events may cause significant price movements.
+        </div>
+
+        <!-- Timezone selector -->
+        <div class="card" style="margin-bottom:12px;padding:10px 14px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <label class="input-label" style="margin:0;">TIMEZONE</label>
+            <select class="input" id="cal-tz-select" style="font-size:12px;padding:6px 10px;max-width:280px;"></select>
+          </div>
+        </div>
+
+        <!-- Month calendar grid -->
+        <div class="card" style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <button class="btn btn-ghost" onclick="calPrev()" style="padding:5px 12px;font-size:11px;">Prev</button>
+            <div id="cal-month-label" style="font-family:var(--font-display);font-size:14px;font-weight:700;"></div>
+            <button class="btn btn-ghost" onclick="calNext()" style="padding:5px 12px;font-size:11px;">Next</button>
+          </div>
+          <div class="cal-weekdays">
+            <div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div><div>Su</div>
+          </div>
+          <div id="cal-grid" class="cal-grid"></div>
+        </div>
+
+        <!-- Events for selected day -->
+        <div class="card" style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div id="cal-selected-label" style="font-family:var(--font-display);font-size:14px;font-weight:700;">Today's Events</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="chip cal-filter-btn active" onclick="calFilter('all',this)">All</button>
+              <button class="chip cal-filter-btn" onclick="calFilter('high',this)">High</button>
+              <button class="chip cal-filter-btn" onclick="calFilter('medium',this)">Medium</button>
+              <button class="chip cal-filter-btn" onclick="calFilter('speech',this)">Speeches</button>
+            </div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text4);margin-bottom:8px;" id="cal-event-count"></div>
+          <div id="cal-events-body">
+            <div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Loading calendar events...</div>
+          </div>
+        </div>
+
+        <!-- Speaker alerts -->
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-label">Upcoming Central Bank Speakers</div>
+          <div id="speaker-alerts-body">
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text4);">Loading speaker schedule...</div>
+          </div>
+        </div>
+
+        <!-- Forex Factory link -->
+        <div class="card" style="text-align:center;padding:20px 24px;">
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:800;margin-bottom:6px;">Full Forex Factory Calendar</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:16px;">
+            For detailed event history and forecasts: Forex Factory is the industry standard for economic calendar data.
+          </div>
+          <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener noreferrer"
+             class="btn btn-ghost"
+             style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;font-size:12px;text-decoration:none;border-radius:10px;">
+            Open Forex Factory
+          </a>
+          <div style="margin-top:12px;font-family:var(--font-mono);font-size:8px;color:var(--text4);">
+            Opens in a new tab. Not affiliated with Forex Factory.
+          </div>
+        </div>
+
+      </div><!-- /markets-calendar -->
+
+      <!-- ── MARKETS: SENTIMENT ── -->
+      <div class="markets-subpanel" id="markets-sentiment">
+
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:800;margin-bottom:4px;">Market Sentiment</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text4);margin-bottom:16px;letter-spacing:0.5px;">
+          Retail sentiment, institutional positioning and market fear readings.
+        </div>
+
+        <!-- Retail Sentiment (OANDA) -->
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="depth-section-title">
+              <div class="depth-live-dot" id="oanda-dot"></div>
+              Retail Sentiment
+            </div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">SOURCE: OANDA. CONTRARIAN SIGNAL</div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5;">
+            When retail traders are heavily one-sided, institutions typically take the opposite position.
+            Extreme retail longs signal bearish conditions. Extreme retail shorts signal bullish conditions.
+          </div>
+          <div class="depth-pair-row" id="oanda-pair-row">
+            <button class="depth-pair-btn active" data-pair="EUR_USD" onclick="selectOandaPair(this,'EUR_USD')">EUR/USD</button>
+            <button class="depth-pair-btn" data-pair="GBP_USD" onclick="selectOandaPair(this,'GBP_USD')">GBP/USD</button>
+            <button class="depth-pair-btn" data-pair="USD_JPY" onclick="selectOandaPair(this,'USD_JPY')">USD/JPY</button>
+            <button class="depth-pair-btn" data-pair="AUD_USD" onclick="selectOandaPair(this,'AUD_USD')">AUD/USD</button>
+            <button class="depth-pair-btn" data-pair="USD_CAD" onclick="selectOandaPair(this,'USD_CAD')">USD/CAD</button>
+            <button class="depth-pair-btn" data-pair="USD_CHF" onclick="selectOandaPair(this,'USD_CHF')">USD/CHF</button>
+            <button class="depth-pair-btn" data-pair="XAU_USD" onclick="selectOandaPair(this,'XAU_USD')">XAU/USD</button>
+            <button class="depth-pair-btn" data-pair="BCO_USD" onclick="selectOandaPair(this,'BCO_USD')">OIL/USD</button>
+          </div>
+          <div id="oanda-sentiment-body">
+            <div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Loading sentiment data...</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--text4);margin-top:10px;">
+            Data sourced from OANDA. Indicative only.
+          </div>
+        </div>
+
+        <!-- Fear and Greed (VIX) -->
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="depth-section-title">
+              <div class="depth-live-dot depth-stale-dot" id="fg-dot"></div>
+              Fear and Greed
+            </div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">SOURCE: CBOE VIX. 15 MIN DELAYED</div>
+          </div>
+          <div id="fear-greed-body">
+            <div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Loading VIX data...</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--text4);margin-top:10px;">
+            Composite sentiment index. Not a trading signal.
+          </div>
+        </div>
+
+        <!-- COT Report -->
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div class="depth-section-title">
+              <div class="depth-live-dot depth-stale-dot" id="cot-dot"></div>
+              COT: Institutional Positioning
+            </div>
+            <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">SOURCE: CFTC. WEEKLY (TUE DATA)</div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5;">
+            Commitment of Traders report shows how commercial hedgers, large speculators and small speculators are positioned.
+          </div>
+          <div class="depth-pair-row">
+            <button class="depth-pair-btn active" data-cot="gold" onclick="selectCotAsset(this,'gold')">Gold</button>
+            <button class="depth-pair-btn" data-cot="silver" onclick="selectCotAsset(this,'silver')">Silver</button>
+            <button class="depth-pair-btn" data-cot="oil" onclick="selectCotAsset(this,'oil')">Crude Oil</button>
+            <button class="depth-pair-btn" data-cot="eurusd" onclick="selectCotAsset(this,'eurusd')">EUR/USD</button>
+            <button class="depth-pair-btn" data-cot="gbpusd" onclick="selectCotAsset(this,'gbpusd')">GBP/USD</button>
+            <button class="depth-pair-btn" data-cot="jpyusd" onclick="selectCotAsset(this,'jpyusd')">JPY</button>
+            <button class="depth-pair-btn" data-cot="btc" onclick="selectCotAsset(this,'btc')">Bitcoin</button>
+          </div>
+          <div id="cot-body">
+            <div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Loading COT data...</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--text4);margin-top:10px;">
+            CFTC Commitment of Traders report. Updated weekly, delayed by 3 business days. For educational context only.
+          </div>
+        </div>
+
+      </div><!-- /markets-sentiment -->
+
+      <!-- ── MARKETS: SESSION ── -->
+      <div class="markets-subpanel" id="markets-session">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:800;">Session Heatmap</div>
+          <button class="voice-btn" onclick="speakHeatmap()"><span class="voice-icon"></span>Brief me</button>
+        </div>
+        <div class="card" style="margin-bottom:10px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border2);">
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-bottom:8px;letter-spacing:1px;">DATA SOURCE</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text2);">
+              <input type="checkbox" id="hm-sim" checked onchange="buildHeatmap()" style="accent-color:var(--gold);width:14px;height:14px;">
+              Sim Trader trades
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text2);">
+              <input type="checkbox" id="hm-journal" onchange="buildHeatmap()" style="accent-color:var(--gold);width:14px;height:14px;">
+              Trade Journal
+            </label>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-label">P&amp;L by Day and Session</div>
+          <div id="heatmap-grid" style="margin-top:8px;"></div>
+          <div style="display:flex;gap:16px;margin-top:12px;font-family:var(--font-mono);font-size:9px;color:var(--text3);">
+            <span style="color:var(--green);">Profitable</span>
+            <span style="color:var(--red);">Loss</span>
+            <span style="color:var(--text4);">No trades</span>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-label">Best and Worst Performance</div>
+          <div id="heatmap-stats"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">Pair Performance</div>
+          <div id="heatmap-pairs"></div>
+        </div>
+      </div><!-- /markets-session -->
+
+      <!-- ── MARKETS: FLOW ── -->
+      <div class="markets-subpanel" id="markets-flow">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:800;">Options Flow</div>
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--text3);">SOURCE: CBOE. 15 MIN DELAYED</div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text4);margin-bottom:12px;letter-spacing:0.5px;">
+          Options data delayed by 15 minutes. Educational use only.
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5;">
+          Put/Call ratio below 0.7 signals bullish (more calls being bought). Above 1.0 signals bearish.
+          Above 1.3 indicates extreme fear: often a contrarian buy signal.
+          Unusual options volume flags where large accounts are positioning.
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div class="depth-section-title">
+              <div class="depth-live-dot depth-stale-dot" id="opts-dot"></div>
+              Put/Call Ratios and Volume
+            </div>
+          </div>
+          <div id="opts-body">
+            <div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Loading options flow...</div>
+          </div>
+        </div>
+      </div><!-- /markets-flow -->
+
+      <!-- ── MARKETS: NEWS ── -->
+      <div class="markets-subpanel" id="markets-news">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:800;">Market News</div>
+          <button class="btn btn-ghost" onclick="loadMarketsNews(document.querySelector('.news-cat-btn.active').dataset.cat)" style="padding:8px 12px;font-size:11px;">Refresh</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+          <button class="chip news-cat-btn active" data-cat="general" onclick="loadMarketsNews('general',this)">General</button>
+          <button class="chip news-cat-btn" data-cat="forex" onclick="loadMarketsNews('forex',this)">Forex</button>
+          <button class="chip news-cat-btn" data-cat="crypto" onclick="loadMarketsNews('crypto',this)">Crypto</button>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text4);margin-bottom:12px;letter-spacing:0.5px;">
+          News sourced from Finnhub. Headlines shown as published. Not investment advice.
+        </div>
+        <div id="markets-news-feed">
+          <div class="empty">
+            <div class="empty-text">Select a category to load news.</div>
+          </div>
+        </div>
+      </div><!-- /markets-news -->
+
+      <!-- LEGAL FOOTER -->
+      <div style="margin-top:24px;padding:12px 16px;background:var(--bg1);border-top:1px solid var(--border);font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:0.3px;">
+        <div style="margin-bottom:8px;line-height:1.6;">Wingman is a trading education platform provided by Aperintel. Not financial advice. Simulated performance does not represent real trading results. Wingman does not provide financial, investment, or trading advice and is not regulated by any financial authority.</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+          <button onclick="openLegalModal('privacy')" style="background:none;border:none;color:var(--teal);cursor:pointer;text-decoration:underline;padding:0;font-family:var(--font-mono);font-size:7px;">Privacy Policy</button>
+          <span style="color:var(--border);">·</span>
+          <button onclick="openLegalModal('terms')" style="background:none;border:none;color:var(--teal);cursor:pointer;text-decoration:underline;padding:0;font-family:var(--font-mono);font-size:7px;">Terms of Use</button>
+          <span style="color:var(--border);margin-left:auto;">Copyright 2026 Aperintel</span>
+        </div>
+      </div>
+
+    </div><!-- /tab-markets -->
