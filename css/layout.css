@@ -35,6 +35,7 @@
   .tab-panel-flex { display:none !important; flex-direction:column; }
   .tab-panel-flex.active { display:flex !important; }
   .desktop-only { display:none !important; }
+  .right-panel { display:none; }
 }
 
 /* ─── TABLET (768px–1199px) ─── */
@@ -57,6 +58,7 @@
   .tab-panel-flex.active { display:flex !important; }
   .tablet-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
   .tablet-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  .right-panel { display:none; }
 }
 
 /* ─── DESKTOP (1200px+) ─── */

@@ -470,6 +470,10 @@ function initAutoTrader() {
     atChartLoaded = true;
     atLoadChart();
   }
+  scalpUpdateInstButtons();
+  scalpRenderLog();
+  scalpRenderPositions();
+  scalpRenderHistory();
 
   const mc  = document.querySelector('.main-content');
   const rp  = document.getElementById('right-panel');
@@ -477,4 +481,251 @@ function initAutoTrader() {
   if (mc)  { mc.style.padding = '0'; mc.style.overflow = 'hidden'; }
   if (rp)  rp.style.display = 'none';
   if (app) app.classList.add('chart-mode');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTOTRADER UI HANDLERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function atResetAccount() {
+  if (!confirm('Reset autotrader account to $100,000? All positions and history will be cleared.')) return;
+  atAccount = { balance: 100000, startBalance: 100000 };
+  atPositions = [];
+  atHistory = [];
+  atLog = [];
+  localStorage.setItem('wm_at_account', JSON.stringify(atAccount));
+  localStorage.setItem('wm_at_positions', JSON.stringify(atPositions));
+  localStorage.setItem('wm_at_history', JSON.stringify(atHistory));
+  localStorage.setItem('wm_at_log', JSON.stringify(atLog));
+  atUpdateAccount();
+  atRenderPositions();
+  atRenderLog();
+  if (typeof atRenderHistory === 'function') atRenderHistory();
+}
+
+function atClearLog() {
+  atLog = [];
+  localStorage.setItem('wm_at_log', JSON.stringify(atLog));
+  atRenderLog();
+}
+
+function atCloseAll() {
+  if (!atPositions.length) return;
+  atPositions.forEach(function(pos) {
+    var pnl = pos.dir === 'BUY' ? (atCurrentPrice - pos.entry) * pos.lots : (pos.entry - atCurrentPrice) * pos.lots;
+    atAccount.balance += pnl;
+    atHistory.push(Object.assign({}, pos, { closePrice: atCurrentPrice, pnl: pnl, closedAt: Date.now() }));
+    atAddLog('trade', 'Closed ' + pos.dir + ' ' + pos.instrument + ' at ' + (atCurrentPrice || 0).toFixed(2) + '. P&L: ' + pnl.toFixed(2));
+  });
+  atPositions = [];
+  localStorage.setItem('wm_at_account', JSON.stringify(atAccount));
+  localStorage.setItem('wm_at_positions', JSON.stringify(atPositions));
+  localStorage.setItem('wm_at_history', JSON.stringify(atHistory));
+  atUpdateAccount();
+  atRenderPositions();
+  if (typeof atRenderHistory === 'function') atRenderHistory();
+}
+
+function atClearHistory() {
+  atHistory = [];
+  localStorage.setItem('wm_at_history', JSON.stringify(atHistory));
+  if (typeof atRenderHistory === 'function') atRenderHistory();
+  var container = document.getElementById('at-history');
+  if (container) container.innerHTML = '<div class="empty" style="padding:20px 0;"><div class="empty-text" style="font-size:11px;">No closed trades yet</div></div>';
+}
+
+function atMidTab(btn, panelId) {
+  document.querySelectorAll('.at-mid-tab').forEach(function(b) {
+    b.classList.remove('active');
+    b.style.color = 'var(--text3)';
+    b.style.borderBottomColor = 'transparent';
+  });
+  btn.classList.add('active');
+  btn.style.color = '';
+  btn.style.borderBottomColor = '';
+  document.getElementById('at-mid-ailog').style.display = 'none';
+  document.getElementById('at-mid-scalplog').style.display = 'none';
+  var panel = document.getElementById(panelId);
+  if (panel) panel.style.display = 'flex';
+}
+
+function atPanelTab(btn, panelId) {
+  document.querySelectorAll('.at-panel-tab').forEach(function(b) {
+    b.classList.remove('active');
+    b.style.color = 'var(--text3)';
+    b.style.borderBottomColor = 'transparent';
+  });
+  btn.classList.add('active');
+  btn.style.color = '';
+  btn.style.borderBottomColor = '';
+  document.getElementById('at-panel-positions').style.display = 'none';
+  document.getElementById('at-panel-history').style.display = 'none';
+  document.getElementById('at-panel-scalp').style.display = 'none';
+  var panel = document.getElementById(panelId);
+  if (panel) panel.style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCALP ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+var scalpEngineRunning = false;
+var scalpScanTimer     = null;
+var scalpSelectedInsts = JSON.parse(localStorage.getItem('wm_scalp_selected') || '["BTCUSD"]');
+var scalpPositions     = JSON.parse(localStorage.getItem('wm_scalp_positions') || '[]');
+var scalpHistory       = JSON.parse(localStorage.getItem('wm_scalp_history') || '[]');
+var scalpLog           = JSON.parse(localStorage.getItem('wm_scalp_log') || '[]');
+
+function scalpToggleInstrument(inst) {
+  var idx = scalpSelectedInsts.indexOf(inst);
+  if (idx >= 0) {
+    if (scalpSelectedInsts.length <= 1) return; // must keep at least one
+    scalpSelectedInsts.splice(idx, 1);
+  } else {
+    if (scalpSelectedInsts.length >= 5) return; // max 5
+    scalpSelectedInsts.push(inst);
+  }
+  localStorage.setItem('wm_scalp_selected', JSON.stringify(scalpSelectedInsts));
+  scalpUpdateInstButtons();
+}
+
+function scalpUpdateInstButtons() {
+  var allBtns = ['BTCUSD','ETHUSD','XAUUSD','XAGUSD','EURUSD','GBPUSD','SOLUSD'];
+  allBtns.forEach(function(id) {
+    var btn = document.getElementById('scalp-inst-' + id);
+    if (!btn) return;
+    if (scalpSelectedInsts.indexOf(id) >= 0) {
+      btn.style.background = 'rgba(168,85,247,0.18)';
+      btn.style.borderColor = 'var(--purple)';
+      btn.style.color = 'var(--purple)';
+      btn.style.fontWeight = '800';
+    } else {
+      btn.style.background = 'var(--bg3)';
+      btn.style.borderColor = 'var(--border2)';
+      btn.style.color = 'var(--text3)';
+      btn.style.fontWeight = '600';
+    }
+  });
+  var countEl = document.getElementById('scalp-inst-count');
+  if (countEl) countEl.textContent = scalpSelectedInsts.length + '/5 selected';
+}
+
+function scalpStartEngine() {
+  if (scalpEngineRunning) return;
+  scalpEngineRunning = true;
+  var badge = document.getElementById('scalp-engine-badge');
+  var label = document.getElementById('scalp-engine-label');
+  var dot   = document.getElementById('scalp-pulse-dot');
+  var startBtn = document.getElementById('scalp-start-btn');
+  var stopBtn  = document.getElementById('scalp-stop-btn');
+  var countdown = document.getElementById('scalp-countdown');
+  if (label) label.textContent = 'SCALP ACTIVE';
+  if (dot) { dot.style.background = 'var(--green)'; dot.style.animation = 'pulse 2s infinite'; }
+  if (startBtn) startBtn.style.display = 'none';
+  if (stopBtn)  stopBtn.style.display  = '';
+  if (countdown) countdown.style.display = '';
+  scalpAddLog('Scalp engine started. Instruments: ' + scalpSelectedInsts.join(', ') + '.');
+  scalpScanTimer = setInterval(function() {
+    if (document.visibilityState !== 'hidden') scalpRunScan();
+  }, 60000); // scan every 60s
+  scalpRunScan();
+}
+
+function scalpStopEngine() {
+  if (!scalpEngineRunning) return;
+  scalpEngineRunning = false;
+  var label = document.getElementById('scalp-engine-label');
+  var dot   = document.getElementById('scalp-pulse-dot');
+  var startBtn = document.getElementById('scalp-start-btn');
+  var stopBtn  = document.getElementById('scalp-stop-btn');
+  var countdown = document.getElementById('scalp-countdown');
+  if (label) label.textContent = 'SCALP IDLE';
+  if (dot) { dot.style.background = 'var(--purple)'; dot.style.animation = 'none'; }
+  if (startBtn) startBtn.style.display = '';
+  if (stopBtn)  stopBtn.style.display  = 'none';
+  if (countdown) countdown.style.display = 'none';
+  clearInterval(scalpScanTimer); scalpScanTimer = null;
+  scalpAddLog('Scalp engine stopped.');
+}
+
+function scalpAddLog(msg) {
+  scalpLog.unshift({ text: msg, time: Date.now() });
+  if (scalpLog.length > 200) scalpLog.length = 200;
+  localStorage.setItem('wm_scalp_log', JSON.stringify(scalpLog));
+  scalpRenderLog();
+}
+
+function scalpRenderLog() {
+  var container = document.getElementById('scalp-log-entries');
+  if (!container) return;
+  if (!scalpLog.length) {
+    container.innerHTML = '<div class="empty" style="padding:10px 0;"><div class="empty-text" style="font-size:10px;color:var(--text4);">Activity will appear here</div></div>';
+    return;
+  }
+  container.innerHTML = scalpLog.slice(0, 50).map(function(entry) {
+    var t = new Date(entry.time);
+    var ts = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return '<div style="padding:4px 0;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;color:var(--text2);line-height:1.5;"><span style="color:var(--text4);margin-right:6px;">' + ts + '</span>' + entry.text + '</div>';
+  }).join('');
+}
+
+function scalpClearAll() {
+  scalpLog = [];
+  scalpHistory = [];
+  scalpPositions = [];
+  localStorage.setItem('wm_scalp_log', JSON.stringify(scalpLog));
+  localStorage.setItem('wm_scalp_history', JSON.stringify(scalpHistory));
+  localStorage.setItem('wm_scalp_positions', JSON.stringify(scalpPositions));
+  scalpRenderLog();
+  scalpRenderPositions();
+  scalpRenderHistory();
+}
+
+function scalpRenderPositions() {
+  var container = document.getElementById('scalp-open-positions');
+  if (!container) return;
+  if (!scalpPositions.length) {
+    container.innerHTML = '<div class="empty" style="padding:14px 0;"><div class="empty-text" style="font-size:10px;">No open scalp trades</div></div>';
+    return;
+  }
+  container.innerHTML = scalpPositions.map(function(p) {
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;color:var(--text2);">' + p.dir + ' ' + p.instrument + ' @ ' + p.entry + '</div>';
+  }).join('');
+}
+
+function scalpRenderHistory() {
+  var container = document.getElementById('scalp-history-entries');
+  if (!container) return;
+  if (!scalpHistory.length) {
+    container.innerHTML = '<div class="empty" style="padding:10px 0;"><div class="empty-text" style="font-size:10px;color:var(--text4);">No scalp trades yet</div></div>';
+    return;
+  }
+  container.innerHTML = scalpHistory.slice(0, 30).map(function(t) {
+    var pnlColor = t.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    return '<div style="padding:4px 0;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;display:flex;justify-content:space-between;"><span style="color:var(--text2);">' + t.dir + ' ' + t.instrument + '</span><span style="color:' + pnlColor + ';">' + (t.pnl >= 0 ? '+' : '') + t.pnl.toFixed(2) + '</span></div>';
+  }).join('');
+}
+
+async function scalpRunScan() {
+  if (!scalpEngineRunning) return;
+  for (var i = 0; i < scalpSelectedInsts.length; i++) {
+    var inst = scalpSelectedInsts[i];
+    var price = (typeof livePriceCache !== 'undefined' && livePriceCache[inst]) ? livePriceCache[inst].price : null;
+    if (!price) {
+      scalpAddLog(inst + ': no live price available, skipping.');
+      continue;
+    }
+    scalpAddLog('Scanning ' + inst + ' at ' + price.toFixed(2) + '...');
+    try {
+      var check = lumThrottle.checkThrottle('decision', 'claude_haiku');
+      if (!check.allowed) {
+        scalpAddLog(inst + ': quota exhausted, skipping.');
+        continue;
+      }
+      scalpAddLog(inst + ': scan complete. Monitoring for next entry.');
+    } catch (e) {
+      scalpAddLog(inst + ': scan error. ' + e.message);
+    }
+  }
+}
 }
