@@ -672,9 +672,13 @@ function simFetchAndLoadCandles(pair, tf) {
   const loadEl = document.getElementById('sim-chart-loading');
   if (loadEl) { loadEl.style.display = 'flex'; }
 
+  var tfSeconds = (typeof WC_TF_SECONDS !== 'undefined') ? (WC_TF_SECONDS[tf] || 900) : 900;
+
   let promise;
   if (typeof WC_BINANCE_PAIRS !== 'undefined' && WC_BINANCE_PAIRS[pair]) {
     promise = fetchCandlesBinance(WC_BINANCE_PAIRS[pair], WC_TF_BINANCE[tf] || '15m', 500);
+  } else if (typeof DERIV_SYMBOLS !== 'undefined' && DERIV_SYMBOLS[pair] && typeof fetchDerivCandles === 'function') {
+    promise = fetchDerivCandles(DERIV_SYMBOLS[pair], (typeof WC_TF_DERIV !== 'undefined' ? WC_TF_DERIV[tf] : null) || 900, 500);
   } else if (typeof WC_TWELVEDATA_PAIRS !== 'undefined' && WC_TWELVEDATA_PAIRS[pair]) {
     promise = fetchCandlesTwelveData(WC_TWELVEDATA_PAIRS[pair], WC_TF_TWELVEDATA[tf] || '15min', 500);
   } else {
@@ -684,6 +688,8 @@ function simFetchAndLoadCandles(pair, tf) {
   promise.then(function(candles) {
     if (loadEl) loadEl.style.display = 'none';
     simWmChart.loadCandles(candles);
+    if (typeof simWmChart.setTimeframe === 'function') simWmChart.setTimeframe(tfSeconds);
+    if (typeof simWmChart.setWatermark === 'function') simWmChart.setWatermark(pair);
     simUpdatePrice();
   }).catch(function(err) {
     if (loadEl) loadEl.style.display = 'none';
@@ -691,6 +697,7 @@ function simFetchAndLoadCandles(pair, tf) {
     if (typeof generateDemoCandles === 'function') {
       simWmChart.loadCandles(generateDemoCandles(pair, tf));
     }
+    if (typeof simWmChart.setWatermark === 'function') simWmChart.setWatermark(pair);
     simUpdatePrice();
   });
 }

@@ -106,6 +106,11 @@ var WC_TF_SECONDS = {
   '1': 60, '5': 300, '15': 900, '60': 3600, '240': 14400, 'D': 86400
 };
 
+// Deriv granularity values (seconds) for candle requests
+var WC_TF_DERIV = {
+  '1': 60, '5': 300, '15': 900, '60': 3600, '240': 14400, 'D': 86400
+};
+
 // ═══════════════════════════════════════════
 // INDICATOR CALCULATIONS
 // ═══════════════════════════════════════════
@@ -214,21 +219,25 @@ function createWingmanChart(mainId, rsiId, macdId, volId) {
       fontFamily: "'JetBrains Mono', monospace"
     },
     grid: {
-      vertLines: { color: '#1E1E28', style: 2 },
-      horzLines: { color: '#1E1E28', style: 2 }
+      vertLines: { color: '#12121A', style: 0 },
+      horzLines: { color: '#12121A', style: 0 }
     },
     crosshair: {
-      mode: LightweightCharts.CrosshairMode.Normal,
-      vertLine: { color: '#6B6B85', width: 1, style: 2, labelBackgroundColor: '#17171E' },
-      horzLine: { color: '#6B6B85', width: 1, style: 2, labelBackgroundColor: '#17171E' }
+      mode: LightweightCharts.CrosshairMode.Magnet,
+      vertLine: { color: '#6B6B8580', width: 1, style: 2, labelBackgroundColor: '#1C1C25' },
+      horzLine: { color: '#6B6B8580', width: 1, style: 2, labelBackgroundColor: '#1C1C25' }
     },
-    rightPriceScale: { borderColor: '#1E1E28', textColor: '#6B6B85' },
+    rightPriceScale: {
+      borderColor: '#1E1E28',
+      textColor: '#8888A0',
+      scaleMargins: { top: 0.05, bottom: 0.05 }
+    },
     timeScale: {
       borderColor: '#1E1E28',
       timeVisible: true,
       secondsVisible: false,
-      rightOffset: 8,
-      barSpacing: 8,
+      rightOffset: 12,
+      barSpacing: 10,
       minBarSpacing: 2,
       fixRightEdge: true
     }
@@ -243,13 +252,13 @@ function createWingmanChart(mainId, rsiId, macdId, volId) {
       fontFamily: "'JetBrains Mono', monospace"
     },
     grid: {
-      vertLines: { color: '#1E1E2840', style: 2 },
-      horzLines: { color: '#1E1E2840', style: 2 }
+      vertLines: { color: '#12121A40', style: 0 },
+      horzLines: { color: '#12121A40', style: 0 }
     },
     crosshair: {
       mode: LightweightCharts.CrosshairMode.Normal,
-      vertLine: { color: '#6B6B8560', width: 1, style: 2, labelBackgroundColor: '#17171E' },
-      horzLine: { color: '#6B6B8560', width: 1, style: 2, labelBackgroundColor: '#17171E' }
+      vertLine: { color: '#6B6B8560', width: 1, style: 2, labelBackgroundColor: '#1C1C25' },
+      horzLine: { color: '#6B6B8560', width: 1, style: 2, labelBackgroundColor: '#1C1C25' }
     },
     rightPriceScale: { borderColor: '#1E1E28', textColor: '#6B6B85', scaleMargins: { top: 0.1, bottom: 0.1 } },
     leftPriceScale: { visible: false },
@@ -268,8 +277,12 @@ function createWingmanChart(mainId, rsiId, macdId, volId) {
   var candleSeries = mainChart.addCandlestickSeries({
     upColor: '#00E87A', downColor: '#FF3D5A',
     borderUpColor: '#00E87A', borderDownColor: '#FF3D5A',
-    wickUpColor: '#00E87A', wickDownColor: '#FF3D5A',
-    priceLineVisible: false
+    wickUpColor: '#00E87A90', wickDownColor: '#FF3D5A90',
+    priceLineVisible: true,
+    priceLineColor: '#F0B429',
+    priceLineWidth: 1,
+    priceLineStyle: LightweightCharts.LineStyle.Dotted,
+    lastValueVisible: true
   });
 
   // ── Overlay line series ──
@@ -315,6 +328,8 @@ function createWingmanChart(mainId, rsiId, macdId, volId) {
   var _pendingPt    = null;
   var _drawings     = [];
   var _markers      = [];
+  var _lastCandles  = [];       // stored for real-time tick updates
+  var _currentTFSeconds = 900;  // default 15m
 
   // Apply initial indicator visibility (ema50, ema200, bb start hidden)
   overlaySeries.ema50.applyOptions({ visible: false });
@@ -347,6 +362,7 @@ function createWingmanChart(mainId, rsiId, macdId, volId) {
     var times  = sorted.map(function(d) { return d.time; });
     var closes = sorted.map(function(d) { return d.close; });
 
+    _lastCandles = sorted;  // store for real-time tick updates
     candleSeries.setData(sorted);
 
     function toSeries(vals) {
@@ -393,7 +409,7 @@ function createWingmanChart(mainId, rsiId, macdId, volId) {
       for (var j = 0; j < macdData.histogram.length; j++) {
         var hv = macdData.histogram[j];
         if (hv !== null && !isNaN(hv)) {
-          histArr.push({ time: times[j], value: hv, color: hv >= 0 ? '#00E87A50' : '#FF3D5A50' });
+          histArr.push({ time: times[j], value: hv, color: hv >= 0 ? '#00E87AB3' : '#FF3D5AB3' });
         }
       }
       macdHistSer.setData(histArr);
@@ -402,7 +418,7 @@ function createWingmanChart(mainId, rsiId, macdId, volId) {
     // Volume
     if (volSeries) {
       var volArr = sorted.map(function(d) {
-        return { time: d.time, value: d.volume || 0, color: d.close >= d.open ? '#00E87A30' : '#FF3D5A30' };
+        return { time: d.time, value: d.volume || 0, color: d.close >= d.open ? '#00E87A80' : '#FF3D5A80' };
       });
       volSeries.setData(volArr);
     }
@@ -550,6 +566,48 @@ function createWingmanChart(mainId, rsiId, macdId, volId) {
     }
   });
 
+  // ── updateTick: real-time candle updates from live tick stream ──
+  function updateTick(tick) {
+    if (!tick || !tick.time || !tick.price || !_lastCandles.length) return;
+    var tfSec = _currentTFSeconds;
+    if (!tfSec || tfSec <= 0) return;
+    var bucket = Math.floor(tick.time / tfSec) * tfSec;
+    var last = _lastCandles[_lastCandles.length - 1];
+    var price = tick.price;
+
+    if (last && last.time === bucket) {
+      // Same candle bucket: update in place
+      last.close = price;
+      if (price > last.high) last.high = price;
+      if (price < last.low)  last.low  = price;
+      candleSeries.update(last);
+    } else {
+      // New candle bucket
+      var newCandle = { time: bucket, open: price, high: price, low: price, close: price };
+      _lastCandles.push(newCandle);
+      candleSeries.update(newCandle);
+    }
+  }
+
+  // ── setTimeframe: store current TF seconds for tick bucketing ──
+  function setTimeframe(seconds) {
+    _currentTFSeconds = seconds;
+  }
+
+  // ── setWatermark: display instrument name on chart background ──
+  function setWatermark(text) {
+    mainChart.applyOptions({
+      watermark: {
+        visible: true,
+        fontSize: 48,
+        horzAlign: 'center',
+        vertAlign: 'center',
+        color: 'rgba(255,255,255,0.025)',
+        text: text || ''
+      }
+    });
+  }
+
   return {
     loadCandles:     loadCandles,
     addMarker:       addMarker,
@@ -557,6 +615,9 @@ function createWingmanChart(mainId, rsiId, macdId, volId) {
     toggleSubpanel:  toggleSubpanel,
     setDrawingTool:  setDrawingTool,
     clearDrawings:   clearDrawings,
+    updateTick:      updateTick,
+    setTimeframe:    setTimeframe,
+    setWatermark:    setWatermark,
     resize: function() {
       mainChart.timeScale().fitContent();
     },
@@ -659,21 +720,27 @@ function fetchAndLoadCandles(pair, tf) {
   var promise;
   if (WC_BINANCE_PAIRS[pair]) {
     promise = fetchCandlesBinance(WC_BINANCE_PAIRS[pair], WC_TF_BINANCE[tf] || '15m', 500);
+  } else if (typeof DERIV_SYMBOLS !== 'undefined' && DERIV_SYMBOLS[pair] && typeof fetchDerivCandles === 'function') {
+    promise = fetchDerivCandles(DERIV_SYMBOLS[pair], WC_TF_DERIV[tf] || 900, 500);
   } else if (WC_TWELVEDATA_PAIRS[pair]) {
     promise = fetchCandlesTwelveData(WC_TWELVEDATA_PAIRS[pair], WC_TF_TWELVEDATA[tf] || '15min', 500);
   } else {
     promise = Promise.reject(new Error('No data source mapped for ' + pair + '.'));
   }
 
+  var tfSeconds = WC_TF_SECONDS[tf] || 900;
+
   promise.then(function(candles) {
     if (loadEl) loadEl.style.display = 'none';
     wmChart.loadCandles(candles);
+    if (typeof wmChart.setTimeframe === 'function') wmChart.setTimeframe(tfSeconds);
+    if (typeof wmChart.setWatermark === 'function') wmChart.setWatermark(pair);
     updateChartLivePrice(pair);
   }).catch(function(err) {
     if (loadEl) loadEl.style.display = 'none';
     console.warn('Wingman Chart candle fetch:', err.message || err);
-    // Fall back to demo candles so the chart is still usable
     wmChart.loadCandles(generateDemoCandles(pair, tf));
+    if (typeof wmChart.setWatermark === 'function') wmChart.setWatermark(pair);
     updateChartLivePrice(pair);
   });
 }

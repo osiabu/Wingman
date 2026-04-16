@@ -31,6 +31,8 @@
   .main-content::-webkit-scrollbar { display:none; }
   .tab-panel { display:none; padding:14px 14px 80px; }
   .tab-panel.active { display:block; }
+  .tab-panel-flex { display:none !important; flex-direction:column; }
+  .tab-panel-flex.active { display:flex !important; }
   .desktop-only { display:none !important; }
 }
 
@@ -50,6 +52,8 @@
   .main-content::-webkit-scrollbar { width:4px; }
   .tab-panel { display:none; }
   .tab-panel.active { display:block; }
+  .tab-panel-flex { display:none !important; flex-direction:column; }
+  .tab-panel-flex.active { display:flex !important; }
   .tablet-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
   .tablet-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
 }
@@ -73,6 +77,8 @@
   }
   .tab-panel { display:none; }
   .tab-panel.active { display:block; }
+  .tab-panel-flex { display:none !important; flex-direction:column; }
+  .tab-panel-flex.active { display:flex !important; }
   .desktop-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
   .desktop-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
 }

@@ -20,9 +20,183 @@ var FINNHUB_KEY_BUILTIN = 'cva0arhr01qoivt1im7gcva0arhr01qoivt1im80';
 
 // Price fallback is now handled server-side in /api/prices (open.er-api.com via Upstash Redis)
 
+// ─── DERIV WEBSOCKET (forex + metals, free real-time) ───────────────────────
+// Deriv API provides free tick data for forex pairs and metals via WebSocket.
+// App ID 1089 is a public demo app ID (no signup required).
+var DERIV_SYMBOLS = {
+  'EURUSD':  'frxEURUSD',
+  'GBPUSD':  'frxGBPUSD',
+  'USDJPY':  'frxUSDJPY',
+  'USDCHF':  'frxUSDCHF',
+  'AUDUSD':  'frxAUDUSD',
+  'USDCAD':  'frxUSDCAD',
+  'NZDUSD':  'frxNZDUSD',
+  'EURGBP':  'frxEURGBP',
+  'EURJPY':  'frxEURJPY',
+  'GBPJPY':  'frxGBPJPY',
+  'AUDJPY':  'frxAUDJPY',
+  'CADJPY':  'frxCADJPY',
+  'EURCHF':  'frxEURCHF',
+  'GBPCHF':  'frxGBPCHF',
+  'EURCAD':  'frxEURCAD',
+  'AUDCAD':  'frxAUDCAD',
+  'AUDNZD':  'frxAUDNZD',
+  'CHFJPY':  'frxCHFJPY',
+  'XAUUSD':  'frxXAUUSD',
+  'XAGUSD':  'frxXAGUSD',
+  'XPTUSD':  'frxXPTUSD',
+};
+
+var atDerivWs = null;
+var _derivSubscribed = {};   // track subscribed symbols to avoid duplicates
+var _derivConnecting = false;
+var _derivCandleCallbacks = {};  // req_id → { resolve, reject, timer }
+var _derivReqId = 1;
+
+function atConnectDeriv(onOpen) {
+  // Already connected and open
+  if (atDerivWs && atDerivWs.readyState === WebSocket.OPEN) {
+    if (onOpen) onOpen();
+    return;
+  }
+  // Connection in progress — queue callback
+  if (_derivConnecting && atDerivWs && atDerivWs.readyState === WebSocket.CONNECTING) {
+    atDerivWs.addEventListener('open', function _once() {
+      atDerivWs.removeEventListener('open', _once);
+      if (onOpen) onOpen();
+    });
+    return;
+  }
+  _derivConnecting = true;
+  _derivSubscribed = {};
+  try {
+    atDerivWs = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+  } catch(e) {
+    console.warn('Deriv WS connection failed:', e.message);
+    _derivConnecting = false;
+    return;
+  }
+  atDerivWs.onopen = function() {
+    _derivConnecting = false;
+    if (onOpen) onOpen();
+  };
+  atDerivWs.onmessage = function(e) {
+    try {
+      var msg = JSON.parse(e.data);
+
+      // ── Tick prices (real-time subscription) ──
+      if (msg.msg_type === 'tick' && msg.tick) {
+        var derivSym = msg.tick.symbol;
+        var price = parseFloat(msg.tick.quote);
+        var pairId = null;
+        for (var k in DERIV_SYMBOLS) {
+          if (DERIV_SYMBOLS[k] === derivSym) { pairId = k; break; }
+        }
+        if (pairId && !isNaN(price)) {
+          livePriceCache[pairId] = price;
+          priceSourceCache[pairId] = 'deriv';
+          updatePriceTileFromCache(pairId, price);
+          // Bridge tick to active charts for real-time candle updates
+          var tickData = { time: msg.tick.epoch, price: price };
+          if (typeof wmChart !== 'undefined' && wmChart && typeof currentChartPair !== 'undefined' && currentChartPair === pairId && typeof wmChart.updateTick === 'function') {
+            wmChart.updateTick(tickData);
+          }
+          if (typeof simWmChart !== 'undefined' && simWmChart && typeof currentSimChartPair !== 'undefined' && currentSimChartPair === pairId && typeof simWmChart.updateTick === 'function') {
+            simWmChart.updateTick(tickData);
+          }
+        }
+      }
+
+      // ── Historical candle response ──
+      if (msg.msg_type === 'candles' && msg.candles) {
+        var rid = msg.req_id;
+        if (rid && _derivCandleCallbacks[rid]) {
+          var cb = _derivCandleCallbacks[rid];
+          clearTimeout(cb.timer);
+          delete _derivCandleCallbacks[rid];
+          var candles = msg.candles.map(function(c) {
+            return {
+              time:   c.epoch,
+              open:   parseFloat(c.open),
+              high:   parseFloat(c.high),
+              low:    parseFloat(c.low),
+              close:  parseFloat(c.close),
+              volume: 0
+            };
+          });
+          cb.resolve(candles);
+        }
+      }
+
+      // ── Error response ──
+      if (msg.msg_type === 'error' || msg.error) {
+        var erid = msg.req_id;
+        if (erid && _derivCandleCallbacks[erid]) {
+          var ecb = _derivCandleCallbacks[erid];
+          clearTimeout(ecb.timer);
+          delete _derivCandleCallbacks[erid];
+          ecb.reject(new Error(msg.error ? msg.error.message : 'Deriv API error'));
+        }
+      }
+
+    } catch(ex) { /* ignore parse errors */ }
+  };
+  atDerivWs.onerror = function() {
+    console.warn('Deriv WS error');
+    _derivConnecting = false;
+  };
+  atDerivWs.onclose = function() {
+    _derivConnecting = false;
+    _derivSubscribed = {};
+    // Reconnect after 10s
+    setTimeout(function() { atConnectDeriv(null); }, 10000);
+  };
+}
+
+function atDerivSubscribeTick(pairId, derivSym) {
+  if (!atDerivWs || atDerivWs.readyState !== WebSocket.OPEN) return;
+  if (_derivSubscribed[derivSym]) return;
+  _derivSubscribed[derivSym] = true;
+  atDerivWs.send(JSON.stringify({ ticks: derivSym, subscribe: 1 }));
+}
+
+function atEnsureDerivFeed(pairId) {
+  var derivSym = DERIV_SYMBOLS[pairId];
+  if (!derivSym) return;
+  atConnectDeriv(function() {
+    atDerivSubscribeTick(pairId, derivSym);
+  });
+}
+
+// ── Fetch historical candles from Deriv WS ──────────────────────────────────
+function fetchDerivCandles(derivSymbol, granularity, count) {
+  return new Promise(function(resolve, reject) {
+    atConnectDeriv(function() {
+      if (!atDerivWs || atDerivWs.readyState !== WebSocket.OPEN) {
+        reject(new Error('Deriv WS not connected'));
+        return;
+      }
+      var rid = _derivReqId++;
+      var timer = setTimeout(function() {
+        delete _derivCandleCallbacks[rid];
+        reject(new Error('Deriv candle request timed out'));
+      }, 12000);
+      _derivCandleCallbacks[rid] = { resolve: resolve, reject: reject, timer: timer };
+      atDerivWs.send(JSON.stringify({
+        ticks_history: derivSymbol,
+        count: count || 500,
+        end: 'latest',
+        style: 'candles',
+        granularity: granularity,
+        req_id: rid
+      }));
+    });
+  });
+}
+
 // Active Binance WebSocket connections — keyed by pair id
 var binanceWsSockets = {};
-// Live prices cache — populated by Binance WS and TD fetches
+// Live prices cache — populated by Binance WS, Deriv WS, and TD fetches
 var livePriceCache = {};
 // Track which source each price came from for display
 var priceSourceCache = {};
@@ -42,6 +216,15 @@ function connectBinancePair(pairId) {
       livePriceCache[pairId] = price;
       priceSourceCache[pairId] = 'binance';
       updatePriceTileFromCache(pairId, price);
+      // Bridge tick to active charts for real-time candle updates
+      var tickTime = Math.floor(d.E / 1000);  // Binance miniTicker event time (ms → s)
+      var tickData = { time: tickTime, price: price };
+      if (typeof wmChart !== 'undefined' && wmChart && typeof currentChartPair !== 'undefined' && currentChartPair === pairId && typeof wmChart.updateTick === 'function') {
+        wmChart.updateTick(tickData);
+      }
+      if (typeof simWmChart !== 'undefined' && simWmChart && typeof currentSimChartPair !== 'undefined' && currentSimChartPair === pairId && typeof simWmChart.updateTick === 'function') {
+        simWmChart.updateTick(tickData);
+      }
       // Debounced sidebar refresh — at most once per 2s across all crypto ticks
       clearTimeout(_binanceSidebarDebounce);
       _binanceSidebarDebounce = setTimeout(updateSidebarStats, 2000);

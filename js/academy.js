@@ -1608,8 +1608,8 @@ function launchApp() {
     appEl.style.display = window.innerWidth >= 1200 ? 'grid' : window.innerWidth >= 768 ? 'grid' : 'flex';
   }
 
-  // Always start on scan tab and sync nav active states
-  navigate('scan', document.getElementById('nav-scan'));
+  // Always start on home tab and sync nav active states
+  navigate('home', null);
 
   // Show right panel on desktop
   if (window.innerWidth >= 1200) {
