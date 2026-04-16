@@ -660,7 +660,7 @@ function simLoadChart() {
 
   if (!simWmChart) {
     if (typeof createWingmanChart !== 'function') return;
-    simWmChart = createWingmanChart('sim-chart-container');
+    simWmChart = createWingmanChart('sim-chart-container', 'sim-rsi-container', 'sim-macd-container', 'sim-vol-container');
     if (!simWmChart) return;
   }
 
@@ -1085,5 +1085,43 @@ function simCalcRiskPanel() {
   riskAmt.textContent  = '$' + risk.toFixed(2);
   slDistEl.textContent = slDist.toFixed(5);
   lotsEl.textContent   = lots > 0 ? lots.toFixed(2) : '—';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SIM TRADER CHART TOOLBAR HANDLERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function simToggleIndicator(btn, key) {
+  if (!simWmChart || typeof simWmChart.toggleIndicator !== 'function') return;
+  btn.classList.toggle('active');
+  simWmChart.toggleIndicator(key, btn.classList.contains('active'));
+}
+
+function simToggleSubpanel(btn, key) {
+  if (!simWmChart || typeof simWmChart.toggleSubpanel !== 'function') return;
+  btn.classList.toggle('active');
+  var visible = btn.classList.contains('active');
+  simWmChart.toggleSubpanel(key, visible);
+  var wrapMap = { rsi: 'sim-rsi-wrap', macd: 'sim-macd-wrap', vol: 'sim-vol-wrap' };
+  var wrap = document.getElementById(wrapMap[key]);
+  if (wrap) wrap.style.display = visible ? '' : 'none';
+}
+
+function simSetDrawingTool(btn, tool) {
+  if (!simWmChart || typeof simWmChart.setDrawingTool !== 'function') return;
+  var isActive = btn.classList.contains('active');
+  document.querySelectorAll('#tab-simtrader .wc-tool-btn:not(.wc-tool-clear)').forEach(function(b) { b.classList.remove('active'); });
+  if (!isActive) {
+    btn.classList.add('active');
+    simWmChart.setDrawingTool(tool);
+  } else {
+    simWmChart.setDrawingTool(null);
+  }
+}
+
+function simClearDrawings() {
+  if (!simWmChart || typeof simWmChart.clearDrawings !== 'function') return;
+  simWmChart.clearDrawings();
+  document.querySelectorAll('#tab-simtrader .wc-tool-btn').forEach(function(b) { b.classList.remove('active'); });
 }
 
