@@ -3,6 +3,7 @@
 ═══════════════════════════════════════════ */
 #app { display:none; min-height:100vh; background:#060608; }
 #app.visible { display:flex; } /* fallback — overridden by media queries below */
+#tab-panels { height:100%; }
 
 /* ─── MOBILE (< 768px) ─── */
 @media(max-width:767px) {

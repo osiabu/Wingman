@@ -31,7 +31,7 @@
   .home-action-btn { font-size: 10px !important; padding: 8px 10px !important; }
 
   /* ─── Autotrader: single-column, mobile tab bar ─── */
-  #tab-autotrader { display: flex !important; flex-direction: column; }
+  #tab-autotrader.active { display: flex !important; flex-direction: column; }
   #at-topbar { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
   #at-topbar::-webkit-scrollbar { display: none; }
   #at-body {

@@ -10,9 +10,11 @@
 #tab-academy {
   padding: 0;
   overflow-y: auto;
-  display: flex;
   flex-direction: column;
   gap: 0;
+}
+#tab-academy.active {
+  display: flex;
 }
 
 /* ── STAGE MAP ────────────────────────────────────────────────────────── */
