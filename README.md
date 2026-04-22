@@ -1,13 +1,12 @@
-# Wingman
-Professional-grade financial markets trading intelligence tool — self-hosted, privacy-first, zero subscriptions
+# Wingman: Your Self-Hosted Financial Markets Trading Intelligence Tool
 
-**Status:** Live | **Completion:** 82% | **Last updated:** 2026-04-13
+`Status: Live` | `82% Complete` | `Last updated: 2026-04-22`
 
-## About
+Wingman is a self-hosted financial markets trading intelligence tool covering 54 instruments across equities, forex, crypto, and commodities. It provides multi-timeframe technical analysis, real-time market depth, a virtual trading simulator, and a trade journal — all running locally with no SaaS subscriptions required. Wingman aims to give independent traders a professional-grade analysis environment that rivals expensive alternatives, runs on any machine, and respects user privacy by keeping all data local.
 
-Wingman is a self-hosted financial markets trading intelligence tool covering 54 instruments across equities, forex, crypto, and commodities. It provides multi-timeframe technical analysis, real-time market depth, a virtual trading simulator, and a trade journal — all running locally with no SaaS subscriptions required. Built to give independent traders a professional-grade analysis environment that rivals expensive Bloomberg terminals while respecting user privacy by keeping all data local.
+---
 
-## Tech Stack
+### Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -19,7 +18,11 @@ Wingman is a self-hosted financial markets trading intelligence tool covering 54
 | AI | Anthropic Claude API (trade commentary) |
 | Infrastructure | Self-hosted / GitHub Pages |
 
-## Features
+---
+
+### Features
+
+> This table is automatically updated by the weekly sync script. Do not edit it manually — your changes will be overwritten.
 
 | Feature | Description | Status |
 |---------|-------------|--------|
@@ -30,64 +33,60 @@ Wingman is a self-hosted financial markets trading intelligence tool covering 54
 | Virtual trading simulator | Paper trading with P&L tracking | ✅ Built |
 | Trade journal | Log trades with entry/exit/notes and stats | ✅ Built |
 | AI commentary | Claude-generated market insight per instrument | ✅ Built |
-| Trading Academy | 7-stage structured progression system | ✅ Built |
-| Behavioural Detectors | Six detectors monitoring trading psychology | ✅ Built |
-| Performance Profiling | Win rate, R:R, profit factor, session heatmap | ✅ Built |
-| Risk Calculator | Position sizing with AI sanity check | ✅ Built |
-| Price Alerts | Configurable price notifications | ✅ Built |
-| Economic Calendar | Forex Factory integration | ✅ Built |
-| Chart Analysis | Screenshot upload for AI analysis | ✅ Built |
 | Watchlist | Custom grouping and alert configuration | 📋 Planned |
 | Screener | Filter instruments by indicator conditions | 📋 Planned |
 | Export | CSV/PDF export of journal and performance stats | 📋 Planned |
+| ⚠️ Extra: Trading Academy | 7-stage structured progression system | ✅ Built |
+| ⚠️ Extra: Behavioural Detectors | Six detectors monitoring trading psychology | ✅ Built |
+| ⚠️ Extra: Performance Profiling | Win rate, R:R, profit factor, session heatmap | ✅ Built |
+| ⚠️ Extra: Risk Calculator | Position sizing with AI sanity check | ✅ Built |
+| ⚠️ Extra: Price Alerts | Configurable price notifications | ✅ Built |
+| ⚠️ Extra: Economic Calendar | Forex Factory integration | ✅ Built |
+| ⚠️ Extra: Chart Analysis | Screenshot upload for AI analysis | ✅ Built |
 
-## Getting Started
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/osiabu/Wingman.git
-cd Wingman
-
-# Install dependencies (if any)
-npm install
-```
-
-### Running the Application
-
-```bash
-# Start local development server
-npm start
-
-# Or simply open index.html in your browser
-open index.html
-```
-
-### Configuration
-
-1. Open the application in your browser
-2. Navigate to Settings
-3. Add your API keys for data providers (stored locally in localStorage)
-4. Configure your preferred instruments and timeframes
-
-## Roadmap
-
-### Phase 1 — Core Platform
-- Chart view for all 54 instruments
-- Top 5 technical indicators
-- Basic watchlist functionality
-
-### Phase 2 — Intelligence Layer
-- Virtual trading simulator
-- Comprehensive trade journal
-- AI-powered market commentary
-
-### Phase 3 — Pro Features
-- Advanced screener capabilities
-- Configurable alerts system
-- Export and reporting tools
+**Status key:**
+- ✅ Built — code exists and is functional
+- 🔄 In Progress — partially implemented
+- ❌ Not Started — declared in blueprint but no evidence in repo
+- 📋 Planned — vision-stage, not yet in blueprint scope
 
 ---
 
-**Osi Abu** — Full Stack AI Engineer | https://osiabu.vercel.app
+### Getting Started
+
+To get a local copy up and running, follow these simple steps.
+
+**Prerequisites**
+- A modern web browser
+- Git (for cloning the repository)
+
+**Installation**
+
+1. Clone the repo:
+   ```sh
+   git clone https://github.com/osiabu/Wingman.git
+   ```
+2. Navigate to the project directory:
+   ```sh
+   cd Wingman
+   ```
+3. Open `index.html` in your web browser to run the application.
+
+---
+
+### Roadmap
+
+Our future development is focused on expanding personalization and data portability features.
+
+*   **Phase 1: Advanced Filtering & Monitoring**
+    *   Implement custom watchlists for grouping and tracking instruments.
+    *   Build a market screener to filter instruments by technical conditions.
+    *   Configure customizable alerts for watchlist instruments.
+
+*   **Phase 2: Data Export & Reporting**
+    *   Develop CSV and PDF export functionality for the trade journal.
+    *   Enable exporting of performance statistics and charts.
+
+---
+
+Osi Abu – Full Stack AI Engineer | https://osiabu.vercel.app
