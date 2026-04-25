@@ -1,192 +1,643 @@
 STATUS
 ------
-Lumen Intraday and Lumen Scalper rewritten end to end. The Phase 2
-multi model pipeline that was live but never reaching a server has
-been replaced with a clean Vercel only architecture. Cloudflare
-Worker retired, kept on disk but no longer called.
+Wingman intelligence upgrade in progress. Batches 1 through 6 of the
+Aperintel April 2026 blueprint are shipped, plus a Batch 7 pivot:
+the Intelligence Dashboard now lives on the homepage rather than the
+Lumen tab. The Lumen Intraday and Scalper engines consume a structured
+intelligence payload covering Wyckoff phase, market regime, COT
+positioning, real yields, sentiment, liquidity pools, sessions,
+calendar, and portfolio exposure. The trade journal captures the full
+intel snapshot at entry so a weekly pattern miner (Haiku) can surface
+what works and what does not.
 
-FILES TOUCHED (this session)
-----------------------------
-api/scan.js              Accepts optional model body param. Default
-                         claude-opus-4-7 (was 4-6). Allowed set
-                         restricts to Opus 4.7, Sonnet 4.6, Haiku 4.5
-                         to prevent arbitrary model pass through.
+The homepage was rebuilt from the ground up with aperintel.com
+typography (Inter only, weights 300 to 600, tight negative tracking on
+display heads, wide positive tracking on uppercase eyebrows, tabular
+numerics, no JetBrains Mono on this tab). Layout follows pro trading
+terminals (Koyfin / Bloomberg / TradingView): status strip, then
+intelligence snapshot grid, then live exposure ledger, then upcoming
+risk and Lumen activity, then correlation pulse and weekly insights,
+then launch grid and today's performance. No emojis, no hyphens in
+user facing text.
 
-api/sentiment.js         Added Gemini 2.5 Flash final fallback.
-                         Chain is now Grok 3 → Claude Haiku 4.5 →
-                         Gemini 2.5 Flash. Earlier the Claude branch
-                         was the last hop with no Gemini safety net.
+A visual identity refresh is also mid flight. The user generated five
+atmospheric images and a new minimalist mark per a designer brief. The
+photographs are production grade. The two legacy logos
+(wingmanlogo.png, wingmanlogo1.png) are 3D rendered chrome eagle wing
+marks and must be retired before launch since they undo the polish of
+everything else. None of the new assets are wired into the codebase
+yet, that is the first thing to do in the next session.
 
-worker/index.js          claude-opus-4-6 → claude-opus-4-7. Defensive
-                         only; nothing in the client calls the Worker
-                         any more.
+What still needs doing: visual identity wire up (see VISUAL IDENTITY
+section below), Batch 8 (Markets tab integration: replace static
+COT_CACHE with live data, add Real Yields and Correlation Heatmap
+sub tabs), Batch 9 (CLAUDE.md and README updates), and the deferred
+scalper auto close path (positions never roll into scalpHistory
+today, blocking the pattern miner on the scalp side).
 
-js/utils.js              Added Lumen helpers: isWeekend, safeParseJSON,
-                         computeEMA, computeRSI, lumenIndicators.
-                         lumenIndicators reuses the existing
-                         fetchCandles helper from prices.js so candle
-                         routing through Binance REST (crypto) and the
-                         Vercel /api/candles Redis cache (everything
-                         else) stays as is.
+CURRENT GOAL
+------------
+Build the layered intelligence platform described in the Aperintel
+April 2026 blueprint. Hardest first ordering: Batch 2 (macro) →
+Batch 1 (Wyckoff + regime) → Batch 3 (liquidity, sessions, calendar,
+correlations) → Batch 4 (portfolio) → Batch 5 (master synthesis) →
+Batch 6 (journal + pattern mining) → Batches 7 to 9.
 
-js/lumen.js              Full rewrite. See LUMEN ARCHITECTURE in
-                         CLAUDE.md for the new design. Highlights:
-                         - All fetch URLs corrected (no more
-                           /api/api/... 404 loops)
-                         - All fictional model strings removed
-                           (gemini-3.1-*, grok-3-fast,
-                           grok-3-reasoning gone)
-                         - Intraday picks the day's three instruments
-                           via Sonnet 4.6 once per UTC day
-                         - Weekend mode (Sat or Sun UTC): Intraday
-                           filters to crypto only, Scalper raises the
-                           confidence threshold to seventy five and
-                           filters selected instruments to crypto
-                         - Real RSI fourteen, EMA twenty, EMA fifty
-                           computed from the last sixty fifteen minute
-                           candles for Intraday
-                         - Scalper indicators only computed for
-                           crypto (Binance REST is free) to protect
-                           the TwelveData free tier
-                         - Schema unified: both engines emit
-                           {action, confidence, sl, tp, ...}
-                         - safeParseJSON wraps every LLM response
-                         - Daily budget tracker (lumBudget) protects
-                           against runaway spend; localStorage keys
-                           wm_lum_budget and wm_lum_budget_day
+Architectural decisions landed at the start of this run:
+  - MT5 demo execution skipped. Wingman stays simulated only. Conflicts
+    with the Terms of Service in index.html which states all trades are
+    simulated and no real money is at risk at any time.
+  - GVZ unavailable as a free public feed. Substitute approved: VIX
+    (already wired in markets.js fetchFearGreed) plus an ATR percentile
+    compression detector built on local candles inside the regime
+    classifier.
+  - TimescaleDB / PostgreSQL skipped. Browser only architecture stays.
+    Substitutes: localStorage TTL caches client side, Upstash Redis
+    server side for shared module outputs.
+  - Daily LLM budgets stay at current caps (intraday 200, scalper 1500,
+    sentiment 300, select 30). Aggressive cache TTLs (Wyckoff 4h keyed
+    by H4 bar timestamp, COT 7d, real yields 24h, correlations 4h,
+    liquidity 1h, calendar 15m) prevent the master synthesis prompt
+    from multiplying per cycle LLM calls.
 
-html/tab-autotrader.html Engine status badge text updated.
-                         "ENGINE IDLE" → "INTRADAY IDLE".
-                         Empty log placeholder updated.
-                         Start button label "▶ START" → "▶ INTRADAY".
+VISUAL IDENTITY (steps A1 to A6 SHIPPED, A7 deferred)
+-----------------------------------------------------
+What landed in this session:
+  - img/wingman-mark.svg created. Two strokes only on a 64 unit
+    viewBox: gold (12,28)-(52,28), teal (24,40)-(56,40), stroke 2.5
+    round caps. The lower stroke is offset twelve units right and
+    extended four units past the upper, encoding the formation
+    flight idea without a wordmark.
+  - img/wingman-lockup.svg created for the mobile topbar. Same
+    mark plus a "Wingman" wordmark in Inter Light 300, letter
+    spacing -0.03em (-0.66 absolute at font-size 22), white fill.
+  - index.html head: replaced four wingmanlogo1.png favicon links
+    with an SVG primary plus a 256 PNG fallback (the PNG export
+    is still TODO, see DEFERRED below). Added og:type, og:title,
+    og:description, og:image (img/og-card.png), og:image:width,
+    og:image:height, twitter:card, twitter:title,
+    twitter:description, twitter:image.
+  - index.html sidebar: img src now img/wingman-mark.svg, the
+    sibling .sidebar-brand-name text changed from "WINGMAN" caps
+    weight 800 to "Wingman" title case.
+  - index.html mobile topbar: img src now img/wingman-lockup.svg.
+  - css/layout.css .sidebar-brand-name retuned to Inter Light 300
+    letter spacing -0.03em color var(--text). The bold 800 ALL CAPS
+    treatment is gone, the brand now reads Aperintel restrained.
+  - css/layout.css .wm-logo-img sized to 28x28 (mark only). The
+    gold drop shadow filter was removed since it fights with the
+    minimalist mark.
+  - css/layout.css .wm-logo-img-mobile sized to 28 tall, max-width
+    130, no filter.
+  - css/academy.css :root --logo-img now points at
+    ../img/wingman-mark.svg.
+  - js/academy.js trader passport: two img src tags updated.
+  - js/core.js onboarding screen 1: img src updated.
+  - css/home.css #tab-home: added position relative, isolation
+    isolate, and a ::before pseudo element that paints
+    img/hero-atmosphere.png at opacity 0.08 with mix-blend-mode
+    screen, masked to fade out toward the bottom 40% of the viewport
+    so content stays legible. The radial gradients still sit on top.
+  - The two legacy chrome eagle PNGs are DELETED from the working
+    tree (git status shows them as D). No need to rename.
 
-index.html               Sidebar nav "Autotrader" → "Lumen". Mobile
-                         nav "AUTO" → "LUMEN". The tab key remains
-                         "autotrader" so internal routing is
-                         unchanged.
+What is left (do this in the next session):
+  A7. Regenerate img/hero-atmosphere.png with the negative space
+      fix prompt addition: "Reserve the entire upper third of the
+      frame as flat matte black with no objects and no light
+      intrusion." Drop in place. No code changes needed.
+  A8. Export the new mark to img/wingman-mark-256.png at 256 x 256
+      so the apple-touch-icon and PNG fallback favicon resolve.
+      Until this is in place the apple-touch-icon link will 404
+      on iOS bookmarks. The SVG primary favicon works in every
+      modern browser including iOS Safari 18+. Cheapest path is
+      to open img/wingman-mark.svg in any vector tool and export
+      to PNG at 256, no other change.
+  A9. Wire img/login-backdrop.png and img/onboarding-welcome.png
+      once a pre auth screen and Stage 13 onboarding modal exist.
+      No work to do until those screens are built.
 
-CLAUDE.md                Model selection table refreshed to
-                         claude-opus-4-7. New LUMEN ARCHITECTURE
-                         section replaces the stale Phase 2 multi
-                         model pipeline section. Documents routing,
-                         fallback chains, weekend mode, instrument
-                         universe, daily budgets, indicator pipeline,
-                         and the Worker retirement.
+VISUAL IDENTITY (legacy notes, kept for context)
+------------------------------------------------
+Image assets generated by the user via DALL E / Microsoft Designer
+following a designer brief I drafted. All five photographs share a
+consistent brand world: a midnight study, brushed obsidian desk, a
+brass mechanical wristwatch showing 03:47, a worn leather bound
+notebook, a small black ceramic cup of black coffee, a single warm
+amber shaft of light, and a cool teal rim light at twenty percent.
+Style references: Bloomberg Terminal print 2019, Aperintel brand
+photography, Roger Deakins, Bobby Doherty.
 
-changes.txt              New file. This handover record.
+Files in img/ (root) at the time of checkpoint:
 
-DECISIONS LANDED
-================
+  img/wingman-mark.png        Two horizontal hairline strokes (gold
+                              over teal) plus "Wingman" in Inter Light.
+                              Restrained, contemporary, on brand. Needs
+                              one geometry refinement before shipping
+                              (see REFINEMENT below). Should be
+                              redrawn as proper SVG, the PNG is for
+                              concept review only.
+  img/hero-atmosphere.png     21:9 cinematic wide shot of the desk.
+                              Production grade but the upper third is
+                              not as clean as briefed. If regenerated,
+                              add to prompt: "Reserve the entire upper
+                              third of the frame as flat matte black
+                              with no objects and no light intrusion."
+                              Otherwise ship as is.
+  img/og-card.png             1.91:1 close up of the brass watch face
+                              over the leather notebook. STRONGEST of
+                              the set. Will read at thumbnail size in
+                              Slack and iMessage. Ship as is.
+  img/onboarding-welcome.png  4:3 warmer dawn mood, open notebook with
+                              fountain pen on a fresh page. Ship as is.
+  img/login-backdrop.png      16:9 architectural minimalism, just the
+                              cup of coffee in a pool of warm light,
+                              huge negative space for a form to sit on
+                              top. Ship as is.
+  img/mobile-splash.png       9:19.5 portrait, watch in upper portion,
+                              lower half intentionally dark for the
+                              wordmark to be drawn in code. Ship as is.
 
-Naming
-------
-The two Lumen engines are now branded:
-  - Lumen Intraday: thirty minute scans, multi instrument, Claude
-    Sonnet 4.6 decision model. (Was "Autotrader".)
-  - Lumen Scalper:  sixty second scans, user selected instruments,
-    Claude Haiku 4.5 decision model. (Unchanged.)
+LEGACY LOGOS TO RETIRE
+----------------------
+wingmanlogo.png  (~2 MB) and wingmanlogo1.png (~213 KB), both at the
+repo root, are the original 3D rendered chrome gold eagle wing marks
+with a beveled W and chart arrow. They read as a 2008 esports team or
+a Las Vegas steakhouse. They are referenced from index.html (search
+for "wingmanlogo" to find the img src tags). Before launch:
 
-Intraday is the precise financial term for entries opened and closed
-within a single trading day. Scalper is the standard industry term
-for sub five minute holds. The sidebar nav was renamed to "Lumen"
-since the tab actually contains both engines.
+  1. Replace every img src reference in index.html with the new SVG
+     mark (drawn from the brief in REFINEMENT below).
+  2. Rename the PNG files to legacy-wingmanlogo.png and
+     legacy-wingmanlogo1.png so they cannot be accidentally picked
+     up by a future session.
 
-Worker retirement
------------------
-The Cloudflare Worker at worker/index.js was duplicated by Vercel
-routes that also have Upstash Redis caching the Worker lacks. All
-Lumen calls now hit Vercel directly. The Worker is left in place
-but no client code calls it. Safe to delete after a stable deploy
-or two.
+MARK REFINEMENT (NOT YET APPLIED)
+---------------------------------
+The current wingman-mark.png is two perfectly horizontal parallel
+strokes: a gold (#F0B429) upper line and a teal (#00C9B1) lower line,
+both 2.5 unit hairlines on a 64 unit grid. Reads as "minus, equals"
+without the wordmark, the formation flight idea is not landing.
 
-Speed sensitive paths bypass both gateways:
-  - Crypto prices: Binance WebSocket direct from browser
-  - Forex and metals prices: Deriv WebSocket direct from browser
-  - Crypto candles: Binance REST direct
-  - Forex/metals/indices/commodities prices: cached
-    /api/prices route (Vercel + Redis)
-  - Non crypto candles: cached /api/candles route (Vercel + Redis)
+Recommended fix: offset the lower stroke to the right so it sits
+behind and to the right of the upper stroke (the literal wingman
+position). Geometry:
 
-Models
-------
-  - Big picture market intelligence (Markets tab via /api/scan
-    default): claude-opus-4-7 (upgraded from 4.6)
-  - Lumen Intraday: claude-sonnet-4-6 via /api/scan body model param
-    (Opus would be overkill at thirty minute cadence)
-  - Lumen Scalper: claude-haiku-4-5-20251001 via /api/behaviour
-  - Sentiment poller: routed through /api/sentiment which fans out
-    Grok 3 → Claude Haiku 4.5 → Gemini 2.5 Flash server side
-  - Server side fallback to Gemini 2.5 Flash on every Lumen route
+  Upper stroke:  (12, 28) to (52, 28)  stroke 2.5  #F0B429
+  Lower stroke:  (24, 40) to (56, 40)  stroke 2.5  #00C9B1
 
-Confidence thresholds and risk
+The lower stroke shifts twelve units right and four units longer at
+the right end. Encodes the concept clearly while staying at two
+strokes total. Wordmark unchanged: "Wingman" in Inter Light 300,
+letter spacing -0.03em, white on dark.
+
+Build target: img/wingman-mark.svg (proper vector, 24 px favicon,
+96 px sidebar, scales to any size). PNG retained at 256 x 256 only
+for the PWA app icon manifest.
+
+CSS WIRE UP PLAN (NEXT SESSION)
+-------------------------------
+1. Add to css/home.css under #tab-home:
+     background-image:
+       url('../img/hero-atmosphere.png'),
+       (existing radial gradients);
+     background-size: cover;
+     background-position: center top;
+     background-blend-mode: overlay;
+   The hero photograph sits behind the radial gradients at low
+   opacity through blend mode, never dominating the layout.
+
+2. Add OG and Twitter meta tags inside index.html <head>:
+     <meta property="og:image" content="/img/og-card.png">
+     <meta property="og:image:width" content="1200">
+     <meta property="og:image:height" content="630">
+     <meta name="twitter:card" content="summary_large_image">
+     <meta name="twitter:image" content="/img/og-card.png">
+
+3. Replace every wingmanlogo / wingmanlogo1 img src in index.html
+   with the new SVG mark.
+
+4. Add the PWA manifest reference and apple-touch-icon links once the
+   PNG export of the refined mark exists at img/wingman-mark-256.png.
+
+5. Add img/login-backdrop.png and img/onboarding-welcome.png as CSS
+   background-image properties on the (yet to be built) pre auth
+   landing and the Stage 13 onboarding modal. These hooks do not
+   exist yet so this step is gated on Stage 13.
+
+FILES TOUCHED (homepage redesign, post Batch 6)
+-----------------------------------------------
+html/tab-home.html      FULL REWRITE. Premium command centre layout.
+                        Status strip with six readouts (Session, Fear
+                        and Greed, Market Pulse, Open Exposure, Next
+                        Event, Refreshed stamp). Intelligence snapshot
+                        grid with three Lumen pick cards (Phase,
+                        Regime, COT bias, Real yields for gold,
+                        Session multiplier, top liquidity zones).
+                        Live exposure ledger covering Intraday, Scalp
+                        and Sim Trader. Two column block: upcoming
+                        calendar risk + Lumen activity feed. Two
+                        column block: correlation breakdowns + Weekly
+                        Insights with a Mine the week button. Launch
+                        grid (4 buttons), today's performance card,
+                        instinct quote, footer.
+
+css/home.css            FULL REWRITE. Aperintel typography mirrored.
+                        Inter 300/400/500/600. Display headings at
+                        36px weight 300 letter-spacing -0.035em.
+                        Uppercase eyebrows weight 500 letter-spacing
+                        0.18em. Tabular numerics via
+                        font-feature-settings 'tnum'. Hairline borders
+                        on cards, soft radial gradients in the
+                        backdrop, ledger uses a true grid layout
+                        rather than flex. Responsive at 1080px and
+                        720px breakpoints.
+
+js/home.js              FULL REWRITE. New renderers:
+                          home_refreshStatusStrip
+                          home_refreshIntelSnapshot (per-pick cards
+                            from cached LumenIntel.* payloads, never
+                            blocks on a fetch; warms the regime and
+                            liquidity caches in the background)
+                          home_collectPositions (intraday + scalp +
+                            sim with live P and L from livePriceCache)
+                          home_refreshLedger
+                          home_refreshCalendarStrip (uses cached
+                            LumenIntel.calendar)
+                          home_refreshActivityFeed (combines atLog
+                            and scalpLog, tags Exec/Skip/Scan/Warn)
+                          home_refreshCorrelationPulse (lists matrix
+                            breakdowns from cached LumenIntel.correlations)
+                          home_runInsights / home_renderInsights
+                            (calls lumenMinePatterns(true), renders
+                            strengths / watch outs / actions)
+                          home_refreshPerf, home_refreshInstinct
+                        Three intervals: 1s clock, 3s ledger and
+                        activity, 15s status and intel and calendar
+                        and correlation, 60s perf and instinct.
+                        Default watch list when atTodayInstruments
+                        is unset: XAUUSD, BTCUSD, EURUSD.
+                        Script registers home_runInsights on window.
+
+FILES TOUCHED (Batches 1 to 6)
 ------------------------------
-  - Intraday: seventy five and above. Picks the highest cleared
-    signal across the day's three instruments per cycle. Maximum
-    three open positions.
-  - Scalper weekday: sixty five and above
-  - Scalper weekend: seventy five and above (thinner liquidity)
+api/fred.js             NEW. GET /api/fred?series=DFII10&days=60.
+                        Proxies St Louis Fed FRED observations endpoint.
+                        Allowed series: DFII10, DGS10, DTWEXBGS, T10YIE,
+                        CPIAUCSL. 24 hour Upstash Redis cache. Requires
+                        FRED_API_KEY env on Vercel. Returns 502 with a
+                        clear error when upstream fails so the client
+                        falls back to a neutral payload.
 
-Daily budgets (UTC reset)
--------------------------
-  - Intraday: 200 calls
-  - Scalper:  1500 calls
-  - Sentiment: 300 calls
-  - Selection: 30 calls
+api/cot.js              NEW. GET /api/cot?asset=gold&weeks=26.
+                        Proxies CFTC Public Reporting Environment Socrata
+                        endpoint at publicreporting.cftc.gov for the
+                        Legacy Combined report. Asset to contract code
+                        map covers gold, silver, copper, oil, natgas,
+                        eurusd, gbpusd, jpyusd, chfusd, cadusd, audusd,
+                        nzdusd, dxy, btc, ether. 7 day Upstash Redis
+                        cache. CFTC_APP_TOKEN env optional.
 
-WHAT WAS BROKEN BEFORE THIS SESSION
-====================================
+js/intel-yields.js      NEW. Wraps /api/fred. Returns current real yield,
+                        twenty day direction, level classification, macro
+                        bias for gold. localStorage 24h. Falls back to a
+                        neutral payload on any failure.
 
-Five distinct bugs all reinforcing each other:
+js/intel-cot.js         NEW. Wraps /api/cot. Computes commercial and large
+                        spec percentiles over twenty six weeks, divergence
+                        score, bias label. localStorage 7 days. Exposes
+                        legacyCacheRow(asset) so the existing markets.js
+                        renderCotReport can be migrated to live data
+                        without changing the render layer.
 
-1. URL prefix bug. WORKER_URL was '/api'. Lumen built fetches as
-   WORKER_URL + '/api/gemini' giving '/api/api/gemini' (404). Every
-   Lumen call hit a Vercel 404. Other modules used WORKER_URL +
-   '/scan' which resolved to '/api/scan' correctly, so markets and
-   academy worked. Only Lumen broke.
+js/intel-wyckoff.js     NEW. Pulls last 100 H4 candles, summarises range,
+                        position in range, ATR fifty, and the last ten
+                        bars, then asks Sonnet 4.6 to classify the phase
+                        as Accumulation, Markup, Distribution, Markdown,
+                        or Transition with a sub phase (SC, AR, ST,
+                        Spring, LPS, SOS, PSY, BC, SOW, LPSY, UTAD).
+                        Cached against the latest H4 bar timestamp so
+                        the LLM only fires when a new H4 closes (six
+                        calls per instrument per day maximum).
 
-2. Fictional model strings. Lumen referenced gemini-3.1-flash-lite-
-   preview, gemini-3.1-pro-preview, grok-3-fast, grok-3-reasoning.
-   None of these exist. Every Gemini and Grok call would have
-   returned 400 even if the URL was correct.
+js/intel-regime.js      NEW. Pure browser computation, no LLM cost.
+                        ADX 14 for trend strength, ATR 14 percentile vs
+                        ninety bar window, Bollinger band width
+                        percentile for compression detection. Combines
+                        with the cached Wyckoff phase to produce a regime
+                        label like 'Strong Uptrend / Compression'.
+                        localStorage 4 hours.
 
-3. Fallback chains depended on broken models. Sentiment, dataprep,
-   decision, and scalp chains all started with a Gemini 3.1 step
-   that failed, then attempted Grok 3 fast (does not exist), then
-   Claude via the wrong URL.
+js/intel-correlations.js NEW. Pearson correlation matrix across the
+                        Tier 1+2+3 universe (XAUUSD, XAGUSD, EURUSD,
+                        USDJPY, GBPUSD, USDCAD, AUDUSD, US30, SPX500,
+                        NAS100, USOIL, BTCUSD, ETHUSD). Splits each
+                        return series in half to detect breakdowns vs
+                        prior half (>0.35 delta). localStorage 4 hours.
+                        Exposes lookup(a, b) for the portfolio module.
 
-4. Hardcoded fake indicators. atRunScan passed
-   {price, rsi: 62, ema20: 59000, ema50: 58500} to the LLM. Every
-   scan asked Sonnet to make a $5,000 lot decision on constant
-   numbers.
+js/intel-liquidity.js   NEW. Pure browser. Detects swing highs and
+                        lows on H1, H4, D1, plus round numbers, prior
+                        session highs/lows, weekly and monthly opens.
+                        Clusters levels within 0.1 percent and scores by
+                        weight, touches, and timeframe alignment.
+                        Returns nearest 3 above and 3 below.
+                        localStorage 1 hour.
 
-5. Schema mismatch. DECISION_SYSTEM asked for {verdict, ...} while
-   atRunScan checked result.verdict. SCALP_SYSTEM asked for
-   {action, ...} while scalpRunScan checked signal.action. Without
-   defensive parsing, the autotrader silently swallowed every
-   exception and the engine ran but never traded.
+js/intel-calendar.js    NEW. Reuses the TradingView free CORS endpoint
+                        already used by the Markets tab. Adds two flags:
+                        pre_event_caution (within 2 hours before HIGH
+                        impact event) and post_event_opportunity (within
+                        30 minutes after release while actual is known).
+                        Country to instrument map decorates filtering
+                        when called with an instrument argument.
+                        localStorage 15 minutes.
+
+js/intel-sessions.js    NEW. Returns active sessions and a confidence
+                        multiplier: Asian 0.5, London Open 1.2, NY Open
+                        1.4, NY Close 0.7, standard 1.0. No cache, no
+                        LLM cost. lumen.js applies the multiplier
+                        locally to the LLM's stated confidence before
+                        comparing to the threshold so the LLM cannot
+                        bypass it.
+
+js/intel-portfolio.js   NEW. Reads wm_at_positions, wm_scalp_positions,
+                        and open wm_sim_trades. Computes total risk
+                        percent, directional count, and detects
+                        correlated clusters using the cached correlation
+                        matrix. Health label healthy or caution.
+
+api/scan.js             UNCHANGED but Wyckoff and the master synthesis
+                        prompt route through it with model=claude-sonnet-4-6.
+
+api/behaviour.js        UNCHANGED but the Scalper master synthesis and
+                        the weekly pattern miner route through it with
+                        Haiku 4.5.
+
+js/lumen.js             MAJOR REWRITE. The two old system prompts
+                        (INTRADAY_DECISION_SYSTEM and SCALP_SYSTEM) are
+                        replaced by WINGMAN_MASTER_SYSTEM and
+                        WINGMAN_SCALP_SYSTEM. New helpers:
+                        - lumenCotAssetFor(inst): instrument to COT key
+                        - assembleIntradayIntel(inst, indicators): builds
+                          the full intel payload, calls Wyckoff/regime/
+                          yields/cot/liquidity/calendar in parallel via
+                          Promise.all, reads session/portfolio synchronously
+                        - assembleScalperIntel(inst, price, indicators):
+                          reads cached intel only, never triggers LLM
+                        - lumenPortfolioGate(inst, dir, portfolio):
+                          rejects duplicate same direction trades on the
+                          same instrument across any source, rejects when
+                          total risk above six percent
+                        - applySessionMultiplier(rawConf, session): scales
+                          the LLM's stated confidence by the session
+                          multiplier locally
+                        - intradayDecide(inst, intel): Sonnet 4.6 with
+                          the WINGMAN_MASTER_SYSTEM prompt, payload is
+                          the full intel object
+                        - scalpDecide(inst, intel): Haiku 4.5 with the
+                          WINGMAN_SCALP_SYSTEM prompt, payload is the
+                          slim cached intel object
+                        - atExecuteTrade and scalpExecuteTrade now write
+                          a journal_context block on every position
+                          capturing the full intel snapshot at entry
+                          (Wyckoff phase, regime, COT bias, real yield
+                          direction, sentiment, session, calendar flags,
+                          portfolio health, raw vs effective confidence)
+                        - lumenIsoWeek(): ISO week key for cache
+                        - lumenPatternSummary(): aggregates closed trades
+                          (atHistory + scalpHistory) by Wyckoff phase,
+                          regime, session, COT bias, real yield direction
+                        - lumenMinePatterns(force): once per ISO week
+                          (cached in localStorage as wm_lumen_patterns_
+                          <isoweek>) calls Haiku to surface strengths,
+                          weaknesses, and actions. Returns the raw
+                          summary without an LLM call when fewer than ten
+                          trades have closed.
+                        atRunScan now hard skips on pre_event_caution
+                        before the LLM call and runs the portfolio gate
+                        before considering any signal as best.
+                        scalpRunScan does the same.
+
+index.html              Bootstrap loader updated. Modules array now:
+                          utils, intel-yields, intel-cot, intel-wyckoff,
+                          intel-regime, intel-correlations,
+                          intel-liquidity, intel-calendar,
+                          intel-sessions, intel-portfolio,
+                          prices, core, academy, chart, settings,
+                          markets, behaviour, simtrader, lumen, home
+
+NAMESPACE
+---------
+Every Batch 1 to 4 client side intelligence module exposes a function
+under the global window.LumenIntel object:
+
+  await LumenIntel.yields()                -> real yield analysis
+  await LumenIntel.cot('gold')             -> COT analysis (live)
+  await LumenIntel.wyckoff('XAUUSD')       -> phase, sub_phase, narrative
+  await LumenIntel.regime('XAUUSD')        -> trend + volatility chars
+  await LumenIntel.correlations()          -> matrix + breakdowns
+  await LumenIntel.liquidity('XAUUSD')     -> 3 above + 3 below
+  await LumenIntel.calendar('XAUUSD')      -> pre/post event flags
+  LumenIntel.session()                     -> kill zone multiplier
+  LumenIntel.portfolio()                   -> exposure + clusters
+  LumenIntel.correlations.lookup(a, b)     -> cached corr value
+  LumenIntel.cot.legacyCacheRow('gold')    -> markets.js shape
+  LumenIntel.<any>.cached(...)             -> last cached payload
+  LumenIntel.<any>.clear(...)              -> wipe local cache
+
+All intel modules degrade gracefully to a neutral or null payload on
+any failure so the master synthesis prompt never blocks waiting for an
+unreachable upstream.
+
+DECISION FLOW (Lumen Intraday, every 30 minutes)
+------------------------------------------------
+1. intradaySelectInstruments() picks three instruments via Sonnet
+   (cached per UTC day).
+2. For each instrument:
+   a. lumenIndicators(inst) computes RSI, EMA20, EMA50.
+   b. assembleIntradayIntel(inst, indicators) gathers the full intel
+      payload. This may trigger the Wyckoff LLM call (cached 4h) and
+      candle pulls; everything else is cached and free.
+   c. Hard skip if calendar.pre_event_caution is true.
+   d. intradayDecide(inst, intel) sends the full payload to Sonnet 4.6.
+   e. Hard skip on SKIP action.
+   f. lumenPortfolioGate rejects duplicate same direction trades.
+   g. applySessionMultiplier scales raw confidence to effective.
+   h. Track the highest effective confidence across the three.
+3. If the best effective confidence is at or above 75, execute. The
+   position record carries the full intel snapshot for pattern mining.
+
+DECISION FLOW (Lumen Scalper, every 60 seconds)
+-----------------------------------------------
+1. Filter to crypto on weekends. Confidence threshold raised to 75 on
+   weekends, 65 on weekdays.
+2. For each user selected instrument:
+   a. Read live price from livePriceCache.
+   b. lumenIndicators(inst) for crypto only.
+   c. assembleScalperIntel reads cached Wyckoff, regime, liquidity,
+      calendar, session. NEVER triggers an LLM call.
+   d. Hard skip if pre_event_caution is true.
+   e. scalpDecide sends the slim payload to Haiku 4.5.
+   f. lumenPortfolioGate rejects duplicates across all engines.
+   g. applySessionMultiplier scales raw to effective.
+3. Execute if effective is at or above the threshold.
+
+JOURNAL SCHEMA
+--------------
+Every executed Lumen trade now stores a journal_context block on the
+position record. Fields populated at entry:
+
+  raw_confidence, effective_confidence, key_risk,
+  thesis_alignment, wyckoff_alignment,
+  wyckoff_phase, wyckoff_sub_phase,
+  regime_label, trend_character, volatility_character,
+  cot_bias, cot_percentile,
+  real_yield_direction, real_yield_level,
+  sentiment_reading, sentiment_score,
+  session, session_multiplier,
+  pre_event_caution, post_event_opportunity,
+  portfolio_health,
+  (scalper additions) entry_logic, weekend
+
+The pattern miner (lumenMinePatterns) reads this block from
+wm_at_history and wm_scalp_history, buckets closed trades by each
+field, and asks Haiku once per ISO week to surface strengths,
+weaknesses, and actions.
+
+ENVIRONMENT VARIABLES TO ADD
+----------------------------
+FRED_API_KEY            Required for /api/fred. Free at
+                        https://fred.stlouisfed.org/docs/api/api_key.html
+CFTC_APP_TOKEN          Optional. Improves /api/cot throttling. Free at
+                        https://publicreporting.cftc.gov/profile/edit
+                        Without it, the Redis 7 day cache absorbs the
+                        rate limit since CFTC only publishes weekly.
+
+WHAT BATCH 6 INTENTIONALLY DEFERS
+---------------------------------
+- The journal close path. atCloseAll already pushes positions to
+  atHistory but does not yet copy the journal_context block over to the
+  closed history record. Need to verify this is happening and patch
+  atCloseAll if not. Same for the scalper close path (which is mostly
+  manual today). This is the first thing to verify in the next session.
+- No UI for lumenMinePatterns yet. Function works (call it from the
+  console with await lumenMinePatterns(true)) but Batch 7 will surface
+  the output in an Insights sub tab inside the Lumen tab.
+- No Markets tab integration yet. The static COT_CACHE in markets.js
+  still drives renderCotReport. Batch 8 will swap it for
+  LumenIntel.cot.legacyCacheRow.
+- No CLAUDE.md or README updates yet. Batch 9.
 
 NEXT STEP PROMPT
 ================
-Test in the browser: load the deployed Wingman, click ▶ INTRADAY on
-the Lumen tab, watch the log for "Lumen Intraday active" then
-"Lumen pick: ..." then per instrument scan messages. Within thirty
-minutes you should see either an EXECUTED trade or a clear "no
-instrument cleared the seventy five confidence threshold" skip
-message. Click the purple SCALP button and within five seconds you
-should see "Lumen scan: BTCUSD at <price>" then a decision message
-every minute.
+Pick up with the visual identity wire up FIRST, then continue to
+Batch 8. The image assets are already in img/ but none are wired
+into the codebase yet, and the legacy chrome eagle logos are still
+live in index.html.
 
-If trades start firing, the next priority is to verify the SL and
-TP plumbing actually triggers position closes correctly. Earlier
-fix commit 2592e73 addressed TP/SL not triggering, but I have not
-manually verified that fix carries through with the new
-multi instrument execution path.
+Sequence:
 
-If there is a spurious 503 on /api/sentiment after this deploy, the
-likely cause is a missing GEMINI_API_KEY env var on Vercel (the
-fallback chain was extended to Gemini in this session). Confirm
-the env var exists before debugging anywhere else.
+A. VISUAL IDENTITY POLISH (mostly shipped, two small items)
+   See VISUAL IDENTITY section above. Steps A1 to A6 are done.
+   Remaining:
+   A7. Regenerate img/hero-atmosphere.png with cleaner upper third.
+   A8. Export img/wingman-mark-256.png so the iOS apple-touch-icon
+       link resolves.
+   A9. Apply the login backdrop and onboarding welcome images once
+       the pre auth and Stage 13 screens exist.
 
-Worker can be deleted from disk after one or two days of stable
-operation, but it is not in any client load path so leaving it
-is harmless.
+A. (LEGACY ORDER, kept for context, the steps below were carried
+   out in the visual identity polish above)
+  1. Draft img/wingman-mark.svg using the geometry in the MARK
+     REFINEMENT section above (offset lower stroke to the right).
+     Two strokes only, gold over teal, on a 64 unit viewBox.
+     Also export a 256 x 256 PNG version as img/wingman-mark-256.png
+     for the PWA app icon.
+  2. Find every reference to wingmanlogo.png and wingmanlogo1.png in
+     index.html (sidebar header, mobile header, possibly legal
+     modal). Replace with an inline <img src="img/wingman-mark.svg">
+     or, where the size is small enough, an inline SVG block so it
+     inherits currentColor. Adjust width / height in the surrounding
+     CSS to match (the new mark has a different aspect ratio than
+     the eagle logos, so the surrounding flex / grid spacing will
+     need a small tweak).
+  3. Rename wingmanlogo.png and wingmanlogo1.png at the repo root
+     to legacy-wingmanlogo.png and legacy-wingmanlogo1.png so they
+     cannot be accidentally referenced by a future session.
+  4. Add the OG and Twitter meta tags in <head> pointing at
+     img/og-card.png (see CSS WIRE UP PLAN above for exact tags).
+  5. Add the hero atmosphere photo as a background-image on
+     #tab-home in css/home.css with overlay blend mode so it sits
+     behind the radial gradients at low visual weight.
+  6. Verify in the browser: load home tab, check the new mark is
+     in the sidebar, check the hero atmosphere is faintly visible
+     behind the content, view source and confirm the OG meta tags
+     are in place. Use a tool like opengraph.xyz or share the URL
+     to a private Slack to confirm the og-card renders.
+  7. (Optional, can defer) Regenerate img/hero-atmosphere.png with
+     the negative space fix in the prompt: add the line
+     "Reserve the entire upper third of the frame as flat matte
+     black with no objects and no light intrusion."
+
+B. BATCH 8 (Markets tab integration)
+  1. In js/markets.js, replace the static COT_CACHE that drives
+     renderCotReport with a call to LumenIntel.cot.legacyCacheRow(asset).
+     The shape is already compatible (commercial / large / small).
+  2. Add a "Real Yields" sub tab inside the Markets tab. Display the
+     payload from LumenIntel.yields(): current real yield, 20 day
+     direction, level classification, and macro bias for gold. Wire a
+     small line chart of the last 60 days of FRED DFII10 observations.
+  3. Add a "Correlation Heatmap" sub tab. Render the matrix from
+     LumenIntel.correlations() as a colour graded grid (green for
+     positive, red for negative). Highlight the breakdown rows with a
+     purple border so the user can spot regime shifts.
+
+C. BATCH 9 (CLAUDE.md and README updates). The CLAUDE.md File
+   Structure section needs to gain the ten new js/intel-*.js files,
+   the two new api routes (api/fred.js, api/cot.js), and the new img/
+   folder with its assets.
+
+D. DEFERRED: scalper auto close path. scalpPositions never reach
+   scalpHistory today, so the pattern miner only sees Intraday
+   closes. Implement a scalpMonitor that hits SL or TP each cycle,
+   mirrors atCloseAll's Object.assign({}, pos, { closePrice, pnl,
+   closedAt }) pattern, and pushes into scalpHistory.
+
+DEFERRED ITEMS
+--------------
+- Scalper auto close path. scalpPositions never reach scalpHistory
+  today, so the pattern miner only sees Intraday closes. Implement an
+  scalpMonitor function that hits SL or TP at every cycle, mirrors
+  atCloseAll's Object.assign({}, pos, { closePrice, pnl, closedAt })
+  pattern, and pushes into scalpHistory. After this the journal
+  pattern miner has data on both engines.
+- The legacy "OPPORTUNITY FEED" CSS classes (.home-opp-card,
+  .home-opp-badge, .home-action-btn) are still defined in home.css
+  with display:none. Safe to delete after a deploy or two of stable
+  operation if no one else references them.
+
+VERIFICATION CHECKLIST FOR THE NEW HOMEPAGE
+-------------------------------------------
+1. Load the page. Status strip should show six cells with sensible
+   defaults even before any LLM calls.
+2. From the console: await window.LumenIntel.regime('XAUUSD') and
+   await window.LumenIntel.liquidity('XAUUSD'). Within fifteen
+   seconds the gold card on the Intelligence Snapshot grid should
+   populate Phase, Regime and Liquidity rows.
+3. Open Sim Trader, place a market order. The Live Exposure Ledger
+   row should appear within three seconds with Sim badge and a live
+   updating P and L column.
+4. Start the Scalp Engine. The Lumen Activity feed should fill with
+   tagged rows (Scan, Skip, Exec). The Calendar strip should show
+   the next two hours of high impact events with imminent ones in
+   red.
+5. Click Mine the week. With under ten closed Lumen trades it should
+   say "Pattern miner needs at least ten closed Lumen trades."
+   With ten or more it should call Haiku and render Strengths,
+   Watch outs and Actions.
+
+If the FRED_API_KEY env is not yet set, intel-yields falls back to a
+neutral payload with macro_bias_for_gold = 'neutral' and source =
+'unavailable'. The synthesis prompt treats source = 'unavailable' as
+a legitimate skip signal rather than an error.

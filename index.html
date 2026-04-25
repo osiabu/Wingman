@@ -8,10 +8,22 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Wingman Academy">
 <title>Wingman · Trader Training Platform</title>
-<link rel="icon" type="image/png" sizes="32x32" href="wingmanlogo1.png">
-<link rel="icon" type="image/png" sizes="16x16" href="wingmanlogo1.png">
-<link rel="shortcut icon" type="image/png" href="wingmanlogo1.png">
-<link rel="apple-touch-icon" sizes="180x180" href="wingmanlogo1.png">
+<link rel="icon" type="image/svg+xml" href="img/wingman-mark.svg">
+<link rel="alternate icon" type="image/png" sizes="32x32" href="img/wingman-mark-256.png">
+<link rel="shortcut icon" type="image/svg+xml" href="img/wingman-mark.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="img/wingman-mark-256.png">
+
+<!-- Open Graph / Twitter -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Wingman · Trader Training Platform">
+<meta property="og:description" content="Wingman is a market intelligence console for traders. Lumen scans the tape, you keep the wheel.">
+<meta property="og:image" content="img/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Wingman · Trader Training Platform">
+<meta name="twitter:description" content="Wingman is a market intelligence console for traders. Lumen scans the tape, you keep the wheel.">
+<meta name="twitter:image" content="img/og-card.png">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/academy.css">
@@ -45,7 +57,7 @@
   <!-- MOBILE TOP BAR -->
   <div class="mobile-topbar">
     <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="navigate('home',null)">
-      <img src="wingmanlogo1.png" alt="Wingman" class="wm-logo-img-mobile">
+      <img src="img/wingman-lockup.svg" alt="Wingman" class="wm-logo-img-mobile">
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
       <div id="mobile-clock" style="font-family:var(--font-mono);font-size:10px;color:var(--text3);text-align:right;"></div>
@@ -56,8 +68,8 @@
   <!-- SIDEBAR (tablet + desktop) -->
   <div class="sidebar">
     <div class="sidebar-brand" style="cursor:pointer;" onclick="navigate('home',null)">
-      <img src="wingmanlogo.png" alt="Wingman" class="wm-logo-img">
-      <div class="sidebar-brand-name">WINGMAN</div>
+      <img src="img/wingman-mark.svg" alt="Wingman" class="wm-logo-img">
+      <div class="sidebar-brand-name">Wingman</div>
     </div>
 
     <!-- Session badge -->
@@ -311,7 +323,7 @@
    so function/var declarations work identically to the original monolithic file. */
 (function(){
   var tabs = ['home','markets','calc','chart','journal','rules','settings','simtrader','autotrader','academy'];
-  var modules = ['utils','prices','core','academy','chart','settings','markets','behaviour','simtrader','lumen','home'];
+  var modules = ['utils','intel-yields','intel-cot','intel-wyckoff','intel-regime','intel-correlations','intel-liquidity','intel-calendar','intel-sessions','intel-portfolio','prices','core','academy','chart','settings','markets','behaviour','simtrader','lumen','home'];
   var container = document.getElementById('tab-panels');
   Promise.all(tabs.map(function(t){
     return fetch('html/tab-' + t + '.html').then(function(r){ return r.text(); });

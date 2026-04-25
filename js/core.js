@@ -217,7 +217,7 @@ function renderObScreen(n) {
     body.innerHTML =
       '<div class="ob-screen">' +
         '<div class="ob-logo-wrap">' +
-          '<img src="wingmanlogo1.png" alt="Wingman" style="width:56px;height:56px;object-fit:contain;">' +
+          '<img src="img/wingman-mark.svg" alt="Wingman" style="width:56px;height:56px;object-fit:contain;">' +
         '</div>' +
         '<div class="ob-headline">Your Trading Co-Pilot</div>' +
         '<div class="ob-sub">Wingman is a structured training platform that teaches you to trade with discipline, strategy and confidence.</div>' +

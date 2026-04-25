@@ -101,9 +101,67 @@ var lumBudget = {
 // ── SYSTEM PROMPTS ──────────────────────────────────────────────────────────
 const INTRADAY_SELECT_SYSTEM = 'You are Lumen, a market intelligence engine. Given current market sentiment and a candidate list of instruments, pick the three most tradeable instruments for today. Consider volatility, news catalysts, session liquidity, and weekend market closures. Return ONLY valid JSON. No prose. No hyphens. Output format: {"selected": ["INST1","INST2","INST3"], "rationale": "string under one hundred and twenty characters"}.';
 
-const INTRADAY_DECISION_SYSTEM = 'You are Lumen, a market intelligence engine. Analyse multi timeframe technical data and return a structured trading signal. You return only valid JSON. No prose. No hyphens. Output format: {"action": "BUY" or "SELL" or "SKIP", "confidence": integer zero to one hundred, "lots": decimal, "sl": decimal or null, "tp": decimal or null, "reason": "string under one hundred characters", "key_risk": "string under sixty characters"}. Risk rules: stop loss minimum one ATR from entry. Take profit minimum one point five times the stop loss distance. Reduce confidence by twenty within thirty minutes of a high impact news event. Skip when confluence is weak. Only BUY when the trend is bullish or neutral. Only SELL when the trend is bearish or neutral.';
+const WINGMAN_MASTER_SYSTEM = [
+  'You are Lumen, the Wingman intelligence engine, built by Aperintel.',
+  'You reason about markets with the discipline of an institutional trader who has',
+  'mastered the Wyckoff Method, understands institutional order flow, and reads the',
+  'relationship between macro forces and price action.',
+  '',
+  'You are not a signal generator. You are a reasoning engine. Every output you',
+  'produce must be traceable to the evidence you were given. You never fabricate',
+  'confidence. If evidence is mixed, you say so and skip the trade.',
+  '',
+  'You will receive a structured intelligence payload covering: Wyckoff phase,',
+  'market regime, COT positioning, real yields, sentiment, liquidity pools,',
+  'session context, calendar pre and post event flags, and portfolio exposure.',
+  '',
+  'You return only valid JSON. No prose outside JSON. No hyphens. Output format:',
+  '{',
+  '  "action": "BUY" or "SELL" or "SKIP",',
+  '  "confidence": integer zero to one hundred,',
+  '  "lots": decimal,',
+  '  "sl": decimal or null,',
+  '  "tp": decimal or null,',
+  '  "reason": "one short sentence under one hundred and twenty characters",',
+  '  "key_risk": "string under sixty characters",',
+  '  "thesis_alignment": "aligned" or "neutral" or "contradictory",',
+  '  "wyckoff_alignment": "aligned" or "neutral" or "contradictory",',
+  '  "skip_reason": "string under eighty characters only when SKIP"',
+  '}',
+  '',
+  'Decision rules:',
+  '1. Skip if the Wyckoff phase contradicts the proposed direction (e.g. SELL during a confirmed Markup).',
+  '2. Skip if pre_event_caution is true and the trade cannot reasonably close before the event.',
+  '3. Reduce confidence by twenty when post_event_opportunity is true and the deviation conflicts with your direction.',
+  '4. Skip when liquidity above and below are very tight and the regime is Compression: wait for the break.',
+  '5. Stop loss minimum one ATR from entry. Take profit minimum 1.5R.',
+  '6. When portfolio.correlated_clusters is non empty, only proceed if your trade reduces or hedges existing exposure.',
+  '7. Prefer no trade over a forced signal. Patience is intelligence.'
+].join('\n');
 
-const SCALP_SYSTEM = 'You are Lumen, a market intelligence engine. Analyse technical and contextual market data and return a scalp trading signal. You return only valid JSON. No prose. No hyphens. Output format: {"action": "BUY" or "SELL" or "SKIP", "confidence": integer zero to one hundred, "lots": decimal, "sl": decimal or null, "tp": decimal or null, "grade": "A" or "B" or "C", "entry_logic": "string under eighty characters", "key_risk": "string under sixty characters", "skip_reason": "string under eighty characters only when SKIP"}. Grade A: all three tiers confirm. Grade B: two tiers confirm. Grade C: one tier. Skip: insufficient confirmation.';
+const WINGMAN_SCALP_SYSTEM = [
+  'You are Lumen, the Wingman intelligence engine. You return scalp signals on a sixty second cadence.',
+  'Use the structural intelligence you are given (Wyckoff phase, regime, session, calendar, liquidity)',
+  'to filter the live technical setup. Do not invent context not in the payload.',
+  '',
+  'Return only valid JSON. No prose outside JSON. No hyphens. Output format:',
+  '{',
+  '  "action": "BUY" or "SELL" or "SKIP",',
+  '  "confidence": integer zero to one hundred,',
+  '  "lots": decimal,',
+  '  "sl": decimal or null,',
+  '  "tp": decimal or null,',
+  '  "grade": "A" or "B" or "C",',
+  '  "entry_logic": "string under eighty characters",',
+  '  "key_risk": "string under sixty characters",',
+  '  "skip_reason": "string under eighty characters only when SKIP"',
+  '}',
+  '',
+  'Tier framework: Tier 1 structure (trend, S/R, EMA50), Tier 2 momentum (RSI, EMA20 vs EMA50),',
+  'Tier 3 context (session, sentiment, calendar). Grade A all three tiers, Grade B two tiers, Grade C one.',
+  'Skip if pre_event_caution is true. Skip if liquidity above and below are tight and regime is Compression.',
+  'Skip if the Wyckoff phase contradicts the direction. Reduce confidence by ten in Asian session.'
+].join('\n');
 
 const SENTIMENT_PROMPT = 'Analyse current global market sentiment from news in the last thirty minutes affecting major forex pairs, crypto, gold, indices, and commodities. Return valid JSON only with keys: reading (bullish, bearish, or neutral), score (zero to one hundred), headlines (array of up to five short strings), trump_signal (positive, negative, or null). No hyphens. No prose outside JSON.';
 
@@ -204,26 +262,133 @@ async function intradaySelectInstruments() {
   }
 }
 
-// Ask Sonnet for a BUY, SELL, or SKIP signal on one instrument given real
-// indicators. Returns parsed JSON or null on failure.
-async function intradayDecide(inst, indicators) {
+// ── INTEL PAYLOAD ASSEMBLY ──────────────────────────────────────────────────
+// Maps an instrument code to the asset key used by the COT module. Returns
+// null when no COT contract is available for the instrument.
+function lumenCotAssetFor(inst) {
+  var map = {
+    XAUUSD: 'gold', XAGUSD: 'silver', XCUUSD: 'copper',
+    USOIL: 'oil', UKOIL: 'oil', NATGAS: 'natgas',
+    EURUSD: 'eurusd', GBPUSD: 'gbpusd', USDJPY: 'jpyusd',
+    USDCHF: 'chfusd', USDCAD: 'cadusd',
+    AUDUSD: 'audusd', NZDUSD: 'nzdusd',
+    BTCUSD: 'btc', ETHUSD: 'ether'
+  };
+  return map[inst] || null;
+}
+
+// Builds the full intelligence payload Lumen Intraday sends to Sonnet.
+// All upstream module calls are bounded by their own caches so this assembly
+// does not multiply LLM cost on the master synthesis path. Fields that are
+// unavailable degrade gracefully to null or 'unavailable'.
+async function assembleIntradayIntel(inst, indicators) {
+  var II = (typeof window !== 'undefined' && window.LumenIntel) || {};
+  var cotAsset = lumenCotAssetFor(inst);
+
+  var calls = [];
+  // Wyckoff and regime are async (may trigger LLM); call them.
+  if (typeof II.wyckoff === 'function') calls.push(II.wyckoff(inst).catch(function () { return null; }));
+  else calls.push(Promise.resolve(null));
+  if (typeof II.regime === 'function')  calls.push(II.regime(inst).catch(function () { return null; }));
+  else calls.push(Promise.resolve(null));
+  if (typeof II.yields === 'function')  calls.push(II.yields().catch(function () { return null; }));
+  else calls.push(Promise.resolve(null));
+  if (typeof II.cot === 'function' && cotAsset) calls.push(II.cot(cotAsset).catch(function () { return null; }));
+  else calls.push(Promise.resolve(null));
+  if (typeof II.liquidity === 'function') calls.push(II.liquidity(inst).catch(function () { return null; }));
+  else calls.push(Promise.resolve(null));
+  if (typeof II.calendar === 'function') calls.push(II.calendar(inst).catch(function () { return null; }));
+  else calls.push(Promise.resolve(null));
+
+  var resolved = await Promise.all(calls);
+  var session = (typeof II.session === 'function') ? II.session() : null;
+  var portfolio = (typeof II.portfolio === 'function') ? II.portfolio() : null;
+
+  return {
+    instrument: inst,
+    timestamp: new Date().toISOString(),
+    indicators: indicators,
+    sentiment: wm_context.sentiment,
+    wyckoff: resolved[0],
+    regime: resolved[1],
+    real_yields: resolved[2],
+    cot: resolved[3],
+    liquidity: resolved[4],
+    calendar: resolved[5],
+    session: session,
+    portfolio: portfolio
+  };
+}
+
+// Builds a slimmer payload for the Lumen Scalper. Reads cached intel ONLY,
+// never triggers a fresh LLM call. The scalper runs every sixty seconds and
+// must not amplify the daily Sonnet budget.
+function assembleScalperIntel(inst, livePrice, indicators) {
+  var II = (typeof window !== 'undefined' && window.LumenIntel) || {};
+  var wyckoff = (II.wyckoff && II.wyckoff.cached) ? II.wyckoff.cached(inst) : null;
+  var regime  = (II.regime  && II.regime.cached)  ? II.regime.cached(inst)  : null;
+  var liquidity = (II.liquidity && II.liquidity.cached) ? II.liquidity.cached(inst) : null;
+  var calendar  = (II.calendar  && II.calendar.cached)  ? II.calendar.cached() : null;
+  var session = (typeof II.session === 'function') ? II.session() : null;
+
+  return {
+    instrument: inst,
+    price: livePrice,
+    indicators: indicators,
+    sentiment: wm_context.sentiment,
+    wyckoff: wyckoff,
+    regime: regime,
+    liquidity_above: liquidity ? liquidity.liquidity_above : null,
+    liquidity_below: liquidity ? liquidity.liquidity_below : null,
+    pre_event_caution: !!(calendar && calendar.pre_event_caution),
+    post_event_opportunity: !!(calendar && calendar.post_event_opportunity),
+    next_event: calendar ? calendar.next_event : null,
+    session: session,
+    weekend: isWeekend()
+  };
+}
+
+// Hard local gate: reject signals when the portfolio is at risk OR when a
+// new position would create or worsen a correlated cluster. Returns
+// { allowed: bool, reason: string }.
+function lumenPortfolioGate(inst, direction, portfolio) {
+  if (!portfolio || !portfolio.open_positions) return { allowed: true, reason: '' };
+  if (portfolio.total_risk_percentage > 6) {
+    return { allowed: false, reason: 'portfolio total risk above six percent' };
+  }
+  // Reject duplicate same direction trades on the same instrument across
+  // any source (Lumen Intraday, Lumen Scalper, Sim Trader).
+  var dup = portfolio.open_positions.find(function (p) {
+    return p.instrument === inst && p.direction === direction;
+  });
+  if (dup) {
+    return { allowed: false, reason: 'open ' + direction + ' on ' + inst + ' already exists in ' + dup.source };
+  }
+  return { allowed: true, reason: '' };
+}
+
+// Apply the session multiplier locally so the LLM cannot bypass it. The
+// multiplier scales the LLM's confidence into an effective confidence
+// before it is compared against the threshold.
+function applySessionMultiplier(rawConfidence, session) {
+  if (!session) return rawConfidence;
+  var m = typeof session.signal_confidence_multiplier === 'number'
+    ? session.signal_confidence_multiplier : 1.0;
+  return Math.max(0, Math.min(100, Math.round(rawConfidence * m)));
+}
+
+// Ask Sonnet for a BUY, SELL, or SKIP signal given the assembled intel
+// payload. Returns parsed JSON or null on failure.
+async function intradayDecide(inst, intel) {
   if (!lumBudget.checkAndConsume('intraday')) return null;
-  var prompt = 'Instrument: ' + inst + '. '
-    + 'Price: ' + indicators.price + '. '
-    + 'RSI fourteen: ' + indicators.rsi + '. '
-    + 'EMA twenty: ' + indicators.ema20 + '. '
-    + 'EMA fifty: ' + indicators.ema50 + '. '
-    + 'Trend (EMA twenty vs fifty): ' + indicators.trend + '. '
-    + 'Sentiment: ' + wm_context.sentiment.reading + ' at ' + wm_context.sentiment.score + '. '
-    + 'Return decision JSON.';
   try {
     var r = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        system: INTRADAY_DECISION_SYSTEM,
-        messages: [{ role: 'user', content: prompt }]
+        system: WINGMAN_MASTER_SYSTEM,
+        messages: [{ role: 'user', content: JSON.stringify(intel) }]
       })
     });
     if (!r.ok) return null;
@@ -259,14 +424,24 @@ async function atRunScan() {
       continue;
     }
 
-    var signal = await intradayDecide(inst, indicators);
+    var intel = await assembleIntradayIntel(inst, indicators);
+
+    // Pre event hard skip: do not enter new positions in the two hour
+    // window before a high impact release on this instrument.
+    if (intel && intel.calendar && intel.calendar.pre_event_caution) {
+      atAddLog('skip', 'Lumen Intraday: ' + inst + ' pre event caution. '
+        + (intel.calendar.next_event ? intel.calendar.next_event.event_name : 'high impact event imminent'));
+      continue;
+    }
+
+    var signal = await intradayDecide(inst, intel);
     if (!signal || typeof signal !== 'object') {
       atAddLog('skip', 'Lumen Intraday: ' + inst + ' decision call failed.');
       continue;
     }
 
     if (signal.action === 'SKIP') {
-      atAddLog('skip', 'Lumen Intraday: ' + inst + ' skip. ' + (signal.reason || 'no setup'));
+      atAddLog('skip', 'Lumen Intraday: ' + inst + ' skip. ' + (signal.skip_reason || signal.reason || 'no setup'));
       continue;
     }
 
@@ -275,19 +450,37 @@ async function atRunScan() {
       continue;
     }
 
-    var conf = typeof signal.confidence === 'number' ? signal.confidence : 0;
-    atAddLog('scan', 'Lumen Intraday: ' + inst + ' ' + signal.action + ' at confidence ' + conf + '. ' + (signal.reason || ''));
+    // Portfolio gate before considering as best signal.
+    var gate = lumenPortfolioGate(inst, signal.action, intel ? intel.portfolio : null);
+    if (!gate.allowed) {
+      atAddLog('skip', 'Lumen Intraday: ' + inst + ' ' + signal.action + ' blocked. ' + gate.reason + '.');
+      continue;
+    }
+
+    // Apply session multiplier locally to the LLM's stated confidence.
+    var rawConf = typeof signal.confidence === 'number' ? signal.confidence : 0;
+    var conf = applySessionMultiplier(rawConf, intel ? intel.session : null);
+    var sessionLabel = intel && intel.session ? intel.session.primary_session : 'unknown';
+
+    atAddLog('scan', 'Lumen Intraday: ' + inst + ' ' + signal.action
+      + ' raw ' + rawConf + ', effective ' + conf + ' (' + sessionLabel + '). '
+      + (signal.reason || ''));
 
     if (conf >= 75) {
       if (!bestSignal || conf > bestSignal.confidence) {
         bestSignal = {
           action: signal.action,
           confidence: conf,
+          rawConfidence: rawConf,
           sl: signal.sl,
           tp: signal.tp,
           reason: signal.reason || '',
+          key_risk: signal.key_risk || '',
           instrument: inst,
-          price: indicators.price
+          price: indicators.price,
+          intel: intel,
+          thesis_alignment: signal.thesis_alignment || null,
+          wyckoff_alignment: signal.wyckoff_alignment || null
         };
       }
     }
@@ -301,7 +494,8 @@ async function atRunScan() {
     atAddLog('skip', 'Lumen Intraday: no instrument cleared the seventy five confidence threshold this cycle.');
     return;
   }
-  atExecuteTrade(bestSignal.action, bestSignal.sl, bestSignal.tp, bestSignal.reason, bestSignal.instrument, bestSignal.price);
+  atExecuteTrade(bestSignal.action, bestSignal.sl, bestSignal.tp, bestSignal.reason,
+                 bestSignal.instrument, bestSignal.price, bestSignal);
 }
 
 // ── INTRADAY ENGINE LIFECYCLE ───────────────────────────────────────────────
@@ -447,7 +641,7 @@ function atRenderLog() {
   }).join('');
 }
 
-function atExecuteTrade(dir, sl, tp, reason, instrument, entryPrice) {
+function atExecuteTrade(dir, sl, tp, reason, instrument, entryPrice, signalCtx) {
   var lotSize = 5;
   var pair = instrument || atCurrentInst || 'BTCUSD';
   var entry = entryPrice || atCurrentPrice;
@@ -455,6 +649,8 @@ function atExecuteTrade(dir, sl, tp, reason, instrument, entryPrice) {
     atAddLog('skip', 'Lumen Intraday: ' + pair + ' execution skipped, no live price available.');
     return;
   }
+  var ctx = signalCtx || {};
+  var intel = ctx.intel || {};
   var pos = {
     id: Date.now(),
     pair: pair,
@@ -466,7 +662,32 @@ function atExecuteTrade(dir, sl, tp, reason, instrument, entryPrice) {
     lotSize: lotSize,
     lots: lotSize,
     time: new Date().toLocaleString(),
-    reason: reason
+    openedAt: Date.now(),
+    reason: reason,
+    // Intel snapshot at the moment of entry. Used by the pattern miner.
+    journal_context: {
+      raw_confidence: ctx.rawConfidence != null ? ctx.rawConfidence : null,
+      effective_confidence: ctx.confidence != null ? ctx.confidence : null,
+      key_risk: ctx.key_risk || null,
+      thesis_alignment: ctx.thesis_alignment || null,
+      wyckoff_alignment: ctx.wyckoff_alignment || null,
+      wyckoff_phase: intel.wyckoff ? intel.wyckoff.phase : null,
+      wyckoff_sub_phase: intel.wyckoff ? intel.wyckoff.sub_phase : null,
+      regime_label: intel.regime ? intel.regime.regime_label : null,
+      trend_character: intel.regime ? intel.regime.trend_character : null,
+      volatility_character: intel.regime ? intel.regime.volatility_character : null,
+      cot_bias: intel.cot ? intel.cot.cot_bias : null,
+      cot_percentile: intel.cot ? intel.cot.commercial_percentile_26w : null,
+      real_yield_direction: intel.real_yields ? intel.real_yields.direction_20d : null,
+      real_yield_level: intel.real_yields ? intel.real_yields.level_classification : null,
+      sentiment_reading: intel.sentiment ? intel.sentiment.reading : null,
+      sentiment_score: intel.sentiment ? intel.sentiment.score : null,
+      session: intel.session ? intel.session.primary_session : null,
+      session_multiplier: intel.session ? intel.session.signal_confidence_multiplier : null,
+      pre_event_caution: intel.calendar ? !!intel.calendar.pre_event_caution : false,
+      post_event_opportunity: intel.calendar ? !!intel.calendar.post_event_opportunity : false,
+      portfolio_health: intel.portfolio ? intel.portfolio.portfolio_health : null
+    }
   };
   atPositions.unshift(pos);
   localStorage.setItem('wm_at_positions', JSON.stringify(atPositions));
@@ -853,26 +1074,21 @@ function scalpRenderHistory() {
   }).join('');
 }
 
-// Ask Haiku for a scalp signal on one instrument given live price and
-// indicators when available. Returns parsed JSON or null on failure.
-async function scalpDecide(inst, price, indicators) {
+// Ask Haiku for a scalp signal given the assembled scalp intel payload.
+// The payload reads cached intel only and never triggers a fresh upstream
+// LLM call from the scalper hot path. Returns parsed JSON or null on
+// failure.
+async function scalpDecide(inst, intel) {
   if (!lumBudget.checkAndConsume('scalper')) return null;
-  var indParts = '';
-  if (indicators) {
-    indParts = ' RSI fourteen: ' + indicators.rsi
-      + '. EMA twenty: ' + indicators.ema20
-      + '. EMA fifty: ' + indicators.ema50
-      + '. Trend: ' + indicators.trend + '.';
-  }
-  var prompt = 'Instrument: ' + inst + '. Price: ' + price + '.' + indParts
-    + ' Sentiment: ' + wm_context.sentiment.reading + ' at ' + wm_context.sentiment.score + '. '
-    + 'Weekend: ' + isWeekend() + '. '
-    + 'Return scalp signal JSON.';
   try {
     var r = await fetch('/api/behaviour', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system: SCALP_SYSTEM, prompt: prompt, maxTokens: 400 })
+      body: JSON.stringify({
+        system: WINGMAN_SCALP_SYSTEM,
+        prompt: JSON.stringify(intel),
+        maxTokens: 400
+      })
     });
     if (!r.ok) return null;
     var d = await r.json();
@@ -921,7 +1137,18 @@ async function scalpRunScan() {
       indicators = await lumenIndicators(inst);
     }
 
-    var signal = await scalpDecide(inst, price, indicators);
+    // Build the scalper intel payload from cached upstream intelligence
+    // only. No upstream LLM calls are triggered here.
+    var intel = assembleScalperIntel(inst, price, indicators);
+
+    // Pre event hard skip on the scalper too.
+    if (intel.pre_event_caution) {
+      scalpAddLog('Lumen Scalper: ' + inst + ' pre event caution. '
+        + (intel.next_event ? intel.next_event.event_name : 'high impact event imminent'));
+      continue;
+    }
+
+    var signal = await scalpDecide(inst, intel);
     if (!signal || typeof signal !== 'object') {
       scalpAddLog('Lumen Scalper: ' + inst + ' no response from engine.');
       continue;
@@ -932,17 +1159,39 @@ async function scalpRunScan() {
       continue;
     }
 
-    var conf = typeof signal.confidence === 'number' ? signal.confidence : 0;
+    // Portfolio gate before applying threshold.
+    var portfolio = (window.LumenIntel && typeof window.LumenIntel.portfolio === 'function')
+      ? window.LumenIntel.portfolio() : null;
+    var gate = lumenPortfolioGate(inst, signal.action, portfolio);
+    if (!gate.allowed) {
+      scalpAddLog('Lumen Scalper: ' + inst + ' ' + signal.action + ' blocked. ' + gate.reason + '.');
+      continue;
+    }
+
+    // Apply session multiplier locally to the LLM's stated confidence.
+    var rawConf = typeof signal.confidence === 'number' ? signal.confidence : 0;
+    var conf = applySessionMultiplier(rawConf, intel.session);
     if ((signal.action === 'BUY' || signal.action === 'SELL') && conf >= threshold) {
-      scalpAddLog('Lumen scan: ' + inst + ' ' + signal.action + ' at confidence ' + conf + '. ' + (signal.entry_logic || ''));
-      scalpExecuteTrade(inst, signal.action, price, signal.sl, signal.tp, signal.lots || 0.02, signal.grade);
+      scalpAddLog('Lumen scan: ' + inst + ' ' + signal.action + ' raw ' + rawConf
+        + ', effective ' + conf + ' (' + (intel.session ? intel.session.primary_session : 'unknown') + '). '
+        + (signal.entry_logic || ''));
+      scalpExecuteTrade(inst, signal.action, price, signal.sl, signal.tp, signal.lots || 0.02, signal.grade, {
+        intel: intel,
+        rawConfidence: rawConf,
+        effectiveConfidence: conf,
+        entry_logic: signal.entry_logic || '',
+        key_risk: signal.key_risk || ''
+      });
     } else {
-      scalpAddLog('Lumen Scalper: ' + inst + ' confidence ' + conf + ' below ' + threshold + ' threshold. No entry.');
+      scalpAddLog('Lumen Scalper: ' + inst + ' raw ' + rawConf + ' effective ' + conf
+        + ' below ' + threshold + ' threshold. No entry.');
     }
   }
 }
 
-function scalpExecuteTrade(inst, dir, price, sl, tp, lots, grade) {
+function scalpExecuteTrade(inst, dir, price, sl, tp, lots, grade, signalCtx) {
+  var ctx = signalCtx || {};
+  var intel = ctx.intel || {};
   var pos = {
     id: Date.now(),
     instrument: inst,
@@ -952,11 +1201,130 @@ function scalpExecuteTrade(inst, dir, price, sl, tp, lots, grade) {
     tp: tp,
     lots: lots || 0.02,
     grade: grade || 'B',
-    openedAt: Date.now()
+    openedAt: Date.now(),
+    journal_context: {
+      raw_confidence: ctx.rawConfidence != null ? ctx.rawConfidence : null,
+      effective_confidence: ctx.effectiveConfidence != null ? ctx.effectiveConfidence : null,
+      entry_logic: ctx.entry_logic || null,
+      key_risk: ctx.key_risk || null,
+      wyckoff_phase: intel.wyckoff ? intel.wyckoff.phase : null,
+      regime_label: intel.regime ? intel.regime.regime_label : null,
+      trend_character: intel.regime ? intel.regime.trend_character : null,
+      volatility_character: intel.regime ? intel.regime.volatility_character : null,
+      sentiment_reading: intel.sentiment ? intel.sentiment.reading : null,
+      sentiment_score: intel.sentiment ? intel.sentiment.score : null,
+      session: intel.session ? intel.session.primary_session : null,
+      session_multiplier: intel.session ? intel.session.signal_confidence_multiplier : null,
+      pre_event_caution: !!intel.pre_event_caution,
+      post_event_opportunity: !!intel.post_event_opportunity,
+      weekend: !!intel.weekend
+    }
   };
   scalpPositions.unshift(pos);
   if (scalpPositions.length > 20) scalpPositions.length = 20;
   localStorage.setItem('wm_scalp_positions', JSON.stringify(scalpPositions));
   scalpAddLog('Lumen opened ' + inst + ' ' + dir + ' ' + (lots || 0.02) + ' lots at ' + price + '. SL ' + (sl != null ? sl : 'none') + ' TP ' + (tp != null ? tp : 'none') + '.');
   scalpRenderPositions();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PATTERN MINING
+// ───────────────────────────────────────────────────────────────────────────
+// Aggregates closed trade context across both Lumen engines and asks Haiku
+// once per UTC week to surface conditions that produced wins, conditions
+// that produced losses, and concrete recommendations. Result is cached in
+// localStorage under wm_lumen_patterns_<isoweek> for 7 days.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function lumenIsoWeek() {
+  var d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return d.getUTCFullYear() + '-W' + String(weekNo).padStart(2, '0');
+}
+
+function lumenPatternSummary() {
+  var atHist    = JSON.parse(localStorage.getItem('wm_at_history')    || '[]');
+  var scalpHist = JSON.parse(localStorage.getItem('wm_scalp_history') || '[]');
+  var all = atHist.concat(scalpHist);
+
+  // Bucket by intel context fields and tally wins, losses, average pnl.
+  function bucketBy(field) {
+    var buckets = {};
+    all.forEach(function (t) {
+      if (!t || !t.journal_context) return;
+      var key = t.journal_context[field] || 'unknown';
+      if (!buckets[key]) buckets[key] = { trades: 0, wins: 0, pnl: 0 };
+      buckets[key].trades += 1;
+      var pnl = typeof t.pnl === 'number' ? t.pnl : 0;
+      if (pnl > 0) buckets[key].wins += 1;
+      buckets[key].pnl += pnl;
+    });
+    Object.keys(buckets).forEach(function (k) {
+      var b = buckets[k];
+      b.win_rate = b.trades ? Number(((b.wins / b.trades) * 100).toFixed(1)) : 0;
+      b.avg_pnl  = b.trades ? Number((b.pnl / b.trades).toFixed(2)) : 0;
+    });
+    return buckets;
+  }
+
+  return {
+    total_closed: all.length,
+    by_wyckoff_phase: bucketBy('wyckoff_phase'),
+    by_regime_label:  bucketBy('regime_label'),
+    by_session:       bucketBy('session'),
+    by_cot_bias:      bucketBy('cot_bias'),
+    by_real_yield_direction: bucketBy('real_yield_direction')
+  };
+}
+
+async function lumenMinePatterns(force) {
+  var cacheKey = 'wm_lumen_patterns_' + lumenIsoWeek();
+  if (!force) {
+    try {
+      var cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      if (cached && cached.summary) return cached;
+    } catch (_) { /* ignore */ }
+  }
+  var summary = lumenPatternSummary();
+  if (summary.total_closed < 10) {
+    return { summary: summary, narrative: 'Pattern mining waits until at least ten trades have closed.', samples: summary.total_closed };
+  }
+
+  var prompt = 'You are reviewing a Wingman trading journal. Identify the conditions under which '
+    + 'the trader performs best, the conditions where performance deteriorates, and any behavioural '
+    + 'patterns visible in confidence calibration or session timing. Be direct. Surface the truth. '
+    + 'Output JSON: {"strengths": [string], "weaknesses": [string], "actions": [string], "narrative": string under three hundred characters}.\n\n'
+    + 'Aggregated journal data:\n' + JSON.stringify(summary, null, 2);
+
+  try {
+    var r = await fetch('/api/behaviour', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: 'You analyse Wingman trade journals. Return only valid JSON. No prose outside JSON. No hyphens.',
+        prompt: prompt,
+        maxTokens: 600
+      })
+    });
+    if (!r.ok) throw new Error('pattern call status ' + r.status);
+    var d = await r.json();
+    var text = d && d.content && d.content[0] && d.content[0].text;
+    var parsed = safeParseJSON(text);
+    if (!parsed) throw new Error('pattern parse failed');
+    var payload = {
+      summary: summary,
+      strengths: parsed.strengths || [],
+      weaknesses: parsed.weaknesses || [],
+      actions: parsed.actions || [],
+      narrative: parsed.narrative || '',
+      mined_at: new Date().toISOString()
+    };
+    try { localStorage.setItem(cacheKey, JSON.stringify(payload)); } catch (_) {}
+    return payload;
+  } catch (e) {
+    return { summary: summary, narrative: 'Pattern mining unavailable: ' + e.message };
+  }
 }

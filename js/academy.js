@@ -2303,7 +2303,7 @@ function acadPassportBuildCard(stats, identity, passportId, traderName) {
 
     // Top section
     '<div class="pp-top">' +
-      '<img src="wingmanlogo1.png" alt="Wingman" class="pp-logo">' +
+      '<img src="img/wingman-mark.svg" alt="Wingman" class="pp-logo">' +
       '<div class="pp-wordmark">TRADER PASSPORT</div>' +
       '<div class="pp-id">' + passportId + '</div>' +
     '</div>' +
@@ -2335,7 +2335,7 @@ function acadPassportBuildCard(stats, identity, passportId, traderName) {
     '<div class="pp-bottom">' +
       '<div class="pp-bottom-divider"></div>' +
       '<div class="pp-bottom-inner">' +
-        '<img src="wingmanlogo1.png" alt="Wingman" class="pp-bottom-logo">' +
+        '<img src="img/wingman-mark.svg" alt="Wingman" class="pp-bottom-logo">' +
         '<span class="pp-bottom-text">Trained on Wingman</span>' +
         '<span class="pp-bottom-url">wingman.app</span>' +
       '</div>' +

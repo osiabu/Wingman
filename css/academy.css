@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ── LOGO ─────────────────────────────────────────────────────────────── */
-:root { --logo-img: url("wingmanlogo.png"); }
+:root { --logo-img: url("../img/wingman-mark.svg"); }
 .wm-logo { background: var(--logo-img) center/contain no-repeat; display:inline-block; }
 
 /* ── TAB SHELL ────────────────────────────────────────────────────────── */

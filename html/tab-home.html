@@ -3,112 +3,230 @@
       <!-- ══ HOME COMMAND CENTRE ══ -->
 
       <!-- Page header -->
-      <div id="home-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px;">
-        <div style="font-family:var(--font-display);font-size:22px;font-weight:800;letter-spacing:-0.5px;color:var(--text);">WINGMAN</div>
-        <div id="home-utc-clock" style="font-family:var(--font-mono);font-size:13px;color:var(--teal);letter-spacing:2px;"></div>
+      <div class="home-header">
+        <div class="home-mark">
+          <span class="home-wordmark">Wingman</span>
+          <span class="home-divider"></span>
+          <span class="home-eyebrow">Intelligence Console</span>
+        </div>
+        <div id="home-utc-clock" class="home-clock">00:00:00 UTC</div>
       </div>
 
-      <!-- Ticker strip (snapshot-based, 30s interval) -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-          <div id="price-live-dot" style="width:6px;height:6px;border-radius:50%;background:#00E87A;box-shadow:0 0 6px #00E87A;animation:pulse 1.5s infinite;display:none;"></div>
-          <span style="font-family:var(--font-mono);font-size:8px;color:var(--text3);letter-spacing:1px;">LIVE</span>
+      <!-- Live ticker strip -->
+      <div class="home-ticker-row">
+        <div class="home-live-flag">
+          <span id="price-live-dot" class="home-live-dot"></span>
+          <span class="home-live-label">Live</span>
         </div>
-        <div id="mobile-price-tiles" class="price-ticker" style="flex:1;">
-          <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);" class="pulse">Fetching prices...</div>
+        <div id="mobile-price-tiles" class="price-ticker home-ticker">
+          <div class="home-ticker-loading">Tuning into the markets.</div>
         </div>
-        <div id="mobile-price-stamp" style="font-family:var(--font-mono);font-size:8px;color:var(--text3);flex-shrink:0;"></div>
+        <div id="mobile-price-stamp" class="home-ticker-stamp"></div>
       </div>
 
-      <!-- Hero status bar -->
-      <div id="home-hero-bar" style="display:flex;align-items:center;gap:0;margin-bottom:12px;background:rgba(13,17,23,0.72);border:1px solid rgba(0,201,177,0.18);border-radius:10px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:10px 16px;flex-wrap:wrap;gap:6px;">
-        <!-- Session -->
-        <div style="display:flex;align-items:center;gap:7px;padding-right:16px;border-right:1px solid var(--border2);flex-shrink:0;">
-          <div id="home-session-dot" style="width:7px;height:7px;border-radius:50%;background:var(--text4);flex-shrink:0;transition:background 0.4s;"></div>
-          <div>
-            <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;margin-bottom:1px;">SESSION</div>
-            <div id="home-session-label" style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-weight:600;">—</div>
+      <!-- Status strip -->
+      <div class="home-status">
+        <div class="home-status-cell">
+          <span class="home-status-label">Session</span>
+          <div class="home-status-row">
+            <span id="home-session-dot" class="home-status-dot"></span>
+            <span id="home-session-label" class="home-status-value">Off hours</span>
           </div>
         </div>
-        <!-- Fear & Greed -->
-        <div style="display:flex;align-items:center;gap:7px;padding:0 16px;border-right:1px solid var(--border2);flex-shrink:0;">
-          <div>
-            <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;margin-bottom:1px;">FEAR & GREED</div>
-            <div id="home-fng-display" style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-weight:600;">—</div>
-          </div>
+        <div class="home-status-cell">
+          <span class="home-status-label">Fear and Greed</span>
+          <span id="home-fng-display" class="home-status-value">Standby</span>
         </div>
-        <!-- Market Pulse -->
-        <div style="display:flex;align-items:center;gap:7px;padding:0 16px;border-right:1px solid var(--border2);flex-shrink:0;">
-          <div>
-            <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;margin-bottom:1px;">MARKET PULSE</div>
-            <div id="home-pulse-label" style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--teal);">—</div>
-          </div>
+        <div class="home-status-cell">
+          <span class="home-status-label">Market Pulse</span>
+          <span id="home-pulse-label" class="home-status-value">Standby</span>
         </div>
-        <!-- Scalp positions -->
-        <div style="display:flex;align-items:center;gap:7px;padding-left:16px;flex-shrink:0;">
-          <div>
-            <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;margin-bottom:1px;">SCALP POSITIONS</div>
-            <div id="home-scalp-pos" style="font-family:var(--font-mono);font-size:11px;color:var(--text);font-weight:600;">0 / 5</div>
-          </div>
+        <div class="home-status-cell">
+          <span class="home-status-label">Open Exposure</span>
+          <span id="home-portfolio-state" class="home-status-value">No positions open</span>
         </div>
-        <div style="flex:1;"></div>
-        <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1px;" id="home-hero-refresh-stamp"></div>
+        <div class="home-status-cell">
+          <span class="home-status-label">Next Event</span>
+          <span id="home-next-event" class="home-status-value">Calendar quiet</span>
+        </div>
+        <div class="home-status-cell home-status-cell-end">
+          <span class="home-status-label">Refreshed</span>
+          <span id="home-hero-refresh-stamp" class="home-status-value home-status-value-quiet">just now</span>
+        </div>
       </div>
 
-      <!-- Feed + Actions row -->
-      <div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-start;flex-wrap:wrap;">
+      <!-- ══ SECTION: THE MARKET, RIGHT NOW ══ -->
+      <section class="home-section">
+        <header class="home-section-head">
+          <div>
+            <h1 class="home-display">The market, right now.</h1>
+            <p class="home-display-caption">A reading of phase, regime, positioning and liquidity for the instruments under Lumen's watch this session.</p>
+          </div>
+          <div class="home-section-meta">
+            <span class="home-section-eyebrow">Snapshot</span>
+            <span id="home-snapshot-stamp" class="home-section-stamp">awaiting first read</span>
+          </div>
+        </header>
 
-        <!-- LEFT: Opportunity feed (2/3) -->
-        <div style="flex:2;min-width:200px;">
-          <div style="font-family:var(--font-mono);font-size:8px;color:var(--teal);letter-spacing:2px;margin-bottom:8px;">OPPORTUNITY FEED</div>
-          <div id="home-opportunity-feed">
-            <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px;text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--text3);">Start the Scalp Engine to see live opportunities here.</div>
+        <div id="home-intel-grid" class="home-intel-grid">
+          <!-- populated by home_refreshIntelSnapshot -->
+        </div>
+      </section>
+
+      <!-- ══ SECTION: OPEN POSITIONS LEDGER ══ -->
+      <section class="home-section">
+        <header class="home-section-head">
+          <div>
+            <h2 class="home-subdisplay">Live exposure.</h2>
+            <p class="home-subdisplay-caption">Every open position across the Intraday engine, the Scalp engine and the Sim Trader, with a running profit and loss read.</p>
+          </div>
+          <div class="home-section-meta">
+            <span class="home-section-eyebrow">Ledger</span>
+            <span id="home-ledger-stamp" class="home-section-stamp">no positions open</span>
+          </div>
+        </header>
+
+        <div id="home-ledger" class="home-ledger">
+          <div class="home-ledger-empty">No open positions. Start an engine from the launch panel below.</div>
+        </div>
+      </section>
+
+      <!-- ══ SECTION: TWO COLUMN, CALENDAR + ACTIVITY ══ -->
+      <section class="home-section home-twocol">
+
+        <div class="home-col">
+          <header class="home-section-head home-section-head-tight">
+            <div>
+              <h2 class="home-subdisplay">Upcoming risk.</h2>
+              <p class="home-subdisplay-caption">High impact releases in the next two hours. Lumen tightens execution around these.</p>
+            </div>
+            <span class="home-section-eyebrow">Calendar</span>
+          </header>
+          <div id="home-calendar-strip" class="home-calendar-strip">
+            <div class="home-calendar-empty">No high impact events on the horizon.</div>
           </div>
         </div>
 
-        <!-- RIGHT: Quick-action launcher (1/3) -->
-        <div style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:8px;">
-          <div style="font-family:var(--font-mono);font-size:8px;color:var(--text4);letter-spacing:2px;margin-bottom:0px;">QUICK LAUNCH</div>
-          <button class="home-action-btn" onclick="navigate('autotrader',null);setTimeout(()=>{const b=document.getElementById('scalp-start-btn');if(b&&b.textContent.includes('SCALP'))b.click();},400);">SCALP ENGINE</button>
-          <button class="home-action-btn" onclick="navigate('markets',null);setTimeout(()=>{marketSubTab('scan',null);setTimeout(()=>{const b=document.getElementById('scan-btn');if(b)b.click();},200);},400);">MARKET SCAN</button>
-          <button class="home-action-btn" onclick="navigate('chart',null);">OPEN CHART</button>
-          <button class="home-action-btn" onclick="navigate('academy',document.querySelector('.nav-item[onclick*=academy]'));">ACADEMY</button>
+        <div class="home-col">
+          <header class="home-section-head home-section-head-tight">
+            <div>
+              <h2 class="home-subdisplay">Lumen activity.</h2>
+              <p class="home-subdisplay-caption">The most recent reads from both engines. Skips, signals and executions.</p>
+            </div>
+            <span class="home-section-eyebrow">Live feed</span>
+          </header>
+          <div id="home-activity-feed" class="home-activity-feed">
+            <div class="home-activity-empty">Both engines idle. Start one from the launch panel to populate this feed.</div>
+          </div>
+        </div>
 
-          <!-- Today's performance summary -->
-          <div id="home-perf-summary" style="background:rgba(13,17,23,0.7);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-top:2px;">
-            <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:1.5px;margin-bottom:6px;">TODAY'S SCALP PERFORMANCE</div>
-            <div style="display:flex;justify-content:space-between;gap:6px;">
-              <div style="text-align:center;">
-                <div id="home-perf-trades" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);">0</div>
-                <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);">TRADES</div>
-              </div>
-              <div style="text-align:center;">
-                <div id="home-perf-wr" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);">—</div>
-                <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);">WIN RATE</div>
-              </div>
-              <div style="text-align:center;">
-                <div id="home-perf-pnl" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);">$0</div>
-                <div style="font-family:var(--font-mono);font-size:7px;color:var(--text4);">NET P&L</div>
-              </div>
+      </section>
+
+      <!-- ══ SECTION: TWO COLUMN, CORRELATION + INSIGHTS ══ -->
+      <section class="home-section home-twocol">
+
+        <div class="home-col">
+          <header class="home-section-head home-section-head-tight">
+            <div>
+              <h2 class="home-subdisplay">Correlation pulse.</h2>
+              <p class="home-subdisplay-caption">Pairs whose recent correlation has parted from prior behaviour.</p>
+            </div>
+            <span class="home-section-eyebrow">Cross asset</span>
+          </header>
+          <div id="home-correlation-pulse" class="home-correlation-pulse">
+            <div class="home-correlation-empty">Correlation matrix will populate after the first scan.</div>
+          </div>
+        </div>
+
+        <div class="home-col">
+          <header class="home-section-head home-section-head-tight">
+            <div>
+              <h2 class="home-subdisplay">Weekly insights.</h2>
+              <p class="home-subdisplay-caption">What worked, what did not, and where to lean next week.</p>
+            </div>
+            <button id="home-insights-run" class="home-insights-btn" onclick="home_runInsights()">Mine the week</button>
+          </header>
+          <div id="home-insights-body" class="home-insights-body">
+            <div class="home-insights-empty">Press <em>Mine the week</em> to surface this week's pattern read. Needs at least ten closed Lumen trades.</div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ══ SECTION: LAUNCH + TODAY'S PERFORMANCE ══ -->
+      <section class="home-section home-twocol">
+
+        <div class="home-col home-col-wide">
+          <header class="home-section-head home-section-head-tight">
+            <div>
+              <h2 class="home-subdisplay">Launch.</h2>
+              <p class="home-subdisplay-caption">One click into a working tool.</p>
+            </div>
+          </header>
+          <div class="home-launch-grid">
+            <button class="home-launch-btn" onclick="navigate('autotrader',null);setTimeout(function(){var b=document.getElementById('scalp-start-btn');if(b&amp;&amp;b.textContent.indexOf('SCALP')!==-1)b.click();},400);">
+              <span class="home-launch-eyebrow">Scalp</span>
+              <span class="home-launch-title">Sixty second engine</span>
+              <span class="home-launch-caption">Multi instrument scanning on a one minute cadence.</span>
+            </button>
+            <button class="home-launch-btn" onclick="navigate('autotrader',null);setTimeout(function(){var b=document.getElementById('at-start-btn');if(b)b.click();},400);">
+              <span class="home-launch-eyebrow">Intraday</span>
+              <span class="home-launch-title">Thirty minute engine</span>
+              <span class="home-launch-caption">Layered intelligence across three picks per session.</span>
+            </button>
+            <button class="home-launch-btn" onclick="navigate('markets',null);setTimeout(function(){if(typeof marketSubTab==='function')marketSubTab('scan',null);setTimeout(function(){var b=document.getElementById('scan-btn');if(b)b.click();},200);},400);">
+              <span class="home-launch-eyebrow">Markets</span>
+              <span class="home-launch-title">Run a fresh scan</span>
+              <span class="home-launch-caption">Sentiment, COT and macro framing across the universe.</span>
+            </button>
+            <button class="home-launch-btn" onclick="navigate('academy',document.querySelector('.nav-item[onclick*=academy]'));">
+              <span class="home-launch-eyebrow">Academy</span>
+              <span class="home-launch-title">Continue training</span>
+              <span class="home-launch-caption">Stage progression and graded simulation.</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="home-col">
+          <header class="home-section-head home-section-head-tight">
+            <div>
+              <h2 class="home-subdisplay">Today.</h2>
+              <p class="home-subdisplay-caption">Closed scalp results since the day rolled over.</p>
+            </div>
+          </header>
+          <div class="home-perf">
+            <div class="home-perf-row">
+              <span class="home-perf-label">Trades</span>
+              <span id="home-perf-trades" class="home-perf-value">0</span>
+            </div>
+            <div class="home-perf-row">
+              <span class="home-perf-label">Win rate</span>
+              <span id="home-perf-wr" class="home-perf-value">0%</span>
+            </div>
+            <div class="home-perf-row">
+              <span class="home-perf-label">Net P and L</span>
+              <span id="home-perf-pnl" class="home-perf-value">$0</span>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Wingman Instinct Quote -->
-      <div id="home-instinct-panel" style="border-left:3px solid var(--teal);padding:12px 16px;background:rgba(0,201,177,0.04);border-radius:0 8px 8px 0;margin-bottom:14px;">
-        <div id="home-instinct-text" style="font-family:var(--font-display);font-style:italic;font-size:14px;color:var(--text2);line-height:1.6;">Wingman is watching the markets. Start the Scalp Engine to activate live intelligence.</div>
-      </div>
+      </section>
 
-      <!-- LEGAL FOOTER -->
-      <div style="margin-top:24px;padding:12px 16px;background:var(--bg1);border-top:1px solid var(--border);font-family:var(--font-mono);font-size:7px;color:var(--text4);letter-spacing:0.3px;">
-        <div style="margin-bottom:8px;line-height:1.6;">Wingman is a trading education platform provided by Aperintel. Not financial advice. Simulated performance does not represent real trading results. Wingman does not provide financial, investment, or trading advice and is not regulated by any financial authority.</div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-          <button onclick="openLegalModal('privacy')" style="background:none;border:none;color:var(--teal);cursor:pointer;text-decoration:underline;padding:0;font-family:var(--font-mono);font-size:7px;">Privacy Policy</button>
-          <span style="color:var(--border);">·</span>
-          <button onclick="openLegalModal('terms')" style="background:none;border:none;color:var(--teal);cursor:pointer;text-decoration:underline;padding:0;font-family:var(--font-mono);font-size:7px;">Terms of Use</button>
-          <span style="color:var(--border);margin-left:auto;">Copyright 2026 Aperintel</span>
+      <!-- ══ INSTINCT QUOTE ══ -->
+      <section class="home-instinct">
+        <span class="home-instinct-eyebrow">Wingman is reading the tape</span>
+        <p id="home-instinct-text" class="home-instinct-text">Wingman is watching the markets. Start the Scalp Engine to activate live intelligence.</p>
+      </section>
+
+      <!-- ══ LEGAL FOOTER ══ -->
+      <footer class="home-footer">
+        <p class="home-footer-body">Wingman is a trading education platform provided by Aperintel. This is not financial advice. Simulated performance does not represent real trading results. Wingman is not regulated by any financial authority.</p>
+        <div class="home-footer-row">
+          <button onclick="openLegalModal('privacy')" class="home-footer-link">Privacy Policy</button>
+          <span class="home-footer-sep">·</span>
+          <button onclick="openLegalModal('terms')" class="home-footer-link">Terms of Use</button>
+          <span class="home-footer-copy">Copyright 2026 Aperintel</span>
         </div>
-      </div>
+      </footer>
 
     </div><!-- /tab-home -->
