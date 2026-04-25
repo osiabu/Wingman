@@ -1,10 +1,12 @@
-// GET /api/cot?asset=gold&weeks=26
-// Proxies the CFTC Public Reporting Environment (Socrata) for the Legacy COT
-// Combined report (futures plus options). Used by the Lumen COT intelligence
-// module and the Markets tab.
+// Helper for /api/intel?source=cot. Proxies the CFTC Public Reporting
+// Environment (Socrata) for the Legacy COT Combined report (futures plus
+// options). Used by the Lumen COT intelligence module and the Markets tab.
 //
 // Cache: 7 day TTL. CFTC publishes Friday at 15:30 EST; intra week the data
 // does not change. A single shared Upstash entry covers every Wingman client.
+//
+// Files starting with an underscore are not routed by Vercel, keeping the
+// project under the 12 function cap on the Hobby plan.
 
 import { cacheGet, cacheSet } from './_redis.js';
 
@@ -28,7 +30,7 @@ const CONTRACT_CODES = {
   spx:      '13874+', // S&P 500 STOCK INDEX - CHICAGO MERCANTILE EXCHANGE (kept for completeness)
 };
 
-export default async function handler(req, res) {
+export async function cotHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });

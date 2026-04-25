@@ -66,7 +66,7 @@
     if (cached) return cached;
 
     try {
-      var r = await fetch('/api/cot?asset=' + encodeURIComponent(asset) + '&weeks=26');
+      var r = await fetch('/api/intel?source=cot&asset=' + encodeURIComponent(asset) + '&weeks=26');
       if (!r.ok) throw new Error('cot status ' + r.status);
       var d = await r.json();
       if (!d || !Array.isArray(d.series) || d.series.length === 0) throw new Error('cot empty');

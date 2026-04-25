@@ -43,7 +43,7 @@
   }
 
   async function fetchSeries(series, days) {
-    var r = await fetch('/api/fred?series=' + series + '&days=' + (days || 60));
+    var r = await fetch('/api/intel?source=fred&series=' + series + '&days=' + (days || 60));
     if (!r.ok) throw new Error('FRED ' + series + ' status ' + r.status);
     var d = await r.json();
     if (!d || !Array.isArray(d.observations) || d.observations.length === 0) {

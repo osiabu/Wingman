@@ -1,6 +1,6 @@
-// GET /api/fred?series=DFII10&days=60
-// Proxies the St Louis Fed FRED observations endpoint with Upstash Redis
-// caching. Used by the Lumen real yields engine.
+// Helper for /api/intel?source=fred. Proxies the St Louis Fed FRED
+// observations endpoint with Upstash Redis caching. Used by the Lumen real
+// yields engine.
 //
 // Series of interest:
 //   DFII10  10 Year Treasury Inflation Indexed (real yield)
@@ -10,12 +10,15 @@
 //
 // Cache: 24 hour TTL. FRED publishes daily and a single shared cache covers
 // every Wingman client. Requires FRED_API_KEY in Vercel env.
+//
+// Files starting with an underscore are not routed by Vercel, keeping the
+// project under the 12 function cap on the Hobby plan.
 
 import { cacheGet, cacheSet } from './_redis.js';
 
 const ALLOWED = new Set(['DFII10', 'DGS10', 'DTWEXBGS', 'T10YIE', 'CPIAUCSL']);
 
-export default async function handler(req, res) {
+export async function fredHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
