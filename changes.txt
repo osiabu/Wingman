@@ -1,0 +1,192 @@
+STATUS
+------
+Lumen Intraday and Lumen Scalper rewritten end to end. The Phase 2
+multi model pipeline that was live but never reaching a server has
+been replaced with a clean Vercel only architecture. Cloudflare
+Worker retired, kept on disk but no longer called.
+
+FILES TOUCHED (this session)
+----------------------------
+api/scan.js              Accepts optional model body param. Default
+                         claude-opus-4-7 (was 4-6). Allowed set
+                         restricts to Opus 4.7, Sonnet 4.6, Haiku 4.5
+                         to prevent arbitrary model pass through.
+
+api/sentiment.js         Added Gemini 2.5 Flash final fallback.
+                         Chain is now Grok 3 → Claude Haiku 4.5 →
+                         Gemini 2.5 Flash. Earlier the Claude branch
+                         was the last hop with no Gemini safety net.
+
+worker/index.js          claude-opus-4-6 → claude-opus-4-7. Defensive
+                         only; nothing in the client calls the Worker
+                         any more.
+
+js/utils.js              Added Lumen helpers: isWeekend, safeParseJSON,
+                         computeEMA, computeRSI, lumenIndicators.
+                         lumenIndicators reuses the existing
+                         fetchCandles helper from prices.js so candle
+                         routing through Binance REST (crypto) and the
+                         Vercel /api/candles Redis cache (everything
+                         else) stays as is.
+
+js/lumen.js              Full rewrite. See LUMEN ARCHITECTURE in
+                         CLAUDE.md for the new design. Highlights:
+                         - All fetch URLs corrected (no more
+                           /api/api/... 404 loops)
+                         - All fictional model strings removed
+                           (gemini-3.1-*, grok-3-fast,
+                           grok-3-reasoning gone)
+                         - Intraday picks the day's three instruments
+                           via Sonnet 4.6 once per UTC day
+                         - Weekend mode (Sat or Sun UTC): Intraday
+                           filters to crypto only, Scalper raises the
+                           confidence threshold to seventy five and
+                           filters selected instruments to crypto
+                         - Real RSI fourteen, EMA twenty, EMA fifty
+                           computed from the last sixty fifteen minute
+                           candles for Intraday
+                         - Scalper indicators only computed for
+                           crypto (Binance REST is free) to protect
+                           the TwelveData free tier
+                         - Schema unified: both engines emit
+                           {action, confidence, sl, tp, ...}
+                         - safeParseJSON wraps every LLM response
+                         - Daily budget tracker (lumBudget) protects
+                           against runaway spend; localStorage keys
+                           wm_lum_budget and wm_lum_budget_day
+
+html/tab-autotrader.html Engine status badge text updated.
+                         "ENGINE IDLE" → "INTRADAY IDLE".
+                         Empty log placeholder updated.
+                         Start button label "▶ START" → "▶ INTRADAY".
+
+index.html               Sidebar nav "Autotrader" → "Lumen". Mobile
+                         nav "AUTO" → "LUMEN". The tab key remains
+                         "autotrader" so internal routing is
+                         unchanged.
+
+CLAUDE.md                Model selection table refreshed to
+                         claude-opus-4-7. New LUMEN ARCHITECTURE
+                         section replaces the stale Phase 2 multi
+                         model pipeline section. Documents routing,
+                         fallback chains, weekend mode, instrument
+                         universe, daily budgets, indicator pipeline,
+                         and the Worker retirement.
+
+changes.txt              New file. This handover record.
+
+DECISIONS LANDED
+================
+
+Naming
+------
+The two Lumen engines are now branded:
+  - Lumen Intraday: thirty minute scans, multi instrument, Claude
+    Sonnet 4.6 decision model. (Was "Autotrader".)
+  - Lumen Scalper:  sixty second scans, user selected instruments,
+    Claude Haiku 4.5 decision model. (Unchanged.)
+
+Intraday is the precise financial term for entries opened and closed
+within a single trading day. Scalper is the standard industry term
+for sub five minute holds. The sidebar nav was renamed to "Lumen"
+since the tab actually contains both engines.
+
+Worker retirement
+-----------------
+The Cloudflare Worker at worker/index.js was duplicated by Vercel
+routes that also have Upstash Redis caching the Worker lacks. All
+Lumen calls now hit Vercel directly. The Worker is left in place
+but no client code calls it. Safe to delete after a stable deploy
+or two.
+
+Speed sensitive paths bypass both gateways:
+  - Crypto prices: Binance WebSocket direct from browser
+  - Forex and metals prices: Deriv WebSocket direct from browser
+  - Crypto candles: Binance REST direct
+  - Forex/metals/indices/commodities prices: cached
+    /api/prices route (Vercel + Redis)
+  - Non crypto candles: cached /api/candles route (Vercel + Redis)
+
+Models
+------
+  - Big picture market intelligence (Markets tab via /api/scan
+    default): claude-opus-4-7 (upgraded from 4.6)
+  - Lumen Intraday: claude-sonnet-4-6 via /api/scan body model param
+    (Opus would be overkill at thirty minute cadence)
+  - Lumen Scalper: claude-haiku-4-5-20251001 via /api/behaviour
+  - Sentiment poller: routed through /api/sentiment which fans out
+    Grok 3 → Claude Haiku 4.5 → Gemini 2.5 Flash server side
+  - Server side fallback to Gemini 2.5 Flash on every Lumen route
+
+Confidence thresholds and risk
+------------------------------
+  - Intraday: seventy five and above. Picks the highest cleared
+    signal across the day's three instruments per cycle. Maximum
+    three open positions.
+  - Scalper weekday: sixty five and above
+  - Scalper weekend: seventy five and above (thinner liquidity)
+
+Daily budgets (UTC reset)
+-------------------------
+  - Intraday: 200 calls
+  - Scalper:  1500 calls
+  - Sentiment: 300 calls
+  - Selection: 30 calls
+
+WHAT WAS BROKEN BEFORE THIS SESSION
+====================================
+
+Five distinct bugs all reinforcing each other:
+
+1. URL prefix bug. WORKER_URL was '/api'. Lumen built fetches as
+   WORKER_URL + '/api/gemini' giving '/api/api/gemini' (404). Every
+   Lumen call hit a Vercel 404. Other modules used WORKER_URL +
+   '/scan' which resolved to '/api/scan' correctly, so markets and
+   academy worked. Only Lumen broke.
+
+2. Fictional model strings. Lumen referenced gemini-3.1-flash-lite-
+   preview, gemini-3.1-pro-preview, grok-3-fast, grok-3-reasoning.
+   None of these exist. Every Gemini and Grok call would have
+   returned 400 even if the URL was correct.
+
+3. Fallback chains depended on broken models. Sentiment, dataprep,
+   decision, and scalp chains all started with a Gemini 3.1 step
+   that failed, then attempted Grok 3 fast (does not exist), then
+   Claude via the wrong URL.
+
+4. Hardcoded fake indicators. atRunScan passed
+   {price, rsi: 62, ema20: 59000, ema50: 58500} to the LLM. Every
+   scan asked Sonnet to make a $5,000 lot decision on constant
+   numbers.
+
+5. Schema mismatch. DECISION_SYSTEM asked for {verdict, ...} while
+   atRunScan checked result.verdict. SCALP_SYSTEM asked for
+   {action, ...} while scalpRunScan checked signal.action. Without
+   defensive parsing, the autotrader silently swallowed every
+   exception and the engine ran but never traded.
+
+NEXT STEP PROMPT
+================
+Test in the browser: load the deployed Wingman, click ▶ INTRADAY on
+the Lumen tab, watch the log for "Lumen Intraday active" then
+"Lumen pick: ..." then per instrument scan messages. Within thirty
+minutes you should see either an EXECUTED trade or a clear "no
+instrument cleared the seventy five confidence threshold" skip
+message. Click the purple SCALP button and within five seconds you
+should see "Lumen scan: BTCUSD at <price>" then a decision message
+every minute.
+
+If trades start firing, the next priority is to verify the SL and
+TP plumbing actually triggers position closes correctly. Earlier
+fix commit 2592e73 addressed TP/SL not triggering, but I have not
+manually verified that fix carries through with the new
+multi instrument execution path.
+
+If there is a spurious 503 on /api/sentiment after this deploy, the
+likely cause is a missing GEMINI_API_KEY env var on Vercel (the
+fallback chain was extended to Gemini in this session). Confirm
+the env var exists before debugging anywhere else.
+
+Worker can be deleted from disk after one or two days of stable
+operation, but it is not in any client load path so leaving it
+is harmless.

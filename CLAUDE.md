@@ -1,3 +1,15 @@
+# Claude Code Project Rules
+- **Memory Management**: This project uses a "Clean Slate" rotation. Do not rely on session history for context.
+- **Source of Truth**: Always read `changes.txt` at the start of a session to understand the current task status and recent modifications.
+- **Handover Protocol**: Before ending a session or when requested to "checkpoint," update `changes.txt` with:
+    1. **Status**: A 1-sentence summary of the current goal.
+    2. **Files Touched**: A list of paths modified in the last 30 minutes.
+    3. **The "Next Step" Prompt**: A specific instruction for the next account/session to pick up exactly where we left off.
+- **Token Efficiency**: Be concise. Avoid re-reading files that are not listed in the "Files Touched" section of `changes.txt` unless strictly necessary.
+
+
+
+
 # WINGMAN — CLAUDE CODE PROJECT RULES
 # Read this file automatically at the start of every session.
 # These rules apply to every prompt in every session without exception.
@@ -10,9 +22,9 @@ Switch models manually using `--model` flag when starting Claude Code.
 
 | Model | Flag | Use for |
 |---|---|---|
-| claude-opus-4-6 | `--model claude-opus-4-6` | Architecture decisions, complex multi-file refactors, Lumen engine prompt engineering, Academy grading logic, any task where correctness matters more than speed |
-| claude-sonnet-4-6 | `--model claude-sonnet-4-6` | Most coding tasks. Feature implementation, JS modules, chart components, UI panels, API integrations. Default for 80% of sessions |
-| claude-haiku-4-5-20251001 | `--model claude-haiku-4-5-20251001` | Academy lesson content formatting, repetitive HTML templating, simple CSS fixes, icon substitution passes, single-function bug fixes, any task under 200 lines of output |
+| claude-opus-4-7 | `--model claude-opus-4-7` | Architecture decisions, complex multi-file refactors, Lumen prompt engineering, Academy grading logic, any task where correctness matters more than speed |
+| claude-sonnet-4-6 | `--model claude-sonnet-4-6` | Most coding tasks. Feature implementation, JS modules, chart components, UI panels, API integrations. Default for 80% of sessions. Also the Lumen Intraday decision model. |
+| claude-haiku-4-5-20251001 | `--model claude-haiku-4-5-20251001` | Academy lesson content formatting, repetitive HTML templating, simple CSS fixes, icon substitution passes, single-function bug fixes, any task under 200 lines of output. Also the Lumen Scalper decision model. |
 
 ---
 
@@ -135,43 +147,52 @@ Lumen closed BTCUSD BUY at 67,420. Result: plus 2.1R.
 ```
 
 **API model for Lumen calls:**
-- Scalp mode: `claude-haiku-4-5-20251001`
-- AT mode: `claude-sonnet-4-6`
+- Scalper: `claude-haiku-4-5-20251001` via `/api/behaviour` (Vercel route, server fallback to Gemini 2.5 Flash)
+- Intraday: `claude-sonnet-4-6` via `/api/scan` (Vercel route, server fallback to Gemini 2.5 Flash)
+- Sentiment: routed through `/api/sentiment` which fans out Grok 3 → Claude Haiku → Gemini server side
+- Big picture market intelligence (Markets tab `/api/scan` default): `claude-opus-4-7`
 
 ---
 
-## LUMEN PHASE 2 — MULTI-MODEL PIPELINE
+## LUMEN ARCHITECTURE
 
-Phase 2 introduces a three-layer pipeline with automatic fallback chains, a zero-cost UK guard, and a per-minute Gemini rate cap. This supplements (does not replace) the Claude-first framing above. Claude remains the preferred decision model; Gemini and Grok are there to keep Lumen running when Claude credits are exhausted or when the account must stay at zero spend.
+Lumen runs two engines from one tab: Intraday (thirty minute scans) and Scalper (sixty second scans). Both lean on Vercel API routes that wrap Claude with a server side Gemini 2.5 Flash fallback, so the engines stay alive even when one provider is down.
 
-**Three layers:**
-1. Sentiment: scans recent market news and returns a reading, score, headlines, and a trump_signal flag. Runs every 5 minutes while the engine is active.
-2. Data prep: condenses raw indicators into a 120 character summary string. Runs once per scan.
-3. Decision: consumes the summary plus sentiment context and returns `{ verdict, confidence, sl, tp, reason }`. Runs once per scan.
+**Routing:**
+- Intraday decisions: `POST /api/scan` with body `{ model: "claude-sonnet-4-6", system, messages }`. Server falls back to Gemini 2.5 Flash on a Claude failure.
+- Intraday instrument selection: same `/api/scan` route, same Sonnet model. Picks three instruments per UTC day. Cached in `atTodayInstruments` keyed by `atSelectionDay`.
+- Scalper decisions: `POST /api/behaviour` (Claude Haiku 4.5 then Gemini 2.5 Flash).
+- Sentiment poller: `POST /api/sentiment` (Grok 3 then Claude Haiku 4.5 then Gemini 2.5 Flash). Runs every five minutes while either engine is active. State lives in `wm_context.sentiment`.
 
-**Fallback chains (first available wins):**
-- Sentiment: `gemini_lite` → `grok_fast` → `claude_haiku`
-- Data prep: `gemini_lite` → `gemini_flash`
-- Decision: `claude_sonnet` → `gemini_flash` → `gemini_pro` → `grok_reasoning`
+**Daily budget tracker** (`lumBudget` in `js/lumen.js`):
+- Caps calls per layer per UTC day to protect against runaway spend. Server endpoints already handle model fallback so this is a budget cap, not a throttle.
+- Limits: intraday 200, scalper 1500, sentiment 300, select 30. Reset at the next UTC date roll over.
+- Persisted in localStorage keys `wm_lum_budget` and `wm_lum_budget_day`.
 
-**Daily call budgets (per model, reset at UTC midnight):**
-- `claude_sonnet` 150, `claude_haiku` 300
-- `gemini_flash` 450, `gemini_lite` 950, `gemini_pro` 2
-- `grok_fast` 300, `grok_reasoning` 50
-- Gemini global cap: 15 calls per minute across all Gemini tiers
+**Instrument universe (Intraday):**
+- Weekday full universe: `BTCUSD, ETHUSD, SOLUSD, XAUUSD, XAGUSD, EURUSD, GBPUSD, USDJPY, GBPJPY, SPX500, NAS100, US30, USOIL`.
+- Weekend (Saturday or Sunday UTC): filtered to crypto only since forex, metals, indices, and commodities markets are closed.
+- Sonnet picks the day's three from the universe based on sentiment, news, and weekend flag. Falls back to a default trio when the call fails.
 
-**Routing rules:**
-- `claude_sonnet` decisions route through the worker endpoint `/v1/scan` (Anthropic Messages API).
-- `claude_haiku` sentiment fallbacks route through `/v1/behaviour`.
-- All Gemini tiers route through `/api/gemini`, with model strings `gemini-3.1-flash-lite-preview`, `gemini-3.1-flash-preview`, and `gemini-3.1-pro-preview`.
-- Grok tiers route through `/api/grok` with model strings `grok-3-fast` and `grok-3-reasoning`.
-- On a 5xx or timeout, the throttle manager records the failure and sets the model to `unavailable` for 60 seconds before retrying.
+**Weekend mode (Scalper):**
+- Confidence threshold rises from sixty five to seventy five for thinner liquidity.
+- The user's selected instruments are filtered to crypto only. If no crypto is selected the engine logs a hint and skips the cycle.
 
-**Zero cost UK guard:**
-- Gemini and Grok tiers must remain inside their free-tier quotas at all times. When quotas are exhausted, the engine pauses that model until midnight reset rather than billing the card.
-- Claude tiers consume paid credits, so when the decision layer routes to Claude Sonnet the user sees it explicitly in the log source field.
+**Confidence thresholds:**
+- Intraday: seventy five and above. Picks the highest confidence cleared signal across the day's three instruments per cycle.
+- Scalper weekday: sixty five and above. Weekend: seventy five and above.
 
-**Storage key:** `wm_lum_calls` holds the per-model call counters; `wm_lum_reset_day` holds the last UTC reset day.
+**Schema (both engines, returned by the LLM as JSON):**
+- `{ action: "BUY" | "SELL" | "SKIP", confidence: 0-100, lots: number, sl: number | null, tp: number | null, reason | entry_logic, key_risk, ... }`
+- Scalper additionally returns `grade` (A, B, or C) and `skip_reason` when SKIP.
+
+**Indicators:**
+- `lumenIndicators(instrument)` in `js/utils.js` reuses the existing `fetchCandles` helper from `prices.js`. Crypto fetches go to Binance REST, everything else to Vercel `/api/candles` with Upstash Redis cache.
+- Computes RSI fourteen, EMA twenty, EMA fifty over the last sixty fifteen minute candles. Live current price is read from `livePriceCache` (Binance WebSocket for crypto, Deriv WebSocket for forex and metals, Vercel `/api/prices` for indices and commodities).
+
+**Worker retired (April 2026):**
+- The Cloudflare Worker at `worker/index.js` was duplicated by Vercel routes that also have Redis caching the Worker lacks.
+- All Lumen calls now hit Vercel directly. The Worker is left in place but no client code calls it. Safe to delete after a deploy or two of stable operation.
 
 ---
 

@@ -1,10 +1,16 @@
-// POST /api/scan — Market scan. Claude Opus first, Gemini 2.5 Flash fallback.
+// POST /api/scan — Market scan. Claude primary, Gemini 2.5 Flash fallback.
+// Body: { system, messages, model? }
+//   model defaults to claude-opus-4-7 for big-picture market intelligence.
+//   Lumen Intraday passes claude-sonnet-4-6 for routine trading decisions.
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { system, messages } = req.body;
+  const requested = req.body.model;
+  const ALLOWED = new Set(['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001']);
+  const model = ALLOWED.has(requested) ? requested : 'claude-opus-4-7';
 
-  // ── Claude Opus (primary) ──────────────────────────────────────
+  // ── Claude (primary) ───────────────────────────────────────────
   if (process.env.ANTHROPIC_API_KEY) {
     try {
       const upstream = await fetch('https://api.anthropic.com/v1/messages', {
@@ -14,7 +20,7 @@ export default async function handler(req, res) {
           'x-api-key': process.env.ANTHROPIC_API_KEY,
           'anthropic-version': '2023-06-01',
         },
-        body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 4000, system, messages }),
+        body: JSON.stringify({ model, max_tokens: 4000, system, messages }),
       });
       if (upstream.ok) {
         const data = await upstream.json();

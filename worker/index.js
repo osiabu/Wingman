@@ -79,7 +79,7 @@ export default {
               'x-api-key': env.ANTHROPIC_API_KEY,
               'anthropic-version': '2023-06-01',
             },
-            body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 4000, system: body.system, messages: body.messages }),
+            body: JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 4000, system: body.system, messages: body.messages }),
           });
           if (res.ok) {
             const data = await res.json();
@@ -177,7 +177,7 @@ export default {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
             body: JSON.stringify({
-              model: 'claude-opus-4-6',
+              model: 'claude-opus-4-7',
               max_tokens: 1500,
               messages: [{
                 role: 'user',

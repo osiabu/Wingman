@@ -9,6 +9,89 @@ var WORKER_URL = '/api';
 function workerHeaders() {
   return { 'Content-Type': 'application/json' };
 }
+
+// ── LUMEN HELPERS (used by Intraday and Scalper engines) ────────────────────
+
+// True on Saturday or Sunday UTC. Forex, metals, indices and commodities are
+// closed on weekends. Crypto trades 24 by 7.
+function isWeekend() {
+  var day = new Date().getUTCDay();
+  return day === 0 || day === 6;
+}
+
+// Tolerant JSON parse. Strips fenced code blocks. Falls back to extracting the
+// first balanced object or array if JSON.parse on the trimmed text fails.
+function safeParseJSON(text) {
+  if (text == null) return null;
+  var clean = String(text).replace(/```json|```/g, '').trim();
+  try { return JSON.parse(clean); } catch (_) { /* try recovery */ }
+  var match = clean.match(/[\{\[][\s\S]*[\}\]]/);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch (_) { return null; }
+  }
+  return null;
+}
+
+// Exponential moving average. Closes must be in chronological order, oldest
+// first. Returns null if there are fewer than period samples.
+function computeEMA(closes, period) {
+  if (!Array.isArray(closes) || closes.length < period) return null;
+  var k = 2 / (period + 1);
+  var seed = 0;
+  for (var i = 0; i < period; i++) seed += closes[i];
+  var ema = seed / period;
+  for (var j = period; j < closes.length; j++) {
+    ema = closes[j] * k + ema * (1 - k);
+  }
+  return Number(ema.toFixed(6));
+}
+
+// Wilder relative strength index. Closes oldest first. Returns null if there
+// are fewer than period plus one samples.
+function computeRSI(closes, period) {
+  if (!Array.isArray(closes) || closes.length < period + 1) return null;
+  var gains = 0, losses = 0;
+  for (var i = 1; i <= period; i++) {
+    var diff = closes[i] - closes[i - 1];
+    if (diff >= 0) gains += diff; else losses -= diff;
+  }
+  var avgGain = gains / period;
+  var avgLoss = losses / period;
+  for (var j = period + 1; j < closes.length; j++) {
+    var d = closes[j] - closes[j - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(0, d)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(0, -d)) / period;
+  }
+  if (avgLoss === 0) return 100;
+  var rs = avgGain / avgLoss;
+  return Number((100 - 100 / (1 + rs)).toFixed(2));
+}
+
+// Computes RSI fourteen, EMA twenty, EMA fifty for an instrument using the
+// existing fetchCandles helper from prices.js. Returns null when candles
+// cannot be retrieved or when fewer than fifty samples are available. The
+// current price is read from livePriceCache when available so the engine
+// reasons over the freshest tick from Binance or Deriv WebSocket feeds.
+async function lumenIndicators(instrument) {
+  if (typeof fetchCandles !== 'function') return null;
+  try {
+    var candles = await fetchCandles(instrument, '15min', 60);
+    if (!Array.isArray(candles) || candles.length < 50) return null;
+    // fetchCandles returns newest first. RSI and EMA need oldest first.
+    var closes = candles.slice().reverse()
+      .map(function (c) { return parseFloat(c.close); })
+      .filter(function (n) { return Number.isFinite(n); });
+    if (closes.length < 50) return null;
+    var live = (typeof livePriceCache !== 'undefined' && livePriceCache[instrument]) || null;
+    var price = live || closes[closes.length - 1];
+    var rsi = computeRSI(closes, 14);
+    var ema20 = computeEMA(closes, 20);
+    var ema50 = computeEMA(closes, 50);
+    if (rsi == null || ema20 == null || ema50 == null) return null;
+    var trend = ema20 > ema50 ? 'bullish' : ema20 < ema50 ? 'bearish' : 'neutral';
+    return { price: price, rsi: rsi, ema20: ema20, ema50: ema50, trend: trend };
+  } catch (_) { return null; }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 function updateTrialBadge() {
   const badge = document.getElementById('trial-badge');
