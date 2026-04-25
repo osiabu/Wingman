@@ -1,179 +1,239 @@
 STATUS
 ------
-Wingman is on GitHub at osiabu/Wingman. Vercel build is green with
-FRED_API_KEY set in the project env. CFTC public reporting now serves
-without a token (the agency has stopped issuing them) and the COT
-handler already treats CFTC_APP_TOKEN as optional. Batch 8 (Markets
-tab integration) and Batch 9 (CLAUDE.md file structure refresh) are
-shipped, the deferred scalper auto close path is implemented, and a
-weekend / bank holiday price persistence layer was added in response
-to the live feed dropping to a hyphen on closed markets.
+Wingman is on GitHub at osiabu/Wingman, head b5fb909. Vercel build is
+green. Batches 1 through 9 of the Aperintel April 2026 blueprint are
+shipped. The Lumen engines are wired and the Markets tab now exposes
+live COT, Real Yields, and a Correlation Heatmap. Closed market price
+fallback is live so weekends and bank holidays no longer drop tiles to
+hyphens. CFTC tokens are no longer issued by the agency and the COT
+handler already treats CFTC_APP_TOKEN as optional.
+
+Current blocker is operational, not code: both LLM provider accounts
+are exhausted and Lumen Intraday returns "decision call failed" on
+every cycle.
+
+  Anthropic:  credit balance too low. Top up at
+              https://console.anthropic.com/settings/billing.
+              Five dollars buys roughly one to two hundred Intraday
+              cycles on Sonnet 4.6.
+
+  Gemini:    free tier limit of 20 calls per day exhausted on
+              gemini-2.5-flash. Reset is daily at midnight Pacific.
+              The sentiment poller alone runs every five minutes
+              while either engine is active, which can burn through
+              twenty calls in roughly one hundred minutes once
+              Anthropic is also down. Either enable Google Cloud
+              billing on that key for paid tier headroom, or accept
+              single provider dependency and treat Gemini as theatre.
+
+Once Anthropic is topped up, the Intraday and Scalper engines work
+immediately with no redeploy required.
 
 CURRENT GOAL
 ------------
-The intelligence platform from the Aperintel April 2026 blueprint is
-in place across batches 1 through 9. Remaining work before the next
-release: a single end to end QA pass against a live deploy, regenerate
-img/hero-atmosphere.png with the negative space prompt fix, export the
-256x256 PNG mark for apple-touch-icon, and a paid trademark clearance
-on "Wingman" before any commercial launch (collisions documented in
-the NAMING section below).
+Operationally: top up the Anthropic account, then run the QA pass
+described below against the live deploy.
+
+Strategically: the intelligence platform is feature complete through
+Batch 9. The remaining work before any commercial launch is a paid
+trademark clearance on the name Wingman in classes 9, 36, and 41
+(see NAMING below) and a small visual identity polish (A7 hero photo
+regenerate, A8 256 PX mark export).
 
 DEPLOY CHECKPOINT
 -----------------
 GitHub: https://github.com/osiabu/Wingman
-Branch: main
+Branch: main, head b5fb909
+Recent commits:
+  b5fb909  fix(diagnostics): widen Anthropic and client error
+           snippets to 600 / 800 chars so 400 invalid_request_error
+           bodies are fully visible.
+  91ff040  fix(api): surface per provider error in scan and
+           behaviour 503 response. Added a diagnostics object listing
+           the upstream status, model id and error snippet for each
+           of Claude and Gemini when both fail.
+  baca135  fix(lumen): surface upstream error reason on decision
+           call failures. intradayDecide and scalpDecide now return
+           {ok, reason}. Activity log shows the actual cause rather
+           than the opaque "decision call failed" line.
+  0372f95  feat(markets,lumen,prices): batch 8 and 9 plus closed
+           market price fallback.
+  10a80e9  docs(changes): handover after Vercel deploy, brand
+           refresh, naming research.
+
 Vercel function count: 12 (at the Hobby cap, legal). The next api
 endpoint will hit the wall. Two clean paths when that happens:
-  1. Merge LLM proxies (analyse, claude, gemini, grok) into a single
+  1. Merge LLM proxies (analyse, claude, gemini) into a single
      /api/llm?provider=... dispatcher. Frees three slots in one go.
   2. Upgrade to Vercel Pro at $20 per member per month.
 
 ENV VARIABLES
 -------------
-FRED_API_KEY    SET. Required for /api/intel?source=fred. Free at
-                https://fred.stlouisfed.org/docs/api/api_key.html.
-
-CFTC_APP_TOKEN  NOT NEEDED. The CFTC explicitly states they are not
-                issuing tokens for the Public Reporting APIs. The COT
-                endpoint serves data without a token and the Redis 7
-                day cache absorbs any throttling. The handler at
-                api/_cot.js already treats this env as optional, so
-                no code change is required.
+ANTHROPIC_API_KEY  SET. Account currently has zero credits, returns
+                   400 invalid_request_error with credit balance
+                   message. Top up to unblock the engines.
+GEMINI_API_KEY     SET. On free tier, daily 20 call cap on
+                   gemini-2.5-flash. Hit by the sentiment poller
+                   plus Intraday plus Scalper combined. Consider
+                   enabling Cloud billing for higher headroom.
+FRED_API_KEY       SET. Required for /api/intel?source=fred.
+CFTC_APP_TOKEN     NOT NEEDED. CFTC stopped issuing tokens. The COT
+                   handler already treats this env as optional.
 
 FILES TOUCHED IN THIS SESSION
 -----------------------------
-js/lumen.js               Added scalpMonitorPositions. Each scalp
-                          tick now closes any positions whose live
-                          price has crossed SL or TP, mirroring
-                          atCloseAll's Object.assign pattern so the
-                          journal_context block is preserved on the
-                          closed scalpHistory record. R multiple is
-                          recorded alongside dollar pnl. scalpHistory
-                          capped at 200 entries.
+js/lumen.js               scalpMonitorPositions auto close path.
+                          intradayDecide and scalpDecide rewritten
+                          to return {ok, reason}. Body snippet
+                          widened from 140 to 800 chars on both
+                          decide functions so Anthropic 400 error
+                          bodies are fully visible.
 
-js/prices.js              Added priceTimestampCache plus _markPrice
-                          helper, debounced persistPriceCaches, and
-                          hydratePriceCaches. On script load the
-                          in memory livePriceCache and prevPrices are
-                          rehydrated from localStorage so weekend and
-                          bank holiday cold loads show the last
-                          working day's close. Added priceIsStale(p)
-                          predicate (>60s since last update) and the
-                          ticker tile dims plus tags stale prices with
-                          a small C suffix.
+js/prices.js              priceTimestampCache, _markPrice helper,
+                          debounced persistPriceCaches and
+                          hydratePriceCaches. Stale predicate
+                          priceIsStale(pairId) > 60s. Ticker tile
+                          dims and adds a small C suffix when stale.
 
-js/markets.js             renderCotReport now reads
-                          LumenIntel.cot.legacyCacheRow(asset) first,
-                          kicks off a live fetch when no cache is
-                          present, and falls through to the static
-                          COT_CACHE only when the live module is
-                          unavailable. renderLivePriceTable now shows
-                          stale rows with a CLOSED tag and dim text
-                          rather than dropping the row. Two new
-                          renderers: renderRealYields builds the
-                          headline card, FRED interpretation copy and
-                          a 60 day SVG chart. renderCorrelations
-                          builds the heatmap grid with green positive
-                          red negative cells, purple borders on
-                          breakdowns, and a Breakdowns card listing
-                          the top six pairs with magnitude.
+js/markets.js             renderCotReport reads
+                          LumenIntel.cot.legacyCacheRow first.
+                          renderLivePriceTable shows stale rows
+                          with CLOSED tag. New renderRealYields and
+                          renderCorrelations sub tab renderers.
 
-js/home.js                The intelligence snapshot card now appends
-                          a CLOSED tag next to the price when the
-                          quote is older than 60 seconds, instead of
-                          showing Awaiting feed for a closed market.
+js/home.js                Intelligence snapshot card appends a
+                          CLOSED tag for stale prices instead of
+                          showing Awaiting feed.
 
-html/tab-markets.html     Two new sub tab buttons: Real Yields and
-                          Correlations. Two new panels: markets-yields
-                          (current reading card, 60 day SVG series,
-                          interpretation card) and markets-correlations
-                          (heatmap grid card, Breakdowns card).
+html/tab-markets.html     Two new sub tabs: Real Yields and
+                          Correlations. Two new panels with
+                          renderer hooks.
 
-CLAUDE.md                 FILE STRUCTURE section refreshed. Added
-                          api/, img/, the ten js/intel-*.js modules,
-                          the new sub tabs in tab-markets.html, the
-                          scalpMonitorPositions note in lumen.js, and
-                          the price persistence note in prices.js.
+api/scan.js               Per provider diagnostics on 503. Captures
+                          status, model id, and 600 char body
+                          snippet for both Claude and Gemini.
 
-WHAT REMAINS (DEFERRED OR EXTERNAL)
------------------------------------
-A7. Regenerate img/hero-atmosphere.png with the negative space prompt
-    addition: "Reserve the entire upper third of the frame as flat
-    matte black with no objects and no light intrusion." Drop in
-    place. No code change needed.
+api/behaviour.js          Same per provider diagnostics shape.
 
-A8. Export the new mark to img/wingman-mark-256.png at 256 x 256 so
-    the apple-touch-icon and PNG fallback favicon resolve. Until this
-    is in place the apple-touch-icon link will 404 on iOS bookmarks.
-    The SVG primary favicon works in every modern browser including
-    iOS Safari 18+. Cheapest path is to open img/wingman-mark.svg in
-    any vector tool and export to PNG at 256.
+CLAUDE.md                 FILE STRUCTURE refreshed with api/, img/
+                          and the ten js/intel-*.js modules. Notes
+                          on the new sub tabs, scalpMonitorPositions
+                          and price persistence behaviour.
 
-A9. Wire img/login-backdrop.png and img/onboarding-welcome.png once
-    the pre auth screen and Stage 13 onboarding modal exist. No work
-    to do until those screens are built.
+WHAT REMAINS
+------------
+OPERATIONAL
+  Top up Anthropic credits so Lumen Intraday and Scalper can run.
+  Optional: enable Cloud billing on the Gemini key for a real
+  fallback rather than a 20 call free tier.
 
-QA CHECKLIST FOR THE NEXT SESSION
----------------------------------
-PRE FLIGHT (live deploy, 10 minutes)
-  V1. Confirm the Vercel deploy is green on the latest main commit.
+QA (after credits are topped up)
+  See QA CHECKLIST below. Confirm Markets sub tabs, Lumen engines,
+  closed market fallback, and Sim Trader all behave on the live
+  deploy.
+
+VISUAL IDENTITY
+  A7. Regenerate img/hero-atmosphere.png with the negative space
+      prompt: "Reserve the entire upper third of the frame as flat
+      matte black with no objects and no light intrusion."
+  A8. Export img/wingman-mark-256.png at 256 x 256 so the
+      apple-touch-icon and PNG fallback favicon resolve on iOS
+      bookmarks. Open img/wingman-mark.svg in any vector tool.
+  A9. Wire img/login-backdrop.png and img/onboarding-welcome.png
+      once a pre auth screen and Stage 13 onboarding modal exist.
+
+LEGAL
+  Pay for a UK trademark clearance solicitor on Wingman in classes
+  9, 36, 41 (£200 to £2000, 1 to 7 days) before any commercial
+  launch. Or invent a word. The visual identity carries the brand
+  regardless of the wordmark.
+
+DEFERRED CLEAN UP
+  The legacy OPPORTUNITY FEED CSS classes (.home-opp-card,
+  .home-opp-badge, .home-action-btn) are still in css/home.css with
+  display:none. Safe to delete after a deploy or two of stable
+  operation if nothing else references them.
+
+  The Cloudflare Worker at worker/index.js was retired in favour of
+  the Vercel routes. No client code calls it. Safe to delete after
+  a deploy or two of stable operation along with wrangler.toml.
+
+  The fallback theatre question. The current /api/scan and
+  /api/behaviour fall through to Gemini 2.5 Flash on a Claude
+  failure. With Gemini on free tier capped at 20 requests per day,
+  the fallback is effectively non functional. Either enable Cloud
+  billing on the Gemini key, or remove the Gemini path entirely and
+  fail loud on Claude outage. Open question for the next session.
+
+QA CHECKLIST
+------------
+PRE FLIGHT (live deploy, ten minutes, after credits topped up)
+  V1. Confirm Vercel deploy is green on main head b5fb909.
   V2. Hit the live URL on a desktop browser. Open DevTools.
-  V3. Markets tab, Sentiment sub tab. Click each COT asset chip and
-      confirm the report shows live data with a recent week_ending
-      stamp (not the old Latest available stub).
+  V3. Markets tab, Sentiment sub tab. Click each COT asset chip
+      and confirm the report shows live data with a recent
+      week_ending stamp (not the old Latest available stub).
   V4. Markets tab, Real Yields sub tab. Confirm the headline card
-      shows current_real_yield and the SVG chart renders. If the
-      headline says FRED_API_KEY is missing, set the env in Vercel.
+      shows current_real_yield and the SVG chart renders.
   V5. Markets tab, Correlations sub tab. Confirm the heatmap grid
-      renders. If the matrix is empty, give it sixty seconds for
-      the H4 candle pulls to land then refresh.
-  V6. Home tab. Confirm the Intelligence Snapshot grid populates.
-  V7. Open the live deploy on a Saturday or Sunday. Confirm the
-      forex / metals / indices ticker tiles show the last Friday
+      renders. Give it sixty seconds for the H4 candle pulls if
+      the matrix is empty on first visit.
+  V6. Home tab. Confirm the Intelligence Snapshot grid populates
+      with regime and liquidity within a minute of arrival.
+  V7. Open the live deploy on a Saturday or Sunday or load the
+      site after a forex session close. Confirm the forex /
+      metals / indices ticker tiles show the last working day's
       close with a small C suffix instead of a hyphen. The Live
       Prices table should show every instrument with a CLOSED tag
       next to non crypto rows.
 
 LUMEN ENGINE QA
-  V8. Start the Scalp Engine on BTCUSD. Wait sixty seconds. Confirm
-      the scan tick fires. Place a manual SL or TP near the live
-      price (or wait for a real cross) and confirm scalpMonitor
-      moves the position from scalpPositions into scalpHistory with
-      a closePrice, pnl, and r_multiple field.
-  V9. Start the Intraday engine. Confirm the Lumen activity log on
-      the home tab shows scan entries.
+  V8. Start the Scalp Engine on BTCUSD. Wait sixty seconds.
+      Confirm the scan tick fires. Place a manual SL or TP near
+      the live price (or wait for a real cross) and confirm
+      scalpMonitor moves the position from scalpPositions into
+      scalpHistory with closePrice, pnl, and r_multiple fields.
+  V9. Start the Intraday engine. Confirm the activity log on the
+      home tab shows scan entries. With Anthropic credits topped
+      up the SKIP, BUY, and SELL paths should all fire instead of
+      the credit balance error.
+  V10. Force a failure (e.g. zero out credits temporarily, or
+       block the api in DevTools). Confirm the activity log
+       surfaces "upstream status 503" with the diagnostics block,
+       not the legacy "decision call failed" line.
 
 NEXT STEP PROMPT
 ================
-Wingman is feature complete through Batch 9 of the Aperintel April
-2026 blueprint. The next session is a QA and polish pass.
+The platform is feature complete through Batch 9. Pick up by
+unblocking the engines, running the QA pass, then making the
+fallback theatre call.
 
-Tasks in priority order:
+Sequence:
 
-1. Run the QA CHECKLIST above against the live Vercel deploy. File
-   any failing checks as bugs in the next handover with a clear
+1. Top up the Anthropic account at console.anthropic.com /
+   settings / billing. Confirm by visiting a deployed URL and
+   running one Lumen Intraday cycle. The activity log should show
+   real BUY / SELL / SKIP decisions instead of credit balance
+   errors.
+
+2. Run the QA CHECKLIST above against the live deploy. File any
+   failing checks as bugs in the next handover with a clear
    reproduction.
 
-2. Visual identity steps A7 (regenerate hero-atmosphere.png) and
-   A8 (export wingman-mark-256.png). Both are external to the code,
+3. Decide on the Gemini fallback. Either:
+   a. Enable billing on the Google Cloud project that owns the
+      Gemini key. The free tier 20 / day cap goes away on the
+      paid tier and the fallback becomes real.
+   b. Strip the Gemini fallback from /api/scan, /api/behaviour
+      and /api/sentiment. Fail loud on Claude outage rather than
+      pretend a useful fallback exists.
+
+4. Visual identity steps A7 (regenerate hero-atmosphere.png) and
+   A8 (export wingman-mark-256.png). Both external to the code,
    both unblock minor polish items.
 
-3. The legacy "OPPORTUNITY FEED" CSS classes (.home-opp-card,
-   .home-opp-badge, .home-action-btn) are still defined in
-   css/home.css with display:none. Safe to delete after a deploy
-   or two of stable operation if nothing else references them.
-
-4. The Cloudflare Worker at worker/index.js was retired in favour
-   of the Vercel routes. No client code calls it. Safe to delete
-   after a deploy or two of stable operation. Doing so reduces the
-   surface area of the repo and removes a stale config from
-   wrangler.toml.
-
-5. Pay for a UK trademark clearance solicitor on "Wingman" in
-   classes 9, 36, 41 (£200 to £2000, 1 to 7 days) before any
-   commercial launch. Or invent a word. The visual identity
-   carries the brand regardless of the wordmark.
+5. Pay for a UK trademark clearance solicitor on Wingman before
+   any commercial launch. See NAMING.
 
 NAMING (paid trademark clearance still owed)
 --------------------------------------------
@@ -188,37 +248,36 @@ The four search query pattern was run across:
   - "Wingman Labs" WORSE than Wingman alone: existing
                    wingmanlab.com, wmlab.io, The Wingman Labs,
                    @wingmanlabs on TikTok, Wingman Labs Karachi.
-                   Adding "Labs" inherits two collision sets,
-                   does not solve any.
+                   Adding Labs inherits two collision sets.
   - "Slipstream"   VETO. Slipstream Trader, SlipStream Financial,
                    Aerodrome Slipstream, Slipstream Pay,
                    Slipstream IT ($80M raised), David Flynn
                    USPTO software trademark.
-  - "Aperture"     BAD. Aperture Finance ($12M Series A), Aperture
-                   Investors (registered marks), plus Aperture.ai,
-                   ApertureDB, Aperture Capital, historical Apple
-                   Aperture.
+  - "Aperture"     BAD. Aperture Finance ($12M Series A),
+                   Aperture Investors (registered marks), plus
+                   Aperture.ai, ApertureDB, Aperture Capital,
+                   historical Apple Aperture.
   - "Lumeo"        Cleaner in trading specifically but Lumeo Inc
                    (lumeo.com, $5.1M raised) holds a USPTO mark.
                    Plus internal collision: our intelligence
-                   engine is named "Lumen" so customer confusion
+                   engine is named Lumen so customer confusion
                    between Lumen and Lumeo is a self inflicted
                    wound.
 
 Recommendation: pay for a UK trademark clearance solicitor on
-"Wingman" in classes 9, 36, 41 (£200 to £2000, 1 to 7 days) before
+Wingman in classes 9, 36, 41 (£200 to £2000, 1 to 7 days) before
 any commercial launch. Or invent a word. The visual identity
 carries the brand regardless of the wordmark.
 
 REFERENCE: LUMEN INTELLIGENCE NAMESPACE
 ---------------------------------------
-Every Batch 1 to 4 client side intelligence module exposes a function
-under the global window.LumenIntel object:
+Every Batch 1 to 4 client side intelligence module exposes a
+function under the global window.LumenIntel object:
 
   await LumenIntel.yields()                -> real yield analysis
   await LumenIntel.cot('gold')             -> COT analysis (live)
-  await LumenIntel.wyckoff('XAUUSD')       -> phase, sub_phase, narrative
-  await LumenIntel.regime('XAUUSD')        -> trend + volatility chars
+  await LumenIntel.wyckoff('XAUUSD')       -> phase, sub_phase
+  await LumenIntel.regime('XAUUSD')        -> trend + volatility
   await LumenIntel.correlations()          -> matrix + breakdowns
   await LumenIntel.liquidity('XAUUSD')     -> 3 above + 3 below
   await LumenIntel.calendar('XAUUSD')      -> pre/post event flags
@@ -229,20 +288,21 @@ under the global window.LumenIntel object:
   LumenIntel.<any>.cached(...)             -> last cached payload
   LumenIntel.<any>.clear(...)              -> wipe local cache
 
-All intel modules degrade gracefully to a neutral or null payload on
-any failure so the master synthesis prompt never blocks waiting for
-an unreachable upstream.
+All intel modules degrade gracefully to a neutral or null payload
+on any failure so the master synthesis prompt never blocks waiting
+for an unreachable upstream.
 
 REFERENCE: PRICE PERSISTENCE
 ----------------------------
 prices.js writes a snapshot of livePriceCache, priceSourceCache and
 priceTimestampCache to localStorage under wm_price_cache on every
 update (debounced to once every three seconds). On script load it
-hydrates all three caches from this snapshot. Consequence: a Saturday
-morning cold load shows Friday's close for every previously seen
-forex, metals, indices and commodities pair, with a small CLOSED tag
-in the markets table and a dim C suffix in the ticker. A 60 second
-freshness threshold is applied via priceIsStale(pairId).
+hydrates all three caches from this snapshot. Consequence: a
+Saturday morning cold load shows Friday's close for every
+previously seen forex, metals, indices and commodities pair, with a
+small CLOSED tag in the markets table and a dim C suffix in the
+ticker. A 60 second freshness threshold is applied via
+priceIsStale(pairId).
 
 REFERENCE: SCALPER AUTO CLOSE
 -----------------------------
@@ -254,3 +314,24 @@ into scalpHistory with closePrice, pnl, r_multiple, closedAt, and
 exit_reason fields plus the original journal_context block. The
 pattern miner now sees scalp closes alongside Intraday closes.
 scalpHistory is capped at 200 entries.
+
+REFERENCE: PROVIDER DIAGNOSTICS
+-------------------------------
+/api/scan and /api/behaviour return a structured diagnostics object
+on the 503 response so any client can tell the cause apart:
+
+  {
+    "error": "Both Claude and Gemini failed. Claude: ... . Gemini: ...",
+    "diagnostics": {
+      "claude": "status 400 model=claude-sonnet-4-6: {...}",
+      "gemini": "status 429: {...}"
+    }
+  }
+
+The client side intradayDecide and scalpDecide return
+{ok: false, reason} so the activity log shows the cause inline.
+The current Anthropic 400 message reads "Your credit balance is
+too low to access the Anthropic API" and the current Gemini 429
+message reads "Quota exceeded for metric:
+generativelanguage.googleapis.com/generate_content_free_tier_requests,
+limit: 20, model: gemini-2.5-flash".
