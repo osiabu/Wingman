@@ -84,9 +84,38 @@ wingman/
   vercel.json             Unchanged
   package.json            Add vite as dev dependency
   CLAUDE.md               This file
-  wingmanlogo.png
-  wingmanlogo1.png
-  wingmanfavicon.png
+  changes.txt             Session handover (read at session start)
+  wingmanlogo.png         Legacy chrome eagle logo, retained for compatibility
+  wingmanlogo1.png        Legacy mobile chrome eagle logo
+  wingmanfavicon.png      Legacy favicon
+
+  api/
+    intel.js              Dispatcher: routes /api/intel?source=fred|cot to the
+                          underlying handlers. Counts as one Vercel function.
+    _fred.js              FRED proxy. Underscore prefixed files are not routed
+                          by Vercel, so they consume zero function slots.
+    _cot.js               CFTC COT proxy. Same underscore convention.
+    _redis.js             Upstash Redis cache wrapper used by intel handlers.
+    scan.js               Lumen Intraday master synthesis (Sonnet 4.6, Gemini fallback).
+    behaviour.js          Lumen Scalper master synthesis and weekly pattern miner
+                          (Haiku 4.5, Gemini fallback).
+    sentiment.js          Sentiment poller: Grok 3 then Haiku then Gemini server side.
+    prices.js             Open exchange rates and TwelveData fallback.
+    candles.js            Twelve Data candles, Redis cached.
+    news.js               Finnhub news proxy.
+    analyse.js            Screenshot chart analysis.
+    claude.js             Generic Claude proxy.
+    gemini.js             Generic Gemini proxy.
+
+  img/
+    wingman-mark.svg          Two stroke mark, gold over teal.
+    wingman-lockup.svg        Mark plus wordmark for the mobile topbar.
+    wingman-mark-256.png      256x256 PNG export for apple-touch-icon (deferred).
+    hero-atmosphere.png       Home tab background photograph.
+    og-card.png               OG meta image, 1200x630.
+    onboarding-welcome.png    Stage 13 onboarding background (deferred).
+    login-backdrop.png        Pre auth backdrop (deferred).
+    mobile-splash.png         Mobile splash background.
 
   css/
     tokens.css            Design tokens (:root vars)
@@ -105,22 +134,50 @@ wingman/
     tab-academy.html
     tab-simtrader.html
     tab-autotrader.html
-    tab-markets.html
+    tab-markets.html         Includes Live, Scan, Calendar, Sentiment, Session,
+                             Flow, News, Real Yields, and Correlations sub tabs.
     tab-settings.html
     tab-legal.html
 
   js/
     core.js               navigate(), toast(), init()
-    prices.js             WebSocket connections, livePriceCache, ticker
+    prices.js             WebSocket connections, livePriceCache, ticker. Persists
+                          last known prices to localStorage so closed markets
+                          show the last working day's quote on weekends and bank
+                          holidays instead of a hyphen.
     chart.js              Lightweight Charts component
-    home.js               home_ functions
+    home.js               home_ functions, intelligence snapshot grid
     academy.js            Stage logic, grading calls
     simtrader.js          Sim order entry, positions
-    lumen.js              Lumen engine (AT + scalp)
-    markets.js            Scan, sentiment, COT, news
+    lumen.js              Lumen engine (Intraday and Scalper). Master synthesis
+                          prompts, journal context capture, scalpMonitorPositions
+                          auto close path, weekly pattern miner.
+    markets.js            Scan, sentiment, COT, news, Real Yields renderer,
+                          Correlation Heatmap renderer.
     behaviour.js          Detectors, score engine
     settings.js           Settings, preferences
-    utils.js              Shared helpers, formatters
+    utils.js              Shared helpers, formatters, lumenIndicators
+    intel-yields.js       FRED real yields wrapper. localStorage 24h.
+    intel-cot.js          CFTC COT wrapper. localStorage 7d. Exposes
+                          legacyCacheRow(asset) for the Markets tab renderer.
+    intel-wyckoff.js      Wyckoff phase classifier. Sonnet 4.6 keyed by H4 bar
+                          timestamp. Cached against the latest H4 close so the
+                          LLM only fires on a new H4 bar.
+    intel-regime.js       Pure browser ADX, ATR percentile, Bollinger compression.
+                          Combined with cached Wyckoff to produce a regime label.
+    intel-correlations.js Pearson correlation matrix across the Tier 1+2+3
+                          universe. Detects breakdowns between halves of the
+                          return series. localStorage 4h.
+    intel-liquidity.js    Pure browser liquidity zone detector across H1, H4, D1.
+                          localStorage 1h.
+    intel-calendar.js     TradingView free CORS calendar. Adds pre_event_caution
+                          and post_event_opportunity flags. localStorage 15m.
+    intel-sessions.js     Active sessions and confidence multiplier (Asian 0.5,
+                          London Open 1.2, NY Open 1.4, NY Close 0.7, standard 1.0).
+                          No cache, no LLM cost.
+    intel-portfolio.js    Reads atPositions, scalpPositions and open simTrades.
+                          Total risk percent, directional count, correlated
+                          cluster detection.
 ```
 
 ---

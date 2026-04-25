@@ -34,6 +34,231 @@ function marketSubTab(tab, btn) {
   if (tab === 'session') buildHeatmap();
   if (tab === 'calendar') initCalendar();
   if (tab === 'news') loadMarketsNews('general', null);
+  if (tab === 'yields') renderRealYields();
+  if (tab === 'correlations') renderCorrelations();
+}
+
+// ═══════════════════════════════════════════
+// MARKETS REAL YIELDS SUB TAB
+// ═══════════════════════════════════════════
+async function renderRealYields() {
+  var headline = document.getElementById('yields-headline');
+  var interp   = document.getElementById('yields-interp');
+  var chart    = document.getElementById('yields-chart');
+  var startEl  = document.getElementById('yields-chart-start');
+  var endEl    = document.getElementById('yields-chart-end');
+  if (!headline || !chart) return;
+
+  if (!window.LumenIntel || typeof window.LumenIntel.yields !== 'function') {
+    headline.innerHTML = '<div style="font-size:12px;color:var(--text3);">Real yields module not loaded.</div>';
+    return;
+  }
+
+  // Headline payload (cached 24h client side, Redis cached server side).
+  var data;
+  try { data = await window.LumenIntel.yields(); }
+  catch (e) {
+    headline.innerHTML = '<div style="font-size:12px;color:var(--red);">Real yields unavailable: ' + e.message + '</div>';
+    return;
+  }
+
+  if (!data || data.source === 'unavailable' || data.current_real_yield == null) {
+    headline.innerHTML =
+      '<div style="font-size:12px;color:var(--text3);line-height:1.7;">' +
+        'Real yield data is unavailable. The most likely cause is a missing FRED_API_KEY env on the server. ' +
+        'Set the key in the Vercel project settings and redeploy.' +
+      '</div>';
+    if (interp) interp.innerHTML = '<div style="color:var(--text3);">Awaiting live data.</div>';
+    return;
+  }
+
+  var dirCol = data.direction_20d === 'falling' ? 'var(--green)'
+             : data.direction_20d === 'rising'  ? 'var(--red)'
+             : 'var(--text3)';
+  var dirArrow = data.direction_20d === 'falling' ? '▼'
+               : data.direction_20d === 'rising'  ? '▲'
+               : '◉';
+  var biasCol = data.macro_bias_for_gold === 'bullish' ? 'var(--green)'
+              : data.macro_bias_for_gold === 'bearish' ? 'var(--red)'
+              : 'var(--text3)';
+
+  headline.innerHTML =
+    '<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding:6px 0;">' +
+      '<div>' +
+        '<div style="font-family:var(--font-mono);font-size:36px;font-weight:800;color:var(--text);">' + data.current_real_yield.toFixed(3) + '%</div>' +
+        '<div style="font-family:var(--font-mono);font-size:8px;color:var(--text4);letter-spacing:1.5px;margin-top:2px;">DFII10 (10Y TIPS)</div>' +
+      '</div>' +
+      '<div style="flex:1;min-width:180px;">' +
+        '<div style="font-family:var(--font-mono);font-size:11px;color:' + dirCol + ';font-weight:700;margin-bottom:4px;">' +
+          dirArrow + ' ' + (data.direction_20d || 'flat') + ' over 20 days' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text3);line-height:1.5;">' +
+          'Twenty days ago: ' + (data.real_yield_20d_ago != null ? data.real_yield_20d_ago.toFixed(3) + '%' : '—') + '. ' +
+          'Change: ' + (data.change_20d_basis_points >= 0 ? '+' : '') + data.change_20d_basis_points + ' bp.' +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:right;min-width:140px;">' +
+        '<div style="font-family:var(--font-mono);font-size:8px;color:var(--text4);letter-spacing:1.5px;margin-bottom:4px;">MACRO BIAS, GOLD</div>' +
+        '<div style="font-family:var(--font-mono);font-size:14px;font-weight:800;color:' + biasCol + ';text-transform:uppercase;">' + (data.macro_bias_for_gold || 'neutral') + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:18px;flex-wrap:wrap;font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:14px;border-top:1px solid var(--border);padding-top:10px;">' +
+      '<div><span style="color:var(--text4);">Nominal 10Y:</span> ' + (data.nominal_10y != null ? data.nominal_10y.toFixed(3) + '%' : '—') + '</div>' +
+      '<div><span style="color:var(--text4);">Implied inflation:</span> ' + (data.implied_inflation_expectation != null ? data.implied_inflation_expectation.toFixed(2) + '%' : '—') + '</div>' +
+      '<div><span style="color:var(--text4);">As of:</span> ' + (data.as_of || '—') + '</div>' +
+    '</div>';
+
+  // Interpretation card
+  var interpText = '';
+  switch (data.level_classification) {
+    case 'negative_real_yields_strongly_bullish_gold':
+      interpText = 'Real yields are negative. Holding cash carries a real cost. Historically a strong tailwind for gold and other non yielding stores of value.';
+      break;
+    case 'low_real_yields_supportive_gold':
+      interpText = 'Real yields are low. The opportunity cost of holding gold is muted. Supportive backdrop, especially when the trajectory is falling.';
+      break;
+    case 'moderate_real_yields_neutral':
+      interpText = 'Real yields are in a neutral band. Gold trades on flow and sentiment more than rates here. Watch the 20 day direction for the structural lean.';
+      break;
+    case 'high_real_yields_bearish_gold':
+      interpText = 'Real yields are elevated. Cash and Treasuries pay a premium. Headwind for gold; rallies often face supply at resistance.';
+      break;
+    default:
+      interpText = 'Level classification unavailable.';
+  }
+  if (interp) interp.innerHTML = '<div style="margin-bottom:6px;">' + interpText + '</div>'
+    + '<div style="color:var(--text3);font-size:11px;">Direction over the last twenty trading days is the primary signal. Falling real yields favour long gold; rising real yields favour caution.</div>';
+
+  // Pull the raw 60 day series for the chart. Endpoint is Redis cached.
+  try {
+    var r = await fetch('/api/intel?source=fred&series=DFII10&days=60');
+    if (!r.ok) throw new Error('FRED status ' + r.status);
+    var d = await r.json();
+    var obs = (d && Array.isArray(d.observations)) ? d.observations : [];
+    if (obs.length < 2) throw new Error('series too short');
+
+    var values = obs.map(function (o) { return o.value; });
+    var min = Math.min.apply(null, values);
+    var max = Math.max.apply(null, values);
+    if (max === min) max = min + 0.01;
+
+    var w = 600, h = 160, pad = 6;
+    chart.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    var stepX = (w - pad * 2) / (obs.length - 1);
+
+    var pts = obs.map(function (o, i) {
+      var x = pad + i * stepX;
+      var y = pad + (h - pad * 2) * (1 - (o.value - min) / (max - min));
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+
+    var line = '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--gold)" stroke-width="1.5" />';
+    var area = '<polygon points="' + pad + ',' + (h - pad) + ' ' + pts.join(' ') + ' ' + (w - pad) + ',' + (h - pad) + '" fill="rgba(240,180,41,0.10)" stroke="none" />';
+    var zeroY = pad + (h - pad * 2) * (1 - (0 - min) / (max - min));
+    var zeroLine = (zeroY >= pad && zeroY <= h - pad) ? '<line x1="' + pad + '" y1="' + zeroY.toFixed(1) + '" x2="' + (w - pad) + '" y2="' + zeroY.toFixed(1) + '" stroke="var(--text4)" stroke-width="0.5" stroke-dasharray="2 3" />' : '';
+
+    chart.innerHTML = area + zeroLine + line;
+    if (startEl) startEl.textContent = obs[0].date + ' · ' + obs[0].value.toFixed(2) + '%';
+    if (endEl)   endEl.textContent   = obs[obs.length - 1].date + ' · ' + obs[obs.length - 1].value.toFixed(2) + '%';
+  } catch (e) {
+    chart.innerHTML = '<text x="10" y="20" font-family="var(--font-mono)" font-size="10" fill="var(--text3)">Series unavailable: ' + e.message + '</text>';
+  }
+}
+
+// ═══════════════════════════════════════════
+// MARKETS CORRELATION HEATMAP SUB TAB
+// ═══════════════════════════════════════════
+async function renderCorrelations() {
+  var grid = document.getElementById('corr-heatmap');
+  var brk  = document.getElementById('corr-breakdowns');
+  if (!grid) return;
+
+  if (!window.LumenIntel || typeof window.LumenIntel.correlations !== 'function') {
+    grid.innerHTML = '<div style="font-size:12px;color:var(--text3);">Correlation module not loaded.</div>';
+    return;
+  }
+
+  var data;
+  try { data = await window.LumenIntel.correlations(); }
+  catch (e) {
+    grid.innerHTML = '<div style="font-size:12px;color:var(--red);">Correlation matrix unavailable: ' + e.message + '</div>';
+    return;
+  }
+
+  if (!data || !data.matrix || !data.universe || data.source === 'unavailable') {
+    grid.innerHTML = '<div style="font-size:12px;color:var(--text3);line-height:1.7;">' + (data && data.narrative ? data.narrative : 'Matrix unavailable.') + '</div>';
+    if (brk) brk.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--text4);">No data.</div>';
+    return;
+  }
+
+  var instruments = data.universe;
+  var matrix = data.matrix;
+  var breakdownPairs = {};
+  (data.breakdowns || []).forEach(function (b) { breakdownPairs[b.pair] = b; });
+
+  function colorFor(v) {
+    if (v == null) return 'var(--bg2)';
+    var abs = Math.min(1, Math.abs(v));
+    if (v >= 0) return 'rgba(0,232,122,' + abs.toFixed(2) + ')';
+    return 'rgba(255,61,90,' + abs.toFixed(2) + ')';
+  }
+
+  var headerCells = '<th style="position:sticky;left:0;background:var(--bg2);z-index:1;padding:8px 6px;font-family:var(--font-mono);font-size:8px;color:var(--text4);letter-spacing:1px;text-align:left;">PAIR</th>'
+    + instruments.map(function (i) {
+        return '<th style="padding:8px 4px;font-family:var(--font-mono);font-size:8px;color:var(--text4);letter-spacing:0.5px;text-align:center;min-width:48px;">' + i + '</th>';
+      }).join('');
+
+  var rows = instruments.map(function (a) {
+    var cells = instruments.map(function (b) {
+      if (a === b) {
+        return '<td style="padding:6px 4px;text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--text4);background:var(--bg3);">·</td>';
+      }
+      var v = matrix[a] && typeof matrix[a][b] === 'number' ? matrix[a][b] : null;
+      var bg = colorFor(v);
+      var pairKey1 = a + '/' + b;
+      var pairKey2 = b + '/' + a;
+      var bd = breakdownPairs[pairKey1] || breakdownPairs[pairKey2];
+      var border = bd ? 'box-shadow:inset 0 0 0 2px var(--purple);' : '';
+      var title = bd
+        ? a + ' vs ' + b + ': now ' + (v != null ? v.toFixed(2) : 'n/a') + ', prior ' + bd.historical_corr.toFixed(2) + '. Breakdown: ' + bd.breakdown_magnitude.toFixed(2)
+        : a + ' vs ' + b + ': ' + (v != null ? v.toFixed(2) : 'n/a');
+      var txt = v == null ? '—' : v.toFixed(2);
+      var col = v != null && Math.abs(v) > 0.55 ? '#0c0c10' : 'var(--text)';
+      return '<td title="' + title + '" style="padding:6px 4px;text-align:center;font-family:var(--font-mono);font-size:9px;font-weight:700;color:' + col + ';background:' + bg + ';' + border + '">' + txt + '</td>';
+    }).join('');
+    return '<tr>'
+      + '<td style="position:sticky;left:0;background:var(--bg2);z-index:1;padding:6px 8px;font-family:var(--font-mono);font-size:9px;font-weight:700;color:var(--text2);border-right:1px solid var(--border);">' + a + '</td>'
+      + cells
+      + '</tr>';
+  }).join('');
+
+  grid.innerHTML =
+    '<table style="border-collapse:separate;border-spacing:1px;width:auto;min-width:100%;">'
+      + '<thead><tr>' + headerCells + '</tr></thead>'
+      + '<tbody>' + rows + '</tbody>'
+    + '</table>'
+    + '<div style="display:flex;gap:14px;align-items:center;font-family:var(--font-mono);font-size:8px;color:var(--text4);margin-top:14px;letter-spacing:1px;">'
+      + '<span style="color:var(--green);">POSITIVE</span>'
+      + '<span style="color:var(--red);">NEGATIVE</span>'
+      + '<span style="color:var(--purple);">PURPLE BORDER: BREAKDOWN</span>'
+      + (data.anchor_bar_time ? '<span style="margin-left:auto;">Anchor H4: ' + data.anchor_bar_time + '</span>' : '')
+    + '</div>';
+
+  if (brk) {
+    if (!data.breakdowns || !data.breakdowns.length) {
+      brk.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--text4);">No correlation breakdowns above the 0.35 threshold in this window.</div>';
+    } else {
+      brk.innerHTML = data.breakdowns.map(function (b) {
+        var dirText = b.current_corr > b.historical_corr
+          ? 'tightening (more correlated than the prior half)'
+          : 'loosening (decoupling from the prior half)';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:11px;">'
+          + '<div><strong style="color:var(--text);">' + b.pair + '</strong> <span style="color:var(--text3);font-size:10px;">' + dirText + '</span></div>'
+          + '<div style="color:var(--text3);font-size:10px;">prior ' + b.historical_corr.toFixed(2) + ' &rarr; now ' + b.current_corr.toFixed(2) + ' (&Delta; ' + b.breakdown_magnitude.toFixed(2) + ')</div>'
+          + '</div>';
+      }).join('');
+    }
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1376,15 +1601,17 @@ function renderLivePriceTable() {
   var rows = TABLE_INSTRUMENTS.map(function(inst) {
     var price = livePriceCache[inst.id] || livePriceCache[inst.id.replace('USD','') + 'USD'];
     if (!price) return null;
+    var stale = typeof priceIsStale === 'function' && priceIsStale(inst.id);
     var prev  = _prevTablePrices[inst.id];
-    var dir   = prev ? (price > prev ? 'up' : price < prev ? 'down' : '') : '';
-    var color = dir === 'up' ? 'var(--green)' : dir === 'down' ? 'var(--red)' : 'var(--text)';
+    var dir   = !stale && prev ? (price > prev ? 'up' : price < prev ? 'down' : '') : '';
+    var color = stale ? 'var(--text4)' : dir === 'up' ? 'var(--green)' : dir === 'down' ? 'var(--red)' : 'var(--text)';
     var arrow = dir === 'up' ? ' ▲' : dir === 'down' ? ' ▼' : '';
     var formatted = typeof price === 'number' ? price.toFixed(inst.dp) : price;
-    _prevTablePrices[inst.id] = price;
+    var closedTag = stale ? '<span title="Last working day close" style="font-size:8px;color:var(--text4);margin-left:6px;letter-spacing:1px;">CLOSED</span>' : '';
+    if (!stale) _prevTablePrices[inst.id] = price;
     return '<div style="display:grid;grid-template-columns:80px 1fr auto;align-items:center;' +
       'padding:8px 14px;border-bottom:1px solid var(--border);gap:8px;">' +
-      '<div style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text2);">' + inst.label + '</div>' +
+      '<div style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text2);">' + inst.label + closedTag + '</div>' +
       '<div style="font-size:10px;color:var(--text4);">' + inst.name + '</div>' +
       '<div style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:' + color + ';text-align:right;">' +
         formatted + '<span style="font-size:9px;">' + arrow + '</span>' +
@@ -1722,7 +1949,23 @@ function renderCotReport(asset) {
   const body = document.getElementById('cot-body');
   if (!body) return;
 
-  const d = COT_CACHE[asset];
+  // Prefer live CFTC data via the LumenIntel.cot module (Redis 7 day cache
+  // server side, localStorage 7 day cache client side). Fall back to the
+  // static COT_CACHE only when the live module is unavailable.
+  let d = null;
+  if (window.LumenIntel && typeof window.LumenIntel.cot === 'function'
+      && typeof window.LumenIntel.cot.legacyCacheRow === 'function') {
+    d = window.LumenIntel.cot.legacyCacheRow(asset);
+    if (!d) {
+      // No cached payload yet. Kick off a fetch and re-render when it lands.
+      body.innerHTML = '<div class="pulse" style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Fetching live CFTC report for ' + asset + '...</div>';
+      window.LumenIntel.cot(asset).then(function () {
+        if (currentCotAsset === asset) renderCotReport(asset);
+      }).catch(function () { /* fall through to static below on next call */ });
+      return;
+    }
+  }
+  if (!d) d = COT_CACHE[asset];
   if (!d) { body.innerHTML = '<div style="color:var(--text3);font-size:12px;">No COT data for this asset.</div>'; return; }
 
   const maxAbs = Math.max(Math.abs(d.commercial), Math.abs(d.large), Math.abs(d.small), 1);

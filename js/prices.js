@@ -93,8 +93,7 @@ function atConnectDeriv(onOpen) {
           if (DERIV_SYMBOLS[k] === derivSym) { pairId = k; break; }
         }
         if (pairId && !isNaN(price)) {
-          livePriceCache[pairId] = price;
-          priceSourceCache[pairId] = 'deriv';
+          _markPrice(pairId, price, 'deriv');
           updatePriceTileFromCache(pairId, price);
           // Bridge tick to active charts for real-time candle updates
           var tickData = { time: msg.tick.epoch, price: price };
@@ -200,6 +199,68 @@ var binanceWsSockets = {};
 var livePriceCache = {};
 // Track which source each price came from for display
 var priceSourceCache = {};
+// Wall clock timestamp of the most recent update per pair. Used to mark
+// closed market quotes as stale so the UI can show last working day's
+// value rather than an empty hyphen on weekends and bank holidays.
+var priceTimestampCache = {};
+
+// ─── PRICE PERSISTENCE ──────────────────────────────────────────────────────
+// On every price update we debounce a write to localStorage. On script load
+// we hydrate the in memory caches from that snapshot so closed markets keep
+// showing their last working day quote (Friday close on a weekend, prior
+// trading day close on a bank holiday) instead of dropping to a hyphen.
+
+var _pricePersistTimer = null;
+
+function _markPrice(pairId, price, source) {
+  livePriceCache[pairId] = price;
+  priceSourceCache[pairId] = source || priceSourceCache[pairId] || 'unknown';
+  priceTimestampCache[pairId] = Date.now();
+  if (_pricePersistTimer) clearTimeout(_pricePersistTimer);
+  _pricePersistTimer = setTimeout(persistPriceCaches, 3000);
+}
+
+function persistPriceCaches() {
+  try {
+    var snap = {};
+    Object.keys(livePriceCache).forEach(function (k) {
+      var v = livePriceCache[k];
+      if (typeof v !== 'number' || isNaN(v)) return;
+      snap[k] = { price: v, source: priceSourceCache[k] || null, ts: priceTimestampCache[k] || 0 };
+    });
+    localStorage.setItem('wm_price_cache', JSON.stringify(snap));
+  } catch (_) { /* quota or serialisation errors are non fatal */ }
+}
+
+function hydratePriceCaches() {
+  try {
+    var raw = localStorage.getItem('wm_price_cache');
+    if (!raw) return;
+    var snap = JSON.parse(raw);
+    if (!snap || typeof snap !== 'object') return;
+    Object.keys(snap).forEach(function (k) {
+      var v = snap[k];
+      if (!v || typeof v.price !== 'number' || isNaN(v.price)) return;
+      if (livePriceCache[k] === undefined) {
+        livePriceCache[k] = v.price;
+        priceSourceCache[k] = v.source || 'cache';
+        priceTimestampCache[k] = typeof v.ts === 'number' ? v.ts : 0;
+      }
+    });
+  } catch (_) {}
+}
+
+// Stale threshold. A live tick from Binance or Deriv arrives at most every
+// few seconds; the TD fallback polls every fifteen. Sixty seconds is a
+// generous bound that flags any price as stale once feeds go quiet, which
+// is the signature of a closed market.
+function priceIsStale(pairId) {
+  var ts = priceTimestampCache[pairId] || 0;
+  if (!ts) return true;
+  return (Date.now() - ts) > 60000;
+}
+
+hydratePriceCaches();
 
 // ─── BINANCE WEBSOCKET ───────────────────────────────────────────────────────
 // Debounce timer for sidebar refreshes triggered by Binance WS ticks
@@ -213,8 +274,7 @@ function connectBinancePair(pairId) {
     const d = JSON.parse(e.data);
     const price = parseFloat(d.c);
     if (!isNaN(price)) {
-      livePriceCache[pairId] = price;
-      priceSourceCache[pairId] = 'binance';
+      _markPrice(pairId, price, 'binance');
       updatePriceTileFromCache(pairId, price);
       // Bridge tick to active charts for real-time candle updates
       var tickTime = Math.floor(d.E / 1000);  // Binance miniTicker event time (ms → s)
@@ -331,9 +391,12 @@ function rebuildPriceStrip() {
                : src === 'binance' ? '<span style="font-size:7px;color:#F0B90B;margin-left:3px;">B</span>'
                    : src === 'er'      ? '<span style="font-size:7px;color:#00C8FF;margin-left:3px;">ER</span>'
                    : '';
+    const stale = price && priceIsStale(p);
+    const valColor = stale ? 'color:var(--text4);' : '';
+    const closedBadge = stale ? '<span title="Last working day close" style="font-size:7px;color:var(--text4);margin-left:4px;letter-spacing:1px;">C</span>' : '';
     return `<div class="price-tile"${withId ? ` id="ptile-${p}"` : ''} style="min-width:100px;flex-shrink:0;">
-      <div class="price-tile-pair">${p}${srcBadge}</div>
-      <div class="price-tile-val">${price ? price.toFixed(dp) : '—'}</div>
+      <div class="price-tile-pair">${p}${srcBadge}${closedBadge}</div>
+      <div class="price-tile-val" style="${valColor}">${price ? price.toFixed(dp) : '—'}</div>
     </div>`;
   };
 
@@ -359,6 +422,10 @@ function rebuildPriceStrip() {
 // LIVE PRICES — SMART 5-SECOND REFRESH
 // ═══════════════════════════════════════════
 var prevPrices = {};        // store last known prices for change detection
+// Mirror the hydrated livePriceCache into prevPrices so the chart live price
+// label and any other prevPrices reader can pick up the last working day's
+// quote on a weekend or bank holiday cold load.
+Object.keys(livePriceCache).forEach(function (k) { prevPrices[k] = livePriceCache[k]; });
 var priceRefreshTimer = null;
 var currentChartPair = 'XAUUSD';
 var currentChartTF   = '15';
@@ -530,8 +597,7 @@ async function fetchLivePrices() {
             let price = tdSym ? priceMap[tdSym] : undefined;
             if (price && !isNaN(price)) {
               if (ETF_SCALE[p]) price = price * ETF_SCALE[p];
-              livePriceCache[p] = price;
-              priceSourceCache[p] = priceMap._source || 'td';
+              _markPrice(p, price, priceMap._source || 'td');
               updatePriceTileFromCache(p, price);
             }
           });

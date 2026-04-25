@@ -222,7 +222,10 @@ function home_refreshIntelSnapshot() {
 function home_renderIntelCard(inst, todayActive) {
   var name = HOME_INSTRUMENT_NAMES[inst] || inst;
   var price = (typeof livePriceCache !== 'undefined' && livePriceCache[inst]) ? livePriceCache[inst] : null;
-  var priceTxt = price != null ? home_formatPrice(price, inst) : 'Awaiting feed';
+  var priceStale = price != null && typeof priceIsStale === 'function' && priceIsStale(inst);
+  var priceTxt = price != null
+    ? (home_formatPrice(price, inst) + (priceStale ? '<span title="Last working day close" style="font-size:9px;color:var(--text4);margin-left:6px;letter-spacing:1px;font-weight:500;">CLOSED</span>' : ''))
+    : 'Awaiting feed';
 
   // Cached intel (do not trigger fetches)
   var wy = (window.LumenIntel && window.LumenIntel.wyckoff && window.LumenIntel.wyckoff.cached(inst)) || null;

@@ -1097,9 +1097,67 @@ async function scalpDecide(inst, intel) {
   } catch (_) { return null; }
 }
 
+// Watches every open scalp position and closes any whose live price has
+// crossed SL or TP. Closed records carry the entry journal_context forward
+// via Object.assign, mirroring atCloseAll, so the pattern miner sees scalp
+// outcomes alongside Intraday outcomes.
+function scalpMonitorPositions() {
+  if (!scalpPositions.length) return;
+  var stillOpen = [];
+  var closedAny = false;
+  scalpPositions.forEach(function (pos) {
+    var live = (typeof livePriceCache !== 'undefined' && livePriceCache[pos.instrument]) || null;
+    if (!live) { stillOpen.push(pos); return; }
+    var hitSL = false, hitTP = false;
+    if (pos.dir === 'BUY') {
+      if (pos.sl != null && live <= pos.sl) hitSL = true;
+      else if (pos.tp != null && live >= pos.tp) hitTP = true;
+    } else {
+      if (pos.sl != null && live >= pos.sl) hitSL = true;
+      else if (pos.tp != null && live <= pos.tp) hitTP = true;
+    }
+    if (!hitSL && !hitTP) { stillOpen.push(pos); return; }
+
+    var lots = pos.lots || 0.02;
+    var pnl = pos.dir === 'BUY' ? (live - pos.entry) * lots : (pos.entry - live) * lots;
+    var rDenom = pos.sl != null && pos.entry !== pos.sl ? Math.abs(pos.entry - pos.sl) : 0;
+    var rMult = 0;
+    if (rDenom > 0) {
+      if (hitSL) rMult = -1;
+      else if (hitTP && pos.tp != null) rMult = Math.abs(pos.tp - pos.entry) / rDenom;
+    }
+    var exitReason = hitSL ? 'SL' : 'TP';
+
+    scalpHistory.unshift(Object.assign({}, pos, {
+      closePrice: live,
+      pnl: pnl,
+      r_multiple: Number(rMult.toFixed(2)),
+      closedAt: Date.now(),
+      exit_reason: exitReason
+    }));
+    closedAny = true;
+
+    var precision = pos.instrument.indexOf('JPY') >= 0 ? 3 : 5;
+    var rText = rMult >= 0 ? 'plus ' + rMult.toFixed(1) + 'R' : 'minus ' + Math.abs(rMult).toFixed(1) + 'R';
+    scalpAddLog('Lumen closed ' + pos.instrument + ' ' + pos.dir + ' at ' + Number(live).toFixed(precision) + '. Result: ' + rText + '. ' + exitReason + ' hit.');
+  });
+  if (!closedAny) return;
+  if (scalpHistory.length > 200) scalpHistory.length = 200;
+  scalpPositions = stillOpen;
+  localStorage.setItem('wm_scalp_positions', JSON.stringify(scalpPositions));
+  localStorage.setItem('wm_scalp_history', JSON.stringify(scalpHistory));
+  scalpRenderPositions();
+  scalpRenderHistory();
+}
+
 async function scalpRunScan() {
   if (!scalpEngineRunning) return;
   scalpLastScanTime = Date.now();
+
+  // Close any positions whose live price has crossed SL or TP since the
+  // previous tick. Runs before scanning so the portfolio gate sees an
+  // accurate open exposure picture.
+  scalpMonitorPositions();
 
   var weekend = isWeekend();
   var threshold = weekend ? 75 : 65;
