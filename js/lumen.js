@@ -403,7 +403,7 @@ async function intradayDecide(inst, intel) {
   if (!r.ok) {
     var bodyText = '';
     try { bodyText = await r.text(); } catch (_) {}
-    var snippet = bodyText ? bodyText.slice(0, 140).replace(/\s+/g, ' ') : '';
+    var snippet = bodyText ? bodyText.slice(0, 800).replace(/\s+/g, ' ') : '';
     return { ok: false, reason: 'upstream status ' + r.status + (snippet ? '. ' + snippet : '') };
   }
   var d;
@@ -1119,7 +1119,7 @@ async function scalpDecide(inst, intel) {
   if (!r.ok) {
     var bodyText = '';
     try { bodyText = await r.text(); } catch (_) {}
-    var snippet = bodyText ? bodyText.slice(0, 140).replace(/\s+/g, ' ') : '';
+    var snippet = bodyText ? bodyText.slice(0, 800).replace(/\s+/g, ' ') : '';
     return { ok: false, reason: 'upstream status ' + r.status + (snippet ? '. ' + snippet : '') };
   }
   var d;

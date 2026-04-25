@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       } else {
         let body = '';
         try { body = await upstream.text(); } catch (_) {}
-        diag.claude = 'status ' + upstream.status + (body ? ': ' + body.slice(0, 200).replace(/\s+/g, ' ') : '');
+        diag.claude = 'status ' + upstream.status + ' model=' + model + (body ? ': ' + body.slice(0, 600) : '');
       }
     } catch (e) {
       diag.claude = 'fetch threw: ' + (e && e.message ? e.message : 'unknown');
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
       } else {
         let body = '';
         try { body = await upstream.text(); } catch (_) {}
-        diag.gemini = 'status ' + upstream.status + (body ? ': ' + body.slice(0, 200).replace(/\s+/g, ' ') : '');
+        diag.gemini = 'status ' + upstream.status + (body ? ': ' + body.slice(0, 600) : '');
       }
     } catch (e) {
       diag.gemini = 'fetch threw: ' + (e && e.message ? e.message : 'unknown');
