@@ -378,11 +378,17 @@ function applySessionMultiplier(rawConfidence, session) {
 }
 
 // Ask Sonnet for a BUY, SELL, or SKIP signal given the assembled intel
-// payload. Returns parsed JSON or null on failure.
+// payload. Returns { ok: true, signal } when the LLM responded with valid
+// JSON, or { ok: false, reason } when anything in the call chain failed.
+// The reason string is surfaced in the activity log so transient upstream
+// errors are visible rather than collapsed into "decision call failed".
 async function intradayDecide(inst, intel) {
-  if (!lumBudget.checkAndConsume('intraday')) return null;
+  if (!lumBudget.checkAndConsume('intraday')) {
+    return { ok: false, reason: 'daily intraday budget cap reached' };
+  }
+  var r;
   try {
-    var r = await fetch('/api/scan', {
+    r = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -391,11 +397,23 @@ async function intradayDecide(inst, intel) {
         messages: [{ role: 'user', content: JSON.stringify(intel) }]
       })
     });
-    if (!r.ok) return null;
-    var d = await r.json();
-    var text = d && d.content && d.content[0] && d.content[0].text;
-    return safeParseJSON(text);
-  } catch (_) { return null; }
+  } catch (e) {
+    return { ok: false, reason: 'network error: ' + (e && e.message ? e.message : 'unknown') };
+  }
+  if (!r.ok) {
+    var bodyText = '';
+    try { bodyText = await r.text(); } catch (_) {}
+    var snippet = bodyText ? bodyText.slice(0, 140).replace(/\s+/g, ' ') : '';
+    return { ok: false, reason: 'upstream status ' + r.status + (snippet ? '. ' + snippet : '') };
+  }
+  var d;
+  try { d = await r.json(); }
+  catch (e) { return { ok: false, reason: 'response not JSON: ' + (e && e.message ? e.message : 'parse error') }; }
+  var text = d && d.content && d.content[0] && d.content[0].text;
+  if (!text) return { ok: false, reason: 'empty response from intelligence engine' };
+  var parsed = safeParseJSON(text);
+  if (!parsed) return { ok: false, reason: 'engine response was not valid JSON' };
+  return { ok: true, signal: parsed };
 }
 
 // Intraday scan loop: pick the day's instruments, fetch real indicators,
@@ -434,11 +452,13 @@ async function atRunScan() {
       continue;
     }
 
-    var signal = await intradayDecide(inst, intel);
-    if (!signal || typeof signal !== 'object') {
-      atAddLog('skip', 'Lumen Intraday: ' + inst + ' decision call failed.');
+    var decision = await intradayDecide(inst, intel);
+    if (!decision || !decision.ok) {
+      var failReason = decision && decision.reason ? decision.reason : 'unknown error';
+      atAddLog('skip', 'Lumen Intraday: ' + inst + ' decision call failed. ' + failReason + '.');
       continue;
     }
+    var signal = decision.signal;
 
     if (signal.action === 'SKIP') {
       atAddLog('skip', 'Lumen Intraday: ' + inst + ' skip. ' + (signal.skip_reason || signal.reason || 'no setup'));
@@ -1079,9 +1099,12 @@ function scalpRenderHistory() {
 // LLM call from the scalper hot path. Returns parsed JSON or null on
 // failure.
 async function scalpDecide(inst, intel) {
-  if (!lumBudget.checkAndConsume('scalper')) return null;
+  if (!lumBudget.checkAndConsume('scalper')) {
+    return { ok: false, reason: 'daily scalper budget cap reached' };
+  }
+  var r;
   try {
-    var r = await fetch('/api/behaviour', {
+    r = await fetch('/api/behaviour', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1090,11 +1113,23 @@ async function scalpDecide(inst, intel) {
         maxTokens: 400
       })
     });
-    if (!r.ok) return null;
-    var d = await r.json();
-    var text = d && d.content && d.content[0] && d.content[0].text;
-    return safeParseJSON(text);
-  } catch (_) { return null; }
+  } catch (e) {
+    return { ok: false, reason: 'network error: ' + (e && e.message ? e.message : 'unknown') };
+  }
+  if (!r.ok) {
+    var bodyText = '';
+    try { bodyText = await r.text(); } catch (_) {}
+    var snippet = bodyText ? bodyText.slice(0, 140).replace(/\s+/g, ' ') : '';
+    return { ok: false, reason: 'upstream status ' + r.status + (snippet ? '. ' + snippet : '') };
+  }
+  var d;
+  try { d = await r.json(); }
+  catch (e) { return { ok: false, reason: 'response not JSON: ' + (e && e.message ? e.message : 'parse error') }; }
+  var text = d && d.content && d.content[0] && d.content[0].text;
+  if (!text) return { ok: false, reason: 'empty response from intelligence engine' };
+  var parsed = safeParseJSON(text);
+  if (!parsed) return { ok: false, reason: 'engine response was not valid JSON' };
+  return { ok: true, signal: parsed };
 }
 
 // Watches every open scalp position and closes any whose live price has
@@ -1206,11 +1241,13 @@ async function scalpRunScan() {
       continue;
     }
 
-    var signal = await scalpDecide(inst, intel);
-    if (!signal || typeof signal !== 'object') {
-      scalpAddLog('Lumen Scalper: ' + inst + ' no response from engine.');
+    var decision = await scalpDecide(inst, intel);
+    if (!decision || !decision.ok) {
+      var sFail = decision && decision.reason ? decision.reason : 'unknown error';
+      scalpAddLog('Lumen Scalper: ' + inst + ' decision call failed. ' + sFail + '.');
       continue;
     }
+    var signal = decision.signal;
 
     if (signal.action === 'SKIP') {
       scalpAddLog('Lumen Scalper: ' + inst + ' skip. ' + (signal.skip_reason || 'no qualifying setup'));
