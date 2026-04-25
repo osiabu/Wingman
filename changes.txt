@@ -1,39 +1,31 @@
 STATUS
 ------
-Wingman intelligence upgrade in progress. Batches 1 through 6 of the
-Aperintel April 2026 blueprint are shipped, plus a Batch 7 pivot:
-the Intelligence Dashboard now lives on the homepage rather than the
-Lumen tab. The Lumen Intraday and Scalper engines consume a structured
-intelligence payload covering Wyckoff phase, market regime, COT
-positioning, real yields, sentiment, liquidity pools, sessions,
-calendar, and portfolio exposure. The trade journal captures the full
-intel snapshot at entry so a weekly pattern miner (Haiku) can surface
-what works and what does not.
+Wingman is now LIVE on GitHub at osiabu/Wingman, last commit d2d2bbc.
+Batches 1 through 7 of the Aperintel April 2026 blueprint are shipped:
+the Lumen intelligence layer (Wyckoff, regime, COT, real yields,
+liquidity, calendar, sessions, portfolio, correlations), the master
+synthesis prompt, the journal context capture, the weekly pattern
+miner, the premium homepage rebuild, and the visual identity refresh
+(new SVG mark, new lockup, five atmospheric photographs, OG meta tags,
+sidebar typography retuned, legacy chrome eagle PNGs retired).
 
-The homepage was rebuilt from the ground up with aperintel.com
-typography (Inter only, weights 300 to 600, tight negative tracking on
-display heads, wide positive tracking on uppercase eyebrows, tabular
-numerics, no JetBrains Mono on this tab). Layout follows pro trading
-terminals (Koyfin / Bloomberg / TradingView): status strip, then
-intelligence snapshot grid, then live exposure ledger, then upcoming
-risk and Lumen activity, then correlation pulse and weekly insights,
-then launch grid and today's performance. No emojis, no hyphens in
-user facing text.
+The repo also passed Vercel deployment validation. The first push hit
+the Hobby plan 12 function cap (we had 13 routable api files), so a
+follow up commit consolidated /api/fred and /api/cot into a single
+/api/intel dispatcher routing on a source query parameter. The two
+underlying handlers now live in api/_fred.js and api/_cot.js (Vercel
+does not route files prefixed with an underscore). Net function count
+is 12, at the cap but legal.
 
-A visual identity refresh is also mid flight. The user generated five
-atmospheric images and a new minimalist mark per a designer brief. The
-photographs are production grade. The two legacy logos
-(wingmanlogo.png, wingmanlogo1.png) are 3D rendered chrome eagle wing
-marks and must be retired before launch since they undo the polish of
-everything else. None of the new assets are wired into the codebase
-yet, that is the first thing to do in the next session.
-
-What still needs doing: visual identity wire up (see VISUAL IDENTITY
-section below), Batch 8 (Markets tab integration: replace static
-COT_CACHE with live data, add Real Yields and Correlation Heatmap
-sub tabs), Batch 9 (CLAUDE.md and README updates), and the deferred
-scalper auto close path (positions never roll into scalpHistory
-today, blocking the pattern miner on the scalp side).
+What still needs doing: confirm the second Vercel deploy went green
+(should already be done by the time you read this), set the env
+variables FRED_API_KEY and CFTC_APP_TOKEN in the Vercel project
+settings, then continue with Batch 8 (Markets tab integration),
+Batch 9 (CLAUDE.md and README updates), the deferred scalper auto
+close path, the deferred apple-touch-icon PNG export, and a real
+trademark clearance for the name "Wingman" before any commercial
+launch (the wordmark is collided in trading and finance, see
+NAMING section for the four search runs).
 
 CURRENT GOAL
 ------------
@@ -59,6 +51,93 @@ Architectural decisions landed at the start of this run:
     by H4 bar timestamp, COT 7d, real yields 24h, correlations 4h,
     liquidity 1h, calendar 15m) prevent the master synthesis prompt
     from multiplying per cycle LLM calls.
+
+DEPLOY CHECKPOINT (current head: d2d2bbc)
+-----------------------------------------
+GitHub: https://github.com/osiabu/Wingman
+Branch: main
+Last two commits:
+  d2d2bbc fix(api): consolidate fred and cot under /api/intel
+          dispatcher. Renames api/fred.js to api/_fred.js, api/cot.js
+          to api/_cot.js (underscore prefixed files are not routed by
+          Vercel), adds api/intel.js dispatcher, updates the two
+          client modules (intel-yields.js, intel-cot.js) to call
+          /api/intel?source=fred|cot.
+  6c60b1e feat: Lumen intelligence layers, premium home rebuild,
+          brand refresh. 252 files changed, 5284 insertions, 1027
+          deletions. Includes the homepage rewrite, the visual
+          identity refresh, the icon set redraw, and all batches 1
+          through 7.
+
+Local origin canonicalised:
+  git remote set-url origin https://github.com/osiabu/Wingman.git
+
+Vercel function count is now 12 (at the cap on Hobby). Future api
+endpoints will hit the wall. Two clean paths when that happens:
+  1. Merge LLM proxies (analyse, claude, gemini, grok) into a single
+     /api/llm?provider=... dispatcher. Frees three slots in one go.
+  2. Upgrade to Vercel Pro at $20 per member per month for higher
+     caps and team features.
+
+ENV VARIABLES STILL TO SET IN VERCEL
+------------------------------------
+FRED_API_KEY    Required for /api/intel?source=fred. Free at
+                https://fred.stlouisfed.org/docs/api/api_key.html
+                Without this, intel-yields.js falls back to a neutral
+                payload (macro_bias_for_gold = 'neutral', source =
+                'unavailable') and the master synthesis treats it as
+                a legitimate skip signal rather than an error.
+
+CFTC_APP_TOKEN  Optional. Improves /api/intel?source=cot throttling.
+                Free at https://publicreporting.cftc.gov/profile/edit
+                Without it the Redis 7 day cache absorbs the rate
+                limit since CFTC only publishes weekly.
+
+Add both via Vercel dashboard, project settings, environment
+variables. They take effect on the next deploy.
+
+NAMING (paid trademark clearance still owed)
+--------------------------------------------
+The four search query pattern was run across:
+  - "Wingman"      crowded in trading: WINGMAN TRADING (US
+                   serial 90638259), WingmanTracker live since
+                   2017, Wingman Capital LLC, Wingman Group Inc
+                   (4 USPTO filings), pi lab LLC (registered
+                   WINGMAN trademark for software), Emergent
+                   Labs Inc launched a "Wingman" personal AI
+                   agent in April 2026.
+  - "Wingman Labs" WORSE than Wingman alone: existing
+                   wingmanlab.com (digital solutions), wmlab.io
+                   (Wingman Lab Hong Kong, NFT/metaverse),
+                   The Wingman Labs (Facebook), @wingmanlabs
+                   on TikTok, Wingman Labs Karachi (marketing
+                   agency). Adding "Labs" inherits two
+                   collision sets, does not solve any.
+  - "Slipstream"   VETO. Slipstream Trader live at
+                   slipstream.markets (prediction markets
+                   platform), SlipStream Financial (corporate
+                   banking), Aerodrome Slipstream (DeFi
+                   trading), Slipstream Pay, Slipstream IT
+                   ($80M raised), David Flynn USPTO software
+                   trademark.
+  - "Aperture"     BAD. Aperture Finance ($12M Series A, $250M
+                   valuation, $3B liquidity, DeFi, direct
+                   competitor), Aperture Investors (registered
+                   trademarks, alternative asset manager),
+                   plus Aperture.ai, ApertureDB, Aperture
+                   Capital and historical Apple Aperture.
+  - "Lumeo"        Cleaner in trading specifically but
+                   Lumeo Inc (lumeo.com, video analytics, $5.1M
+                   raised) holds a registered USPTO mark. Plus
+                   internal collision: our intelligence engine
+                   is named "Lumen" so customer confusion
+                   between Lumen and Lumeo is a self inflicted
+                   wound.
+
+Recommendation captured in chat: pay for a UK trademark clearance
+solicitor on "Wingman" in classes 9, 36, 41 (£200 to £2000, 1 to 7
+days) before any commercial launch. Or invent a word. The visual
+identity carries the brand regardless of the wordmark.
 
 VISUAL IDENTITY (steps A1 to A6 SHIPPED, A7 deferred)
 -----------------------------------------------------
@@ -531,23 +610,50 @@ WHAT BATCH 6 INTENTIONALLY DEFERS
 
 NEXT STEP PROMPT
 ================
-Pick up with the visual identity wire up FIRST, then continue to
-Batch 8. The image assets are already in img/ but none are wired
-into the codebase yet, and the legacy chrome eagle logos are still
-live in index.html.
+Repo is on GitHub at osiabu/Wingman, head d2d2bbc. The visual
+identity wire up is shipped, the deploy is on Vercel. Pick up with
+verification then continue to Batch 8.
 
 Sequence:
 
-A. VISUAL IDENTITY POLISH (mostly shipped, two small items)
-   See VISUAL IDENTITY section above. Steps A1 to A6 are done.
-   Remaining:
-   A7. Regenerate img/hero-atmosphere.png with cleaner upper third.
-   A8. Export img/wingman-mark-256.png so the iOS apple-touch-icon
-       link resolves.
-   A9. Apply the login backdrop and onboarding welcome images once
-       the pre auth and Stage 13 screens exist.
+PRE FLIGHT (do these first, takes ten minutes total)
+  V1. Open https://vercel.com/dashboard and confirm the deploy of
+      d2d2bbc went green. If it failed, paste the error.
+  V2. Open the Vercel project settings, environment variables tab.
+      Add FRED_API_KEY (required for real yields) and optionally
+      CFTC_APP_TOKEN. Trigger a redeploy.
+  V3. Visit the live deploy URL. Open dev tools, hit the Home tab.
+      Verify:
+        - The Wingman wordmark in the sidebar reads "Wingman" in
+          Inter Light, not the legacy bold ALL CAPS.
+        - The favicon shows the new two stroke mark.
+        - The hero atmosphere photograph is faintly visible behind
+          the home content.
+        - The Status Strip populates within fifteen seconds.
+        - From the console, await window.LumenIntel.yields() and
+          await window.LumenIntel.cot('gold') return real payloads
+          (not the neutral fallback). If they return the fallback,
+          the env vars are not set.
+        - From the console, await window.LumenIntel.regime('XAUUSD')
+          and await window.LumenIntel.liquidity('XAUUSD') populate
+          the gold card on the Intelligence Snapshot grid within
+          a minute.
 
-A. (LEGACY ORDER, kept for context, the steps below were carried
+OUTSTANDING VISUAL IDENTITY ITEMS
+  A7. Regenerate img/hero-atmosphere.png with the negative space fix
+      prompt: "Reserve the entire upper third of the frame as flat
+      matte black with no objects and no light intrusion." Drop in
+      place. No code changes needed.
+  A8. Export img/wingman-mark-256.png at 256 x 256 so the
+      apple-touch-icon link resolves on iOS bookmarks. Open
+      img/wingman-mark.svg in any vector tool and export to PNG.
+  A9. Apply img/login-backdrop.png and img/onboarding-welcome.png
+      once a pre auth screen and Stage 13 onboarding modal exist.
+
+CONTINUE THE BUILD
+==================
+
+(LEGACY ORDER, kept for context, the steps below were carried
    out in the visual identity polish above)
   1. Draft img/wingman-mark.svg using the geometry in the MARK
      REFINEMENT section above (offset lower stroke to the right).
